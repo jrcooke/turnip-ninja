@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Net;
 using System.IO.Compression;
-using System.Linq;
+using System.Net.Http;
 
 namespace AdfReader
 {
@@ -180,12 +179,25 @@ namespace AdfReader
                     if (!File.Exists(target))
                     {
                         Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
-                        using (WebClient client = new WebClient())
+                        using (HttpClient client = new HttpClient())
                         {
                             var url = new Uri(string.Format(sourceUrlTemplate, fileName));
                             try
                             {
-                                client.DownloadFile(url, target);
+                                var message = client.GetAsync(url).Result;
+                                if (message.StatusCode == HttpStatusCode.OK)
+                                {
+                                    var content = message.Content.ReadAsByteArrayAsync().Result;
+                                    File.WriteAllBytes(target, content);
+                                }
+                                else if (message.StatusCode == HttpStatusCode.NotFound)
+                                {
+                                    missing = true;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                                }
                             }
                             catch (WebException ex)
                             {

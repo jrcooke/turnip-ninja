@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Concurrent;
+using SkiaSharp;
+using System.IO;
 
 namespace AdfReader
 {
@@ -11,66 +12,88 @@ namespace AdfReader
     {
         static void Main(string[] args)
         {
+            string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
 
             //// Home
             //double lat = 47.684124;
             //double lon = -122.292357;
 
             // Near Juanteta
-            double lat = 47.695736;
-            double lon = -122.232330;
+            Config c = new Config();
 
-            double R = 100000;
-            double deltaR = 10;
-            //double minAngle = 85;
-            //double maxAngle = 95;
-            double minAngle = 89.5;
-            double maxAngle = 90.5;
+            c = new Config()
+            {
+                Lat = 47.695736,
+                Lon = -122.232330,
+                R = 10000,
+                DeltaR = 10,
+                MinAngle = 85,
+                MaxAngle = 95,
+                ElevationViewMin = -5.0,
+                ElevationViewMax = 5.0,
+                AngularResolution = 0.001,
+            };
 
-            double elevationViewMin = 0.0;
-            double elevationViewMax = 5.0;
-            double angularResolution = 0.001;
+            // owego
+            c = new Config()
+            {
+                Lat = 42.130303,                Lon = -76.243376,
+                R = 1000,
+                DeltaR = 1,
+                MinAngle = 0,
+                MaxAngle = 360,
+                ElevationViewMin = -5.0,
+                ElevationViewMax = 5.0,
+                AngularResolution = 0.1,
+            };
+
+            var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
+            Utils.WriteImageFile(
+                pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
+                pixels.Length, pixels[0].Length,
+                Path.Combine(outputFolder, "test.png"),
+                (a) => a);
 
             var bothData = GetPolarData(
-                lat, lon,
-                R, deltaR,
-                minAngle, maxAngle, angularResolution,
+                c.Lat, c.Lon,
+                c.R, c.DeltaR,
+                c.MinAngle, c.MaxAngle, c.AngularResolution,
                 (lat2, lon2, cosLat, metersPerElement) =>
                 {
-                    var c = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
+                    var col = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
                     var h = Heights.GetHeight(lat2, lon2, cosLat, metersPerElement);
-                    return new Tuple<float, Color>(h.Item3, c);
+                    return new Tuple<float, SKColor>(h.Item3, col);
                 });
 
             // Cache the function results.
             bothData = bothData
                 .Select(p => p())
-                .Select(p => new Func<Tuple<int, Tuple<float, Color>[]>>(() => p))
+                .Select(p => new Func<Tuple<int, Tuple<float, SKColor>[]>>(() => p))
                 .ToArray();
 
-            int height = (int)(R / deltaR) - 1;
+            int height = (int)(c.R / c.DeltaR) - 1;
             Utils.WriteImageFile(
                 bothData.Select(p => p()),
                 bothData.Length, height,
-                @"C:\Users\jcooke\Desktop\bbb.png",
+                Path.Combine(outputFolder, "bbb.png"),
                 (a) => a.Item2);
 
             Utils.WriteImageFile(
                 bothData.Select(p => p()),
                 bothData.Length, height,
-                @"C:\Users\jcooke\Desktop\aaa.png",
-                (a) => Color.FromArgb(
-                    (int)(a.Item1 / 1.000) % 256,
-                    (int)(a.Item1 / 10.00) % 256,
-                    (int)(a.Item1 / 100.0) % 256));
+                Path.Combine(outputFolder, "aaa.png"),
+                (a) => new SKColor(
+                    (byte)((int)(a.Item1 / 1.000) % 256),
+                    (byte)((int)(a.Item1 / 10.00) % 256),
+                    (byte)((int)(a.Item1 / 100.0) % 256)));
 
-            int numParts = (int)(bothData.Length * (elevationViewMax - elevationViewMin) / (maxAngle - minAngle));
-            IEnumerable<Tuple<int, Tuple<double, Color>[]>> polimage = CollapseToViewFromHere(bothData, deltaR, elevationViewMin, elevationViewMax, numParts);
+            int numParts = (int)(bothData.Length * (c.ElevationViewMax - c.ElevationViewMin) / (c.MaxAngle - c.MinAngle));
+            IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
             Utils.WriteImageFile(
                 polimage,
                 bothData.Length, numParts,
-                @"C:\Users\jcooke\Desktop\testPol.png",
-                (a) => a == null ? default(Color) : a.Item2);
+                Path.Combine(outputFolder, "testPol.png"),
+                (a) => a == null ? default(SKColor) : a.Item2);
         }
 
         public static Func<Tuple<int, T[]>>[] GetPolarData<T>(
@@ -94,6 +117,19 @@ namespace AdfReader
             }
 
             return actions.ToArray();
+        }
+
+        public class Config
+        {
+            public double Lat { get; set; }
+            public double Lon { get; set; }
+            public double R { get; set; }
+            public double DeltaR { get; set; }
+            public double MinAngle { get; set; }
+            public double MaxAngle { get; set; }
+            public double ElevationViewMin { get; set; }
+            public double ElevationViewMax { get; set; }
+            public double AngularResolution { get; set; }
         }
 
         private static T[] ComputeAlongRadius<T>(double lat, double lon,
@@ -121,8 +157,8 @@ namespace AdfReader
             return ret;
         }
 
-        private static IEnumerable<Tuple<int, Tuple<double, Color>[]>> CollapseToViewFromHere(
-            Func<Tuple<int, Tuple<float, Color>[]>>[] thetaRad,
+        private static IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> CollapseToViewFromHere(
+            Func<Tuple<int, Tuple<float, SKColor>[]>>[] thetaRad,
             double deltaR,
             double elevationViewMin, double elevationViewMax,
             int numParts)
@@ -136,14 +172,14 @@ namespace AdfReader
             int batchSize = 50;
             for (int outerThetaLoop = 0; outerThetaLoop < w; outerThetaLoop += batchSize)
             {
-                ConcurrentQueue<Tuple<int, Tuple<double, Color>[]>> ret = new ConcurrentQueue<Tuple<int, Tuple<double, Color>[]>>();
+                ConcurrentQueue<Tuple<int, Tuple<double, SKColor>[]>> ret = new ConcurrentQueue<Tuple<int, Tuple<double, SKColor>[]>>();
 
                 var workers = thetaRad.Skip(outerThetaLoop).Take(batchSize);
                 Parallel.ForEach(workers, (a) =>
                 {
                     var itemResult = a();
-                    Tuple<float, Color>[] heightsAtAngle = itemResult.Item2;
-                    var item = new Tuple<int, Tuple<double, Color>[]>(
+                    Tuple<float, SKColor>[] heightsAtAngle = itemResult.Item2;
+                    var item = new Tuple<int, Tuple<double, SKColor>[]>(
                         itemResult.Item1,
                         CollapseToViewAlongRay(heightsAtAngle, deltaR, minViewAngle, deltaTheta, numParts));
                     ret.Enqueue(item);
@@ -158,14 +194,14 @@ namespace AdfReader
             }
         }
 
-        private static Tuple<double, Color>[] CollapseToViewAlongRay(
-            Tuple<float, Color>[] heightsAtAngle,
+        private static Tuple<double, SKColor>[] CollapseToViewAlongRay(
+            Tuple<float, SKColor>[] heightsAtAngle,
             double deltaR,
             double minViewAngle,
             double deltaTheta,
             int numParts)
         {
-            Tuple<double, Color>[] ret = new Tuple<double, Color>[numParts];
+            Tuple<double, SKColor>[] ret = new Tuple<double, SKColor>[numParts];
             float eyeHeight = 10;
             float heightOffset = heightsAtAngle[0].Item1 + eyeHeight;
 
@@ -175,29 +211,28 @@ namespace AdfReader
                 var value = heightsAtAngle[r];
                 double dist = deltaR * r;
 
-                Color col = value.Item2;
+                SKColor col = value.Item2;
                 // Haze adds bluish overlay to colors. Say (195, 240, 247)
                 double clearWeight = 0.2 + 0.8 / (1.0 + dist * dist * 1.0e-8);
-                col = Color.FromArgb(
-                    (int)(col.R * clearWeight + 195 * (1 - clearWeight)),
-                    (int)(col.G * clearWeight + 240 * (1 - clearWeight)),
-                    (int)(col.B * clearWeight + 247 * (1 - clearWeight)));
+                col = new SKColor(
+                    (byte)(int)(col.Red * clearWeight + 195 * (1 - clearWeight)),
+                    (byte)(int)(col.Green * clearWeight + 240 * (1 - clearWeight)),
+                    (byte)(int)(col.Blue * clearWeight + 247 * (1 - clearWeight)));
 
                 double curTheta = Math.Atan2(value.Item1 - heightOffset, dist);
                 while ((minViewAngle + i * deltaTheta) < curTheta && i < numParts)
                 {
-                    ret[i++] = new Tuple<double, Color>(dist, col);
+                    ret[i++] = new Tuple<double, SKColor>(dist, col);
                 }
             }
 
             // Fill in the rest of the sky.
             while (i < numParts)
             {
-                ret[i++] = new Tuple<double, Color>(1.0e10, Color.FromArgb(195, 240, 247));
+                ret[i++] = new Tuple<double, SKColor>(1.0e10, new SKColor(195, 240, 247));
             }
 
             return ret;
         }
-
     }
 }

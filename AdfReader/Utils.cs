@@ -1,19 +1,16 @@
-﻿using System;
+﻿using SkiaSharp;
+using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AdfReader
 {
     public static class Utils
     {
+        private static Dictionary<int, string> filenameCache = new Dictionary<int, string>();
 
-        public const double AlphaMeters = 6378000.0;
+        private const double AlphaMeters = 6378000.0;
 
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;
@@ -39,28 +36,6 @@ namespace AdfReader
             return Math.Sign(a) * (Math.Abs(a) + b);
         }
 
-
-        public static Tuple<double, double> AMinusBInDeltaMeters(double latA, double lonA, double latB, double lonB, double? cosLat = null)
-        {
-            double cosLatVal = cosLat.HasValue ? cosLat.Value : Math.Cos(latA * Math.PI / 180);
-            return new Tuple<double, double>(
-                (lonA - lonB) * LengthOfLatDegree * cosLatVal,
-                (latA - latB) * LengthOfLatDegree);
-
-            //    double latRad = lat * Math.PI / 180.0;
-            //    double lonRad = lon * Math.PI / 180.0;
-            //    double latPrime = xMeters / alpha;
-            //    double lonPrime = yMeters / alpha;
-            //    double sinLat2 =
-            //        (Math.Sin(latRad) * Math.Cos(latPrime) * Math.Cos(lonPrime) + Math.Cos(latRad) * Math.Sin(lonPrime));
-            //    double tanLon2 =
-            //        (Math.Sin(latPrime) * Math.Cos(lonPrime)) /
-            //        (Math.Cos(latRad) * Math.Cos(latPrime) * Math.Cos(lonPrime) - Math.Sin(latRad) * Math.Sin(lonPrime));
-            //    double lat2 = alpha * Math.PI / 180.0 * (Math.Asin(sinLat2) * 180.0 / Math.PI - lat);
-            //    double lon2 = alpha * Math.PI / 180.0 * (Math.Atan(tanLon2) * 180.0 / Math.PI); // + lon;
-            //    return new LatLon(phi, lambda);
-        }
-
         public static Tuple<double, double> APlusDeltaMeters(double lat, double lon, double deltaX, double deltaY, double? cosLat = null)
         {
             double cosLatVal = cosLat.HasValue ? cosLat.Value : Math.Cos(lat * Math.PI / 180);
@@ -69,45 +44,23 @@ namespace AdfReader
                 lon + deltaX / LengthOfLatDegree / cosLatVal);
         }
 
-        public static U[][] ApplyMap<T, U>(T[][] imageData, Func<T, U> map)
+        internal static T[][] Transpose<T>(T[][] items)
         {
-            int w = imageData.Length;
-            int h = imageData[0].Length;
-
-            U[][] ret = new U[w][];
-            for (int i = 0; i < w; i++)
+            int width = items.Length;
+            int height = items[0].Length;
+            var ret = new T[height][];
+            for (int i = 0; i < height; i++)
             {
-                ret[i] = new U[h];
-                for (int j = 0; j < h; j++)
+                ret[i] = new T[width];
+                for (int j = 0; j < width; j++)
                 {
-                    ret[i][j] = map(imageData[i][j]);
+                    ret[i][j] = items[j][i];
                 }
             }
 
             return ret;
         }
 
-        public static Tuple<T, U>[][] Merge<T, U>(T[][] a, U[][] b)
-        {
-            int w = a.Length;
-            if (b.Length != w) throw new ArgumentOutOfRangeException();
-            int h = a[0].Length;
-            if (b[0].Length != h) throw new ArgumentOutOfRangeException();
-
-            Tuple<T, U>[][] ret = new Tuple<T, U>[w][];
-            for (int i = 0; i < w; i++)
-            {
-                ret[i] = new Tuple<T, U>[h];
-                for (int j = 0; j < h; j++)
-                {
-                    ret[i][j] = new Tuple<T, U>(a[i][j], b[i][j]);
-                }
-            }
-
-            return ret;
-        }
-
-        private static Dictionary<int, string> filenameCache = new Dictionary<int, string>();
         public static int GetKey(int zoomLevel, int latTotMin, int lonTotMin)
         {
             int laP = latTotMin;
@@ -119,6 +72,7 @@ namespace AdfReader
             int ret4 = ret3 + zoomLevel;
             return ret4;
         }
+
         public static string GetFileName(int key)
         {
             string filename;
@@ -154,88 +108,69 @@ namespace AdfReader
             int width,
             int height,
             string fileName,
-            Func<T, Color> transform)
+            Func<T, SKColor> transform)
         {
             using (DirectBitmap bm = new DirectBitmap(width, height))
-            //            using (Bitmap bm = new Bitmap(width, height))
             {
                 foreach (var col in colorBuff)
                 {
                     int i = col.Item1;
                     var cbc = col.Item2;
-                    for (int j = 0; j < bm.Height; j++)
+                    for (int j = 0; j < height; j++)
                     {
-                        bm.Bits[(bm.Height - 1 - j) * bm.Width + i] = transform(cbc[j]).ToArgb();
-                        //                        bm.SetPixel(i, bm.Height - 1 - j, transform(cbc[j]));
+                        bm.SetPixel(i, j, transform(cbc[j]));
                     }
                 }
 
-                //                bm.Save(fileName, ImageFormat.Png);
-                bm.Bitmap.Save(fileName, ImageFormat.Png);
-            }
-        }
-
-        public static void WriteImageFile<T>(
-            T[][] colorBuff,
-            string fileName,
-            Func<T, Color> transform)
-        {
-            using (DirectBitmap bm = new DirectBitmap(colorBuff.Length, colorBuff[0].Length))
-            {
-                int i;
-                for (i = 0; i < bm.Width; i++)
-                {
-                    for (int j = 0; j < bm.Height; j++)
-                    {
-                        bm.Bits[(bm.Height - 1 - j) * bm.Width + i] = transform(colorBuff[i][j]).ToArgb();
-                    }
-                }
-
-                Task t = new Task(async () =>
-                {
-                    try
-                    {
-                        while (i < bm.Width)
-                        {
-                            Console.WriteLine("Projecting to bitmap: " + (i * 100.0 / bm.Width) + "%");
-                            await Task.Delay(5000);
-                        }
-                    }
-                    catch { }
-                });
-                t.Start();
-
-                bm.Bitmap.Save(fileName, ImageFormat.Png);
+                bm.WriteFile(fileName);
             }
         }
 
         private class DirectBitmap : IDisposable
         {
-            public Bitmap Bitmap { get; private set; }
-            public int[] Bits { get; private set; }
-            public bool Disposed { get; private set; }
-            public int Height { get; private set; }
-            public int Width { get; private set; }
-
-            protected GCHandle BitsHandle { get; private set; }
+            private SKBitmap bitmap;
+            private byte[] bits;
+            private bool disposed;
+            private GCHandle bitsHandle;
 
             public DirectBitmap(int width, int height)
             {
-                Width = width;
-                Height = height;
-                Bits = new int[width * height];
-                BitsHandle = GCHandle.Alloc(Bits, GCHandleType.Pinned);
-                Bitmap = new Bitmap(width, height, width * 4, PixelFormat.Format32bppPArgb, BitsHandle.AddrOfPinnedObject());
+                bits = new byte[width * height * 4];
+                bitsHandle = GCHandle.Alloc(bits, GCHandleType.Pinned);
+                bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque);
+                bitmap.SetPixels(bitsHandle.AddrOfPinnedObject());
+            }
+
+            public void SetPixel(int i, int j, SKColor color)
+            {
+                int offset = 4 * ((bitmap.Height - 1 - j) * bitmap.Width + i);
+                bits[offset++] = color.Red;
+                bits[offset++] = color.Green;
+                bits[offset++] = color.Blue;
+                bits[offset++] = color.Alpha;
+            }
+
+            public void WriteFile(string fileName)
+            {
+                using (var image = SKImage.FromBitmap(bitmap))
+                {
+                    using (var data = image.Encode(SKEncodedImageFormat.Png, 80))
+                    {
+                        using (var stream = File.OpenWrite(fileName))
+                        {
+                            data.SaveTo(stream);
+                        }
+                    }
+                }
             }
 
             public void Dispose()
             {
-                if (Disposed) return;
-                Disposed = true;
-                Bitmap.Dispose();
-                BitsHandle.Free();
+                if (disposed) return;
+                disposed = true;
+                bitmap.Dispose();
+                bitsHandle.Free();
             }
         }
     }
-
- }
+}

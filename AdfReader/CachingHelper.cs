@@ -12,7 +12,6 @@ namespace AdfReader
         private Action<T, FileStream> writeElement;
         private Func<FileStream, byte[], T> readElement;
         private Func<int, int, int, int, int, int, int, int, T[][]> generateData;
-
         private Cache<int, T[][]> chunkCache;
 
         public CachingHelper(
@@ -34,19 +33,8 @@ namespace AdfReader
 
         public T GetValue(double lat, double lon, double cosLat, double metersPerElement)
         {
-            // Size of a degree of lon here
-            var len = Utils.LengthOfLatDegree * cosLat;
-
-            // Chunks are Size minutes across, with SmallBatch elements.
-            // So elements are Size / SmallBatch minutes large.
-            // The length of smallest size of an element in meters is
-            //     Size / SmallBatch / 60 degrees * LenOfDegree * cosLat.
-            // Setting this equal to metersPerElement, and using
-            //     size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
-
-            var zoomLevel = (int)(12 - Math.Log(metersPerElement * SmallBatch * 20 / len, 2));
-
-            var chunk = GetValuesFromCache(lat, lon, ref zoomLevel);
+            int zoomLevel = GetZoomLevel(lat, lon, cosLat, metersPerElement);
+            T[][] chunk = GetValuesFromCache(lat, lon, zoomLevel);
             var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
             int minLatTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lat * 60) / size, 1) * size, (Utils.TruncateTowardsZero(lat * 60) / size) * size);
@@ -58,17 +46,35 @@ namespace AdfReader
             return chunk[targetLat][targetLon];
         }
 
-        public T[][] GetValuesFromCache(double lat, double lon, ref int zoomLevel)
+        public int GetZoomLevel(double lat, double lon, double cosLat, double metersPerElement)
         {
+            // Size of a degree of lon here
+            var len = Utils.LengthOfLatDegree * cosLat;
+
+            // Chunks are Size minutes across, with SmallBatch elements.
+            // So elements are Size / SmallBatch minutes large.
+            // The length of smallest size of an element in meters is
+            //     Size / SmallBatch / 60 degrees * LenOfDegree * cosLat.
+            // Setting this equal to metersPerElement, and using
+            //     size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
+
+            int zoomLevel = (int)(12 - Math.Log(metersPerElement * SmallBatch * 20 / len, 2));
             if (zoomLevel > 12)
             {
                 zoomLevel = 12;
             }
 
+            return zoomLevel;
+        }
+
+        public T[][] GetValuesFromCache(double lat, double lon, int zoomLevel)
+        {
             if (zoomLevel > 12 || zoomLevel < 4)
             {
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
+
+            T[][] ret = null;
 
             // The size of the chunk in minutes.
             var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
@@ -84,7 +90,6 @@ namespace AdfReader
 
             int key = Utils.GetKey(zoomLevel, latTotMin, lonTotMin);
 
-            T[][] ret = null;
             while (!chunkCache.TryGetValue(key, out ret) || ret == null)
             {
                 string filename = Utils.GetFileName(key);

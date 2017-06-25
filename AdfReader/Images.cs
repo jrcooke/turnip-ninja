@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Drawing;
 using System.IO;
-using System.Net;
-using Newtonsoft.Json;
 using System.Linq;
+using System.Net.Http;
+using SkiaSharp;
+using Newtonsoft.Json;
 
 namespace AdfReader
 {
@@ -16,7 +15,7 @@ namespace AdfReader
         private const string description = "Colors";
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private static CachingHelper<Color> ch = new CachingHelper<Color>(
+        private static CachingHelper<SKColor> ch = new CachingHelper<SKColor>(
             smallBatch,
             Path.Combine(rootMapFolder, cachedFileTemplate),
             description,
@@ -24,29 +23,35 @@ namespace AdfReader
             ReadElement,
             GenerateData);
 
-        public static Color GetColor(double lat, double lon, double cosLat, double metersPerElement)
+        public static SKColor GetColor(double lat, double lon, double cosLat, double metersPerElement)
         {
             return ch.GetValue(lat, lon, cosLat, metersPerElement);
         }
 
-        private static void WriteElement(Color item, FileStream stream)
+        public static SKColor[][] GetChunk(double lat, double lon, int zoomLevel)
         {
-            stream.WriteByte(item.A);
-            stream.WriteByte(item.R);
-            stream.WriteByte(item.G);
-            stream.WriteByte(item.B);
+            return ch.GetValuesFromCache(lat, lon, zoomLevel);
         }
 
-        private static Color ReadElement(FileStream stream, byte[] buffer)
+        private static void WriteElement(SKColor item, FileStream stream)
         {
-            return Color.FromArgb(
-                stream.ReadByte(),
-                stream.ReadByte(),
-                stream.ReadByte(),
-                stream.ReadByte());
+            stream.WriteByte(item.Alpha);
+            stream.WriteByte(item.Red);
+            stream.WriteByte(item.Green);
+            stream.WriteByte(item.Blue);
         }
 
-        private static Color[][] GenerateData(
+        private static SKColor ReadElement(FileStream stream, byte[] buffer)
+        {
+            var alpha = stream.ReadByte();
+            return new SKColor(
+                (byte)stream.ReadByte(),
+                (byte)stream.ReadByte(),
+                (byte)stream.ReadByte(),
+                (byte)alpha);
+        }
+
+        private static SKColor[][] GenerateData(
             int zoomLevel,
             int size,
             int latTotMin,
@@ -56,10 +61,10 @@ namespace AdfReader
             int minLatTotMin,
             int minLonTotMin)
         {
-            var ret2 = new List<Color>[smallBatch + 1][];
+            var ret2 = new List<SKColor>[smallBatch + 1][];
             for (int i = 0; i <= smallBatch; i++)
             {
-                ret2[i] = new List<Color>[smallBatch + 1];
+                ret2[i] = new List<SKColor>[smallBatch + 1];
             }
 
             var chunks = ImageWorker.GetColors(latTotMin / 60.0, lonTotMin / 60.0, latTotMin2 / 60.0, lonTotMin2 / 60.0, zoomLevel + 2);
@@ -68,19 +73,19 @@ namespace AdfReader
                 LoadRawChunksIntoProcessedChunk(size, minLatTotMin, minLonTotMin, ret2, chunk);
             }
 
-            Color[][] ret;
-            ret = new Color[smallBatch + 1][];
+            SKColor[][] ret;
+            ret = new SKColor[smallBatch + 1][];
             for (int i = 0; i <= smallBatch; i++)
             {
-                ret[i] = new Color[smallBatch + 1];
+                ret[i] = new SKColor[smallBatch + 1];
                 for (int j = 0; j <= smallBatch; j++)
                 {
                     if (ret2[i][j] != null)
                     {
-                        byte r = (byte)ret2[i][j].Where(p => p.A == 255).Average(p => p.R);
-                        byte g = (byte)ret2[i][j].Where(p => p.A == 255).Average(p => p.G);
-                        byte b = (byte)ret2[i][j].Where(p => p.A == 255).Average(p => p.B);
-                        ret[i][j] = Color.FromArgb(r, g, b);
+                        byte r = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Red);
+                        byte g = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Green);
+                        byte b = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Blue);
+                        ret[i][j] = new SKColor(r, g, b);
                     }
                 }
             }
@@ -92,8 +97,8 @@ namespace AdfReader
             int size,
             int minLatTotMin,
             int minLonTotMin,
-            List<Color>[][] ret,
-            Tuple<double, double, Color>[] chunk)
+            List<SKColor>[][] ret,
+            Tuple<double, double, SKColor>[] chunk)
         {
             foreach (var element in chunk)
             {
@@ -106,7 +111,7 @@ namespace AdfReader
                 {
                     if (ret[targetLat][targetLon] == null)
                     {
-                        ret[targetLat][targetLon] = new List<Color>();
+                        ret[targetLat][targetLon] = new List<SKColor>();
                     }
 
                     ret[targetLat][targetLon].Add(element.Item3);
@@ -126,7 +131,7 @@ namespace AdfReader
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static IEnumerable<Tuple<double, double, Color>[]> GetColors(double latA, double lonA, double latB, double lonB, int zoomLevel)
+        public static IEnumerable<Tuple<double, double, SKColor>[]> GetColors(double latA, double lonA, double latB, double lonB, int zoomLevel)
         {
             // Need to figure out which chunks to load.
             double invDeltaDegAtZoom = 15 * Math.Pow(2, zoomLevel - 12);
@@ -149,13 +154,7 @@ namespace AdfReader
             }
         }
 
-        public static int GetScale(double cosLat, double metersPerElement)
-        {
-            double zl = -Math.Log(metersPerElement / (baseScale * cosLat), 2);
-            return (int)zl;
-        }
-
-        private static Tuple<double, double, Color>[] GetColorsFromCache(int latDelta, double lonDelta, int zoomLevel)
+        private static Tuple<double, double, SKColor>[] GetColorsFromCache(int latDelta, double lonDelta, int zoomLevel)
         {
             double invDeltaDegAtZoom = 15 * Math.Pow(2, zoomLevel - 12);
 
@@ -167,19 +166,20 @@ namespace AdfReader
 
             if (!File.Exists(inputFile))
             {
-                using (WebClient client = new WebClient())
+                using (HttpClient client = new HttpClient())
                 {
                     var url = new Uri(string.Format(imageUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
-                    client.DownloadFile(url, inputFile);
+                    var content = client.GetByteArrayAsync(url).Result;
+                    File.WriteAllBytes(inputFile, content);
                 }
             }
 
             if (!File.Exists(metadFile))
             {
-                using (WebClient client = new WebClient())
+                using (HttpClient client = new HttpClient())
                 {
                     var metadataUrl = new Uri(string.Format(metadUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
-                    string rawMetadata = client.DownloadString(metadataUrl);
+                    string rawMetadata = client.GetStringAsync(metadataUrl).Result;
                     var deserializedMetadata = JsonConvert.DeserializeObject<metadata>(rawMetadata);
                     var metadataResource = deserializedMetadata.resourceSets[0].resources[0];
                     var processedMetadata = new CachedResource(inputFile, metadataResource.MinLat, metadataResource.MinLon, metadataResource.MaxLat, metadataResource.MaxLon);
@@ -188,21 +188,19 @@ namespace AdfReader
                 }
             }
 
-            Tuple<double, double, Color>[] data;
-
+            Tuple<double, double, SKColor>[] data;
             CachedResource cr = JsonConvert.DeserializeObject<CachedResource>(File.ReadAllText(metadFile));
-
-            using (Bitmap bm = new Bitmap(cr.FileName))
+            using (SKBitmap bm = SKBitmap.Decode(cr.FileName))
             {
-                data = new Tuple<double, double, Color>[bm.Width * (bm.Height - footerHeight)];
+                data = new Tuple<double, double, SKColor>[bm.Width * (bm.Height - footerHeight)];
                 for (int i = 0; i < bm.Width; i++)
                 {
                     for (int j = 0; j < bm.Height - footerHeight; j++)
                     {
                         double loopLat = ((bm.Width - 1 - j) * cr.MaxLat + j * cr.MinLat) / (bm.Width - 1);
                         double loopLon = ((bm.Height - 1 - i) * cr.MinLon + i * cr.MaxLon) / (bm.Height - 1);
-                        var c = bm.GetPixel(i, j);
-                        data[i * (bm.Height - footerHeight) + j] = new Tuple<double, double, Color>(loopLat, loopLon, c);
+                        SKColor c = bm.GetPixel(i, j);
+                        data[i * (bm.Height - footerHeight) + j] = new Tuple<double, double, SKColor>(loopLat, loopLon, c);
                     }
                 }
             }
@@ -226,19 +224,11 @@ namespace AdfReader
             public double MaxLat { get; private set; }
             public double MinLon { get; private set; }
             public double MaxLon { get; private set; }
-
-            public Bitmap GetImage()
-            {
-                return new Bitmap(this.FileName);
-
-            }
         }
 
         private struct Resource
         {
             public double[] bbox;
-            public int imageHeight;
-            public int imageWidth;
             public double MinLat { get { return bbox[0]; } }
             public double MaxLat { get { return bbox[2]; } }
             public double MinLon { get { return bbox[1]; } }
