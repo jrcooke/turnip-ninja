@@ -37,7 +37,8 @@ namespace AdfReader
             // owego
             c = new Config()
             {
-                Lat = 42.130303,                Lon = -76.243376,
+                Lat = 42.130303,
+                Lon = -76.243376,
                 R = 1000,
                 DeltaR = 1,
                 MinAngle = 0,
@@ -47,12 +48,24 @@ namespace AdfReader
                 AngularResolution = 0.1,
             };
 
-            var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
+            //var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
+            //Utils.WriteImageFile(
+            //    pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
+            //    pixels.Length, pixels[0].Length,
+            //    Path.Combine(outputFolder, "test.png"),
+            //    (a) => a);
+
+            var data = RawChunksV2.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
+
+            var heights = Utils.Transpose(data);
             Utils.WriteImageFile(
-                pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
-                pixels.Length, pixels[0].Length,
-                Path.Combine(outputFolder, "test.png"),
-                (a) => a);
+                heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                heights.Length, heights[0].Length,
+                Path.Combine(outputFolder, "test2.png"),
+                (a) => new SKColor(
+                    (byte)((int)(a / 1.000) % 256),
+                    (byte)((int)(a / 10.00) % 256),
+                    (byte)((int)(a / 100.0) % 256)));
 
             var bothData = GetPolarData(
                 c.Lat, c.Lon,
@@ -62,7 +75,7 @@ namespace AdfReader
                 {
                     var col = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
                     var h = Heights.GetHeight(lat2, lon2, cosLat, metersPerElement);
-                    return new Tuple<float, SKColor>(h.Item3, col);
+                    return new Tuple<float, SKColor>(h, col);
                 });
 
             // Cache the function results.

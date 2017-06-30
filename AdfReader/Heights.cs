@@ -22,9 +22,15 @@ namespace AdfReader
             ReadElement,
             GenerateData);
 
-        public static Tuple<float, float, float> GetHeight(double lat, double lon, double cosLat, double metersPerElement)
+        public static float GetHeight(double lat, double lon, double cosLat, double metersPerElement)
         {
-            return ch.GetValue(lat, lon, cosLat, metersPerElement);
+            return ch.GetValue(lat, lon, cosLat, metersPerElement).Item3;
+        }
+
+        public static float[][] GetChunk(double lat, double lon, int zoomLevel)
+        {
+            var raw = ch.GetValuesFromCache(lat, lon, zoomLevel);
+            return Utils.Apply(raw, p => p.Item3);
         }
 
         private static void WriteElement(Tuple<float, float, float> item, FileStream stream)
@@ -126,8 +132,8 @@ namespace AdfReader
         public const int boundaryElements = 6;
         public const int trueElements = 10800; // Number of 1/3 arc seconds per degree, 60*60*3
         private const string inputFileTemplate = @"{0}\grd{0}_13\w001001.adf";
-        private const string sourceUrlTemplate = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip";
-        private const string sourceZipFileTemplate = "{0}.zip";
+        private const string sourceUrlTemplate = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/USGS_NED_13_{0}_ArcGrid.zip";
+        private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
         private const string sourceZipDestTemplate = "{0}";
         private static Dictionary<string, float[][]> cache = new Dictionary<string, float[][]>();
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
@@ -169,7 +175,10 @@ namespace AdfReader
                 Console.WriteLine("Cached " + description + " raw data does not exist: " + fileName);
                 Console.WriteLine("Loading to cache...");
 
-                string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, fileName));
+                var shortWebFile =
+                    (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
+                    (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
+                string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, shortWebFile));
                 if (!File.Exists(inputFile))
                 {
                     Console.WriteLine("Missing " + description + " data file: " + inputFile);
@@ -181,31 +190,20 @@ namespace AdfReader
                         Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
                         using (HttpClient client = new HttpClient())
                         {
-                            var url = new Uri(string.Format(sourceUrlTemplate, fileName));
-                            try
+                            var url = new Uri(string.Format(sourceUrlTemplate, shortWebFile));
+                            var message = client.GetAsync(url).Result;
+                            if (message.StatusCode == HttpStatusCode.OK)
                             {
-                                var message = client.GetAsync(url).Result;
-                                if (message.StatusCode == HttpStatusCode.OK)
-                                {
-                                    var content = message.Content.ReadAsByteArrayAsync().Result;
-                                    File.WriteAllBytes(target, content);
-                                }
-                                else if (message.StatusCode == HttpStatusCode.NotFound)
-                                {
-                                    missing = true;
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
-                                }
+                                var content = message.Content.ReadAsByteArrayAsync().Result;
+                                File.WriteAllBytes(target, content);
                             }
-                            catch (WebException ex)
+                            else if (message.StatusCode == HttpStatusCode.NotFound)
                             {
                                 missing = true;
-                                if (((HttpWebResponse)ex.Response).StatusCode != HttpStatusCode.NotFound)
-                                {
-                                    throw;
-                                }
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
                             }
                         }
 
@@ -215,16 +213,218 @@ namespace AdfReader
                         }
                         else
                         {
-                            Console.WriteLine("Source is missing.");
+                            throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
+                            // Console.WriteLine("Source is missing.");
                         }
                     }
 
                     if (!missing)
                     {
                         Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
-                        ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, string.Format(sourceZipDestTemplate, fileName)));
+                        ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, string.Format(sourceZipDestTemplate, shortWebFile)));
                         Console.WriteLine("Extracted raw " + description + " data from zip file.");
-                        File.Delete(target);
+        //                File.Delete(target);
+                    }
+                }
+
+                if (!missing)
+                {
+                    cache[fileName] = ReadDataToChunks(inputFile);
+                    Console.WriteLine("Loaded raw " + description + " data to cache: " + fileName);
+                }
+                else
+                {
+                    cache[fileName] = null;
+                    Console.WriteLine("Data not available to cache.");
+                }
+            }
+
+            return cache[fileName];
+        }
+
+        private static float[][] ReadDataToChunks(string adfFile)
+        {
+            int elements = trueElements + boundaryElements * 2;
+            var bytes = File.ReadAllBytes(adfFile);
+
+            byte[] buff = new byte[4];
+
+            int frameIndex = 0;
+            int indexWithinFrame = 0;
+            float[] currentFrame2 = null;
+
+            int index = 16 * 6 + 4;
+            int terminator1 = bytes[index];
+            int terminator2 = bytes[index + 1];
+
+            int numberOfBatches = bytes[index] / 2;
+
+            List<float[]> runningList = new List<float[]>();
+            while (index < bytes.Length)
+            {
+                if (bytes[index] == terminator1 && bytes[index + 1] == terminator2)
+                {
+                    index += 2;
+                    frameIndex++;
+
+                    indexWithinFrame = 0;
+                    currentFrame2 = new float[256];
+                }
+
+                // Need to map explicitly because in the opposite end-ness in file.
+                buff[0] = bytes[index + 3];
+                buff[1] = bytes[index + 2];
+                buff[2] = bytes[index + 1];
+                buff[3] = bytes[index + 0];
+                index += 4;
+
+                currentFrame2[indexWithinFrame] = BitConverter.ToSingle(buff, 0);
+
+                indexWithinFrame++;
+                if (indexWithinFrame % 256 == 0)
+                {
+                    runningList.Add(currentFrame2);
+                    indexWithinFrame = 0;
+                }
+            }
+
+            if (indexWithinFrame != 0)
+            {
+                throw new InvalidOperationException("Incomplete frame read");
+            }
+
+            float[][] rows = new float[numberOfBatches][];
+            for (int i = 0; i < numberOfBatches; i++)
+            {
+                rows[i] = new float[elements];
+            }
+
+            int widthIndex = 0;
+
+            float[][] batchData = new float[numberOfBatches][];
+            int batch = 0;
+
+            float[][] data = new float[elements][];
+            int dataIndex = 0;
+
+            foreach (var part in runningList)
+            {
+                batchData[batch] = part;
+                batch++;
+
+                if (batch == numberOfBatches)
+                {
+                    batch = 0;
+                    for (int k = 0; k < 256; k++)
+                    {
+                        if (widthIndex < elements)
+                        {
+                            for (int i = 0; i < numberOfBatches; i++)
+                            {
+                                rows[i][widthIndex] = (batchData[i][k]);
+                            }
+
+                            widthIndex++;
+                        }
+                    }
+
+                    if (widthIndex == elements)
+                    {
+                        widthIndex = 0;
+                        for (int i = 0; i < numberOfBatches; i++)
+                        {
+                            if (dataIndex < data.Length)
+                            {
+                                data[dataIndex++] = rows[i];
+                            }
+                            else
+                            {
+
+                            }
+                            rows[i] = new float[elements];
+                        }
+                    }
+                }
+            }
+
+            return data;
+        }
+    }
+
+
+    internal static class RawChunksV2
+    {
+        private const string description = "USGS";
+        public const int boundaryElements = 6;
+        public const int trueElements = 10800; // Number of 1/3 arc seconds per degree, 60*60*3
+        private const string inputFileTemplate = @"{0}\grd{0}_13\w001001.adf";
+        private const string sourceUrlTemplate = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/USGS_NED_13_{0}_ArcGrid.zip";
+        private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
+        private const string sourceZipDestTemplate = "{0}";
+        private static Dictionary<string, float[][]> cache = new Dictionary<string, float[][]>();
+        private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
+
+        public static float[][] GetRawHeightsInMeters(int lat, int lon)
+        {
+            string fileName =
+                (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
+                (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString();
+
+            bool missing = false;
+            if (!cache.ContainsKey(fileName))
+            {
+                Console.WriteLine("Cached " + description + " raw data does not exist: " + fileName);
+                Console.WriteLine("Loading to cache...");
+
+                var shortWebFile =
+                    (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
+                    (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
+                string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, shortWebFile));
+                if (!File.Exists(inputFile))
+                {
+                    Console.WriteLine("Missing " + description + " data file: " + inputFile);
+                    // Need to get fresh data:
+
+                    var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
+                    if (!File.Exists(target))
+                    {
+                        Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
+                        using (HttpClient client = new HttpClient())
+                        {
+                            var url = new Uri(string.Format(sourceUrlTemplate, shortWebFile));
+                            var message = client.GetAsync(url).Result;
+                            if (message.StatusCode == HttpStatusCode.OK)
+                            {
+                                var content = message.Content.ReadAsByteArrayAsync().Result;
+                                File.WriteAllBytes(target, content);
+                            }
+                            else if (message.StatusCode == HttpStatusCode.NotFound)
+                            {
+                                missing = true;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                            }
+                        }
+
+                        if (!missing)
+                        {
+                            Console.WriteLine("Downloaded " + description + " source zip to '" + target + "'");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
+                            // Console.WriteLine("Source is missing.");
+                        }
+                    }
+
+                    if (!missing)
+                    {
+                        Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
+                        ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, string.Format(sourceZipDestTemplate, shortWebFile)));
+                        Console.WriteLine("Extracted raw " + description + " data from zip file.");
+                        //                File.Delete(target);
                     }
                 }
 

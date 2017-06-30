@@ -61,6 +61,21 @@ namespace AdfReader
             return ret;
         }
 
+        internal static U[][] Apply<T,U>(T[][] items, Func<T,U> map)
+        {
+            var ret = new U[items.Length][];
+            for (int i = 0; i < items.Length; i++)
+            {
+                ret[i] = new U[items[i].Length];
+                for (int j = 0; j < items[i].Length; j++)
+                {
+                    ret[i][j] = map(items[i][j]);
+                }
+            }
+
+            return ret;
+        }
+
         public static int GetKey(int zoomLevel, int latTotMin, int lonTotMin)
         {
             int laP = latTotMin;
