@@ -74,8 +74,6 @@ namespace AdfReader
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
 
-            T[][] ret = null;
-
             // The size of the chunk in minutes.
             var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
@@ -90,6 +88,7 @@ namespace AdfReader
 
             int key = Utils.GetKey(zoomLevel, latTotMin, lonTotMin);
 
+            T[][] ret;
             while (!chunkCache.TryGetValue(key, out ret) || ret == null)
             {
                 string filename = Utils.GetFileName(key);

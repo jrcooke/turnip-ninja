@@ -473,11 +473,10 @@ namespace AdfReader
                 }
 
                 // Need to map explicitly because in the opposite end-ness in file.
-                buff[0] = bytes[index + 3];
-                buff[1] = bytes[index + 2];
-                buff[2] = bytes[index + 1];
-                buff[3] = bytes[index + 0];
-                index += 4;
+                buff[3] = bytes[index++];
+                buff[2] = bytes[index++];
+                buff[1] = bytes[index++];
+                buff[0] = bytes[index++];
 
                 currentFrame2[indexWithinFrame] = BitConverter.ToSingle(buff, 0);
 
