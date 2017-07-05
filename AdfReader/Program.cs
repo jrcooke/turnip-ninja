@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Concurrent;
 using SkiaSharp;
 using System.IO;
+using AdfReader.NewFolder;
 
 namespace AdfReader
 {
@@ -13,6 +14,30 @@ namespace AdfReader
         static void Main(string[] args)
         {
             string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
+            int n = 100;
+
+            float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\THUMB\Map\n43w077\grdn43w077_13", false);
+
+            //Utils.WriteImageFile(
+            //    newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
+            //    newONe.Length, newONe[0].Length,
+            //    Path.Combine(outputFolder, "NewFull.png"),
+            //    (a) => new SKColor(
+            //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+            //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+            //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+
+            newONe = newONe.Take(n).Select(p => p.Skip(p.Length-n).ToArray()).ToArray();
+            Utils.WriteImageFile(
+                newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                newONe.Length, newONe[0].Length,
+                Path.Combine(outputFolder, "newONe.png"),
+                (a) => new SKColor(
+                    (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+
+
 
             //// Home
             //double lat = 47.684124;
@@ -57,15 +82,27 @@ namespace AdfReader
 
             var data = RawChunksV2.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
 
-            var heights = Utils.Transpose(data);
+            //Utils.WriteImageFile(
+            //    data.Select((p, i) => new Tuple<int, float[]>(i, p)),
+            //    data.Length, data[0].Length,
+            //    Path.Combine(outputFolder, "OldFull.png"),
+            //    (a) => new SKColor(
+            //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+            //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+            //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+
+            data = Utils.Transpose(data);
+            data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
+            var heights = data;
             Utils.WriteImageFile(
                 heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
                 heights.Length, heights[0].Length,
                 Path.Combine(outputFolder, "test2.png"),
                 (a) => new SKColor(
-                    (byte)((int)(a / 1.000) % 256),
-                    (byte)((int)(a / 10.00) % 256),
-                    (byte)((int)(a / 100.0) % 256)));
+                    (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+
 
             var bothData = GetPolarData(
                 c.Lat, c.Lon,
