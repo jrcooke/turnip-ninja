@@ -33,9 +33,9 @@ namespace AdfReader.NewFolder
             return (byte)data;
         }
 
-        internal void ReadByteArray(byte[] value, int number)
+        internal void ReadByteArray(byte[] value)
         {
-            for (int i = 0; i < number; i++)
+            for (int i = 0; i < value.Length; i++)
             {
                 value[i] = ReadByte();
             }
@@ -44,24 +44,37 @@ namespace AdfReader.NewFolder
         private byte[] readUInt32Buffer = new byte[4];
         internal UInt32 ReadUInt32()
         {
-            ReadByteArray(readUInt32Buffer, 4);
+            ReadByteArray(readUInt32Buffer);
             return MyBitConverter.ToUInt32(readUInt32Buffer, 0);
         }
 
-        internal void ReadUInt32Array(uint[] value, int blocks)
+        internal void ReadUInt32Array(uint[] value)
         {
-            for (int i = 0; i < blocks; i++)
+            for (int i = 0; i < value.Length; i++)
             {
                 value[i] = ReadUInt32();
             }
         }
 
-
         private byte[] readDoubleBuffer = new byte[8];
         internal double ReadDouble()
         {
-            ReadByteArray(readDoubleBuffer, 8);
+            ReadByteArray(readDoubleBuffer);
             return MyBitConverter.ToDouble(readDoubleBuffer, 0);
+        }
+
+        private byte[] readSingleBuffer = new byte[4];
+        internal float ReadSingle()
+        {
+            ReadByteArray(readSingleBuffer);
+            return MyBitConverter.ToSingle(readSingleBuffer, 0);
+        }
+
+        private byte[] readInt16Buffer = new byte[2];
+        internal int ReadInt16()
+        {
+            ReadByteArray(readInt16Buffer);
+            return MyBitConverter.ToInt16(readInt16Buffer, 0);
         }
 
         internal void ReadDoubleArray(double[] value, int blocks)

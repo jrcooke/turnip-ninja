@@ -45,5 +45,15 @@ namespace AdfReader.NewFolder
 
             return BitConverter.ToSingle(buffer, 0);
         }
+
+        internal static Int16 ToInt16(byte[] value, int startIndex)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                buffer[2 - i - 1] = value[startIndex + i];
+            }
+
+            return BitConverter.ToInt16(buffer, 0);
+        }
     }
 }

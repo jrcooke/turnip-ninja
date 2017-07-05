@@ -13,137 +13,161 @@ namespace AdfReader
     {
         static void Main(string[] args)
         {
-            string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
-            int n = 100;
-
-            float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\THUMB\Map\n43w077\grdn43w077_13", false);
-
-            //Utils.WriteImageFile(
-            //    newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
-            //    newONe.Length, newONe[0].Length,
-            //    Path.Combine(outputFolder, "NewFull.png"),
-            //    (a) => new SKColor(
-            //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-            //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-            //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
-
-            newONe = newONe.Take(n).Select(p => p.Skip(p.Length-n).ToArray()).ToArray();
-            Utils.WriteImageFile(
-                newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                newONe.Length, newONe[0].Length,
-                Path.Combine(outputFolder, "newONe.png"),
-                (a) => new SKColor(
-                    (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                    (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-                    (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
-
-
-
-            //// Home
-            //double lat = 47.684124;
-            //double lon = -122.292357;
-
-            // Near Juanteta
-            Config c = new Config();
-
-            c = new Config()
+            try
             {
-                Lat = 47.695736,
-                Lon = -122.232330,
-                R = 10000,
-                DeltaR = 10,
-                MinAngle = 85,
-                MaxAngle = 95,
-                ElevationViewMin = -5.0,
-                ElevationViewMax = 5.0,
-                AngularResolution = 0.001,
-            };
 
-            // owego
-            c = new Config()
-            {
-                Lat = 42.130303,
-                Lon = -76.243376,
-                R = 1000,
-                DeltaR = 1,
-                MinAngle = 0,
-                MaxAngle = 360,
-                ElevationViewMin = -5.0,
-                ElevationViewMax = 5.0,
-                AngularResolution = 0.1,
-            };
+                string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
 
-            //var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
-            //Utils.WriteImageFile(
-            //    pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
-            //    pixels.Length, pixels[0].Length,
-            //    Path.Combine(outputFolder, "test.png"),
-            //    (a) => a);
+                ////float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\THUMB\Map\n43w077\grdn43w077_13");
 
-            var data = RawChunksV2.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
+                ////var reduced = newONe
+                ////    .Select((p, i) => i % 10 == 0 ? p : null)
+                ////    .Where(p => p != null)
+                ////    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
+                ////        .Where(q => !float.IsNaN(q))
+                ////        .ToArray())
+                ////    .ToArray();
 
-            //Utils.WriteImageFile(
-            //    data.Select((p, i) => new Tuple<int, float[]>(i, p)),
-            //    data.Length, data[0].Length,
-            //    Path.Combine(outputFolder, "OldFull.png"),
-            //    (a) => new SKColor(
-            //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-            //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-            //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+                ////Utils.WriteImageFile(
+                ////    reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                ////    reduced.Length, reduced[0].Length,
+                ////    Path.Combine(outputFolder, "NewFull.png"),
+                ////    (a) => new SKColor(
+                ////        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                ////        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                ////        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
-            data = Utils.Transpose(data);
-            data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
-            var heights = data;
-            Utils.WriteImageFile(
-                heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                heights.Length, heights[0].Length,
-                Path.Combine(outputFolder, "test2.png"),
-                (a) => new SKColor(
-                    (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                    (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-                    (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+                //newONe = Utils.Transpose(newONe);
+                //newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
+                //Utils.WriteImageFile(
+                //    newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                //    newONe.Length, newONe[0].Length,
+                //    Path.Combine(outputFolder, "newONe.png"),
+                //    (a) => new SKColor(
+                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
 
 
-            var bothData = GetPolarData(
-                c.Lat, c.Lon,
-                c.R, c.DeltaR,
-                c.MinAngle, c.MaxAngle, c.AngularResolution,
-                (lat2, lon2, cosLat, metersPerElement) =>
+
+                //// Home
+                //double lat = 47.684124;
+                //double lon = -122.292357;
+
+                // Near Juanteta
+                Config c = new Config();
+
+                c = new Config()
                 {
-                    var col = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
-                    var h = Heights.GetHeight(lat2, lon2, cosLat, metersPerElement);
-                    return new Tuple<float, SKColor>(h, col);
-                });
+                    Lat = 47.695736,
+                    Lon = -122.232330,
+                    R = 10000,
+                    DeltaR = 10,
+                    MinAngle = 85,
+                    MaxAngle = 95,
+                    ElevationViewMin = -5.0,
+                    ElevationViewMax = 5.0,
+                    AngularResolution = 0.05,
+                };
 
-            // Cache the function results.
-            bothData = bothData
-                .Select(p => p())
-                .Select(p => new Func<Tuple<int, Tuple<float, SKColor>[]>>(() => p))
-                .ToArray();
+                // owego
+                c = new Config()
+                {
+                    Lat = 42.130303,
+                    Lon = -76.243376,
+                    R = 5000,
+                    DeltaR = 1,
+                    MinAngle = 0,
+                    MaxAngle = 360,
+                    ElevationViewMin = -65.0,
+                    ElevationViewMax = 15.0,
+                    AngularResolution = 0.05,
+                };
 
-            int height = (int)(c.R / c.DeltaR) - 1;
-            Utils.WriteImageFile(
-                bothData.Select(p => p()),
-                bothData.Length, height,
-                Path.Combine(outputFolder, "bbb.png"),
-                (a) => a.Item2);
+                //var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
+                //Utils.WriteImageFile(
+                //    pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
+                //    pixels.Length, pixels[0].Length,
+                //    Path.Combine(outputFolder, "test.png"),
+                //    (a) => a);
 
-            Utils.WriteImageFile(
-                bothData.Select(p => p()),
-                bothData.Length, height,
-                Path.Combine(outputFolder, "aaa.png"),
-                (a) => new SKColor(
-                    (byte)((int)(a.Item1 / 1.000) % 256),
-                    (byte)((int)(a.Item1 / 10.00) % 256),
-                    (byte)((int)(a.Item1 / 100.0) % 256)));
+                ////var data = RawChunks.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
 
-            int numParts = (int)(bothData.Length * (c.ElevationViewMax - c.ElevationViewMin) / (c.MaxAngle - c.MinAngle));
-            IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
-            Utils.WriteImageFile(
-                polimage,
-                bothData.Length, numParts,
-                Path.Combine(outputFolder, "testPol.png"),
-                (a) => a == null ? default(SKColor) : a.Item2);
+                ////var reduced2 = data
+                ////    .Select((p, i) => i % 10 == 0 ? p : null)
+                ////    .Where(p => p != null)
+                ////    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
+                ////        .Where(q => !float.IsNaN(q))
+                ////        .ToArray())
+                ////    .ToArray();
+
+                ////Utils.WriteImageFile(
+                ////    reduced2.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                ////    reduced2.Length, reduced2[0].Length,
+                ////    Path.Combine(outputFolder, "OldFull.png"),
+                ////    (a) => new SKColor(
+                ////        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                ////        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                ////        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+
+                //data = Utils.Transpose(data);
+                //data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
+                //var heights = data;
+                //Utils.WriteImageFile(
+                //    heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                //    heights.Length, heights[0].Length,
+                //    Path.Combine(outputFolder, "test2.png"),
+                //    (a) => new SKColor(
+                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+
+
+                var bothData = GetPolarData(
+                    c.Lat, c.Lon,
+                    c.R, c.DeltaR,
+                    c.MinAngle, c.MaxAngle, c.AngularResolution,
+                    (lat2, lon2, cosLat, metersPerElement) =>
+                    {
+                        var col = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
+                        var h = Heights.GetHeight(lat2, lon2, cosLat, metersPerElement);
+                        return new Tuple<float, SKColor>(h, col);
+                    });
+
+                // Cache the function results.
+                bothData = bothData
+                    .Select(p => p())
+                    .Select(p => new Func<Tuple<int, Tuple<float, SKColor>[]>>(() => p))
+                    .ToArray();
+
+                int height = (int)(c.R / c.DeltaR) - 1;
+                Utils.WriteImageFile(
+                    bothData.Select(p => p()),
+                    bothData.Length, height,
+                    Path.Combine(outputFolder, "bbb.png"),
+                    (a) => a.Item2);
+
+                Utils.WriteImageFile(
+                    bothData.Select(p => p()),
+                    bothData.Length, height,
+                    Path.Combine(outputFolder, "aaa.png"),
+                    (a) => new SKColor(
+                        (byte)((Math.Sin(a.Item1 / 20.0 / 1.000) + 1.0) * 128.0),
+                        (byte)((Math.Sin(a.Item1 / 20.0 / 10.00) + 1.0) * 128.0),
+                        (byte)((Math.Sin(a.Item1 / 20.0 / 100.0) + 1.0) * 128.0)));
+
+                int numParts = (int)(bothData.Length * (c.ElevationViewMax - c.ElevationViewMin) / (c.MaxAngle - c.MinAngle));
+                IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
+                Utils.WriteImageFile(
+                    polimage,
+                    bothData.Length, numParts,
+                    Path.Combine(outputFolder, "testPol.png"),
+                    (a) => a == null ? default(SKColor) : a.Item2);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
 
         public static Func<Tuple<int, T[]>>[] GetPolarData<T>(

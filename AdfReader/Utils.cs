@@ -38,7 +38,7 @@ namespace AdfReader
 
         public static Tuple<double, double> APlusDeltaMeters(double lat, double lon, double deltaX, double deltaY, double? cosLat = null)
         {
-            double cosLatVal = cosLat.HasValue ? cosLat.Value : Math.Cos(lat * Math.PI / 180);
+            double cosLatVal = cosLat ?? Math.Cos(lat * Math.PI / 180);
             return new Tuple<double, double>(
                 lat + deltaY / LengthOfLatDegree,
                 lon + deltaX / LengthOfLatDegree / cosLatVal);
@@ -137,6 +137,7 @@ namespace AdfReader
                     }
                 }
 
+                File.Delete(fileName);
                 bm.WriteFile(fileName);
             }
         }
