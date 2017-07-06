@@ -18,26 +18,25 @@ namespace AdfReader
 
                 string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
 
-                ////float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\THUMB\Map\n43w077\grdn43w077_13");
+                //float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n43w077\grdn43w077_13");
 
-                ////var reduced = newONe
-                ////    .Select((p, i) => i % 10 == 0 ? p : null)
-                ////    .Where(p => p != null)
-                ////    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
-                ////        .Where(q => !float.IsNaN(q))
-                ////        .ToArray())
-                ////    .ToArray();
+                //var reduced = newONe
+                //    .Select((p, i) => i % 10 == 0 ? p : null)
+                //    .Where(p => p != null)
+                //    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
+                //        .Where(q => !float.IsNaN(q))
+                //        .ToArray())
+                //    .ToArray();
 
-                ////Utils.WriteImageFile(
-                ////    reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                ////    reduced.Length, reduced[0].Length,
-                ////    Path.Combine(outputFolder, "NewFull.png"),
-                ////    (a) => new SKColor(
-                ////        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                ////        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                ////        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                //Utils.WriteImageFile(
+                //    reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                //    reduced.Length, reduced[0].Length,
+                //    Path.Combine(outputFolder, "NewFull.png"),
+                //    (a) => new SKColor(
+                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                //        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
-                //newONe = Utils.Transpose(newONe);
                 //newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
                 //Utils.WriteImageFile(
                 //    newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
@@ -61,7 +60,7 @@ namespace AdfReader
                 {
                     Lat = 47.695736,
                     Lon = -122.232330,
-                    R = 10000,
+                    R = 1000,
                     DeltaR = 10,
                     MinAngle = 85,
                     MaxAngle = 95,
@@ -71,25 +70,54 @@ namespace AdfReader
                 };
 
                 // owego
-                c = new Config()
-                {
-                    Lat = 42.130303,
-                    Lon = -76.243376,
-                    R = 5000,
-                    DeltaR = 1,
-                    MinAngle = 0,
-                    MaxAngle = 360,
-                    ElevationViewMin = -65.0,
-                    ElevationViewMax = 15.0,
-                    AngularResolution = 0.05,
-                };
+                //c = new Config()
+                //{
+                //    Lat = 42.130303,
+                //    Lon = -76.243376,
+                //    R = 5000,
+                //    DeltaR = 1,
+                //    MinAngle = 180,
+                //    MaxAngle = 270,
+                //    ElevationViewMin = -25.0,
+                //    ElevationViewMax = 5.0,
+                //    AngularResolution = 0.05,
+                //};
 
-                //var pixels = Utils.Transpose(Images.GetChunk(c.Lat, c.Lon, 12));
-                //Utils.WriteImageFile(
-                //    pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
-                //    pixels.Length, pixels[0].Length,
-                //    Path.Combine(outputFolder, "test.png"),
-                //    (a) => a);
+
+                if (false)
+                {
+                    // test
+                    //c = new Config()
+                    //{
+                    //    Lat = 42.5,
+                    //    Lon = -76.5,
+                    //    R = 5000,
+                    //    DeltaR = 1,
+                    //    MinAngle = 0,
+                    //    MaxAngle = 360,
+                    //    ElevationViewMin = -65.0,
+                    //    ElevationViewMax = 15.0,
+                    //    AngularResolution = 0.05,
+                    //};
+
+                    int zoomLevel = 11;
+                    var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
+                    Utils.WriteImageFile(
+                        pixels2.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                        pixels2.Length, pixels2[0].Length,
+                        Path.Combine(outputFolder, "ChunkH.png"),
+                        (a) => new SKColor(
+                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+
+                    var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
+                    Utils.WriteImageFile(
+                        pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
+                        pixels.Length, pixels[0].Length,
+                        Path.Combine(outputFolder, "ChunkC.png"),
+                        (a) => a);
+                }
 
                 ////var data = RawChunks.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
 
@@ -110,7 +138,6 @@ namespace AdfReader
                 ////        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
                 ////        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
-                //data = Utils.Transpose(data);
                 //data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
                 //var heights = data;
                 //Utils.WriteImageFile(

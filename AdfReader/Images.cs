@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using SkiaSharp;
 using Newtonsoft.Json;
+using System.Threading;
+using System.Net;
 
 namespace AdfReader
 {
@@ -169,9 +171,38 @@ namespace AdfReader
                 using (HttpClient client = new HttpClient())
                 {
                     var url = new Uri(string.Format(imageUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
-                    var content = client.GetByteArrayAsync(url).Result;
-                    File.WriteAllBytes(inputFile, content);
+                    HttpResponseMessage message = null;
+                    try
+                    {
+                        var messageTask = client.GetAsync(url);
+                        while (!messageTask.IsCompleted)
+                        {
+                            Thread.Sleep(TimeSpan.FromSeconds(5));
+                            Console.Write(".");
+                        }
+
+                        message = messageTask.Result;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                    }
+
+                    if (message != null && message.StatusCode == HttpStatusCode.OK)
+                    {
+                        var content = message.Content.ReadAsByteArrayAsync().Result;
+                        File.WriteAllBytes(inputFile, content);
+                    }
+                    else
+                    {
+                     //   throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                    }
                 }
+            }
+
+            if (!File.Exists(inputFile))
+            {
+                return null;
             }
 
             if (!File.Exists(metadFile))

@@ -153,7 +153,7 @@ namespace AdfReader
                 {
                     double lat = Utils.AddAwayFromZero(latInt, 0.01);
                     double lon = Utils.AddAwayFromZero(lonInt, 0.01);
-                    var chunk = GetRawHeightsInMeters((int)lat, (int)lon -1);
+                    var chunk = GetRawHeightsInMeters((int)lat, (int)lon);
                     if (chunk != null)
                     {
                         yield return new Tuple<double, double, float[][]>(lat, lon, chunk);
