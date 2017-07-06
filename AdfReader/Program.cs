@@ -20,33 +20,38 @@ namespace AdfReader
 
                 //float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n43w077\grdn43w077_13");
 
-                //var reduced = newONe
-                //    .Select((p, i) => i % 10 == 0 ? p : null)
-                //    .Where(p => p != null)
-                //    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
-                //        .Where(q => !float.IsNaN(q))
-                //        .ToArray())
-                //    .ToArray();
+                if (false)
+                {
+                    float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
 
-                //Utils.WriteImageFile(
-                //    reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                //    reduced.Length, reduced[0].Length,
-                //    Path.Combine(outputFolder, "NewFull.png"),
-                //    (a) => new SKColor(
-                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                    var reduced = newONe
+                        .Select((p, i) => i % 10 == 0 ? p : null)
+                        .Where(p => p != null)
+                        .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
+                            .Where(q => !float.IsNaN(q))
+                            .ToArray())
+                        .ToArray();
 
-                //newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
-                //Utils.WriteImageFile(
-                //    newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                //    newONe.Length, newONe[0].Length,
-                //    Path.Combine(outputFolder, "newONe.png"),
-                //    (a) => new SKColor(
-                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+                    Utils.WriteImageFile(
+                        reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                        reduced.Length, reduced[0].Length,
+                        Path.Combine(outputFolder, "NewFull.png"),
+                        (a) => new SKColor(
+                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
+                    int n = 100;
+                    newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
+                    Utils.WriteImageFile(
+                        newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                        newONe.Length, newONe[0].Length,
+                        Path.Combine(outputFolder, "newONe.png"),
+                        (a) => new SKColor(
+                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+                }
 
 
                 //// Home
@@ -60,13 +65,13 @@ namespace AdfReader
                 {
                     Lat = 47.695736,
                     Lon = -122.232330,
-                    R = 1000,
-                    DeltaR = 10,
+                    R = 60000,
+                    DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,
                     ElevationViewMin = -5.0,
                     ElevationViewMax = 5.0,
-                    AngularResolution = 0.05,
+                    AngularResolution = 0.005,
                 };
 
                 // owego

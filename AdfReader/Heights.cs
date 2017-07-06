@@ -135,6 +135,7 @@ namespace AdfReader
         public const int trueElements = 10800; // Number of 1/3 arc seconds per degree, 60*60*3
         private const string inputFileTemplate = @"{0}\grd{0}_13\w001001.adf";
         private const string sourceUrlTemplate = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/USGS_NED_13_{0}_ArcGrid.zip";
+        private const string sourceUrlTemplate2 = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip";
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
         private const string sourceZipDestTemplate = "{0}";
         private static Dictionary<string, float[][]> cache = new Dictionary<string, float[][]>();
@@ -189,30 +190,13 @@ namespace AdfReader
                         Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
                         using (HttpClient client = new HttpClient())
                         {
-                            var url = new Uri(string.Format(sourceUrlTemplate, shortWebFile));
-                            HttpResponseMessage message = null;
-                            try
-                            {
-                                var messageTask = client.GetAsync(url);
-                                while (!messageTask.IsCompleted)
-                                {
-                                    Thread.Sleep(TimeSpan.FromSeconds(5));
-                                    Console.Write(".");
-                                }
-
-                                message = messageTask.Result;
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex.ToString());
-                            }
-
-                            if (message.StatusCode == HttpStatusCode.OK)
+                            HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client);
+                            if (message != null && message.StatusCode == HttpStatusCode.OK)
                             {
                                 var content = message.Content.ReadAsByteArrayAsync().Result;
                                 File.WriteAllBytes(target, content);
                             }
-                            else if (message.StatusCode == HttpStatusCode.NotFound)
+                            else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
                             {
                                 missing = true;
                             }
@@ -256,6 +240,40 @@ namespace AdfReader
             }
 
             return cache[fileName];
+        }
+
+        private static HttpResponseMessage TryDownloadDifferentFormats(string shortWebFile, HttpClient client)
+        {
+            var ret = TryDownloadDifferentFormats(sourceUrlTemplate, shortWebFile, client);
+            if (ret == null || ret.StatusCode != HttpStatusCode.OK)
+            {
+                ret = TryDownloadDifferentFormats(sourceUrlTemplate2, shortWebFile, client);
+            }
+
+            return ret;
+        }
+
+        private static HttpResponseMessage TryDownloadDifferentFormats(string template, string shortWebFile, HttpClient client)
+        {
+            var url = new Uri(string.Format(template, shortWebFile));
+            HttpResponseMessage message = null;
+            try
+            {
+                var messageTask = client.GetAsync(url);
+                while (!messageTask.IsCompleted)
+                {
+                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                    Console.Write(".");
+                }
+
+                message = messageTask.Result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+
+            return message;
         }
 
         private static float[][] ReadDataToChunks(string adfFile)
