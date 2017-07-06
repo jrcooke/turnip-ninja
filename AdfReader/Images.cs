@@ -25,12 +25,12 @@ namespace AdfReader
             ReadElement,
             GenerateData);
 
-        public static SKColor GetColor(double lat, double lon, double cosLat, double metersPerElement)
+        public static SKColor GetColor(Angle lat, Angle lon, double cosLat, double metersPerElement)
         {
             return ch.GetValue(lat, lon, cosLat, metersPerElement);
         }
 
-        public static SKColor[][] GetChunk(double lat, double lon, int zoomLevel)
+        public static SKColor[][] GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
             return ch.GetValuesFromCache(lat, lon, zoomLevel);
         }
@@ -56,12 +56,12 @@ namespace AdfReader
         private static SKColor[][] GenerateData(
             int zoomLevel,
             int size,
-            int latTotMin,
-            int lonTotMin,
-            int latTotMin2,
-            int lonTotMin2,
-            int minLatTotMin,
-            int minLonTotMin)
+            Angle lat1,
+            Angle lon1,
+            Angle lat2,
+            Angle lon2,
+            Angle minLat,
+            Angle minLon)
         {
             var ret2 = new List<SKColor>[smallBatch + 1][];
             for (int i = 0; i <= smallBatch; i++)
@@ -69,10 +69,10 @@ namespace AdfReader
                 ret2[i] = new List<SKColor>[smallBatch + 1];
             }
 
-            var chunks = ImageWorker.GetColors(latTotMin / 60.0, lonTotMin / 60.0, latTotMin2 / 60.0, lonTotMin2 / 60.0, zoomLevel + 2);
+            var chunks = ImageWorker.GetColors(lat1, lon1, lat2, lon2, zoomLevel + 2);
             foreach (var chunk in chunks)
             {
-                LoadRawChunksIntoProcessedChunk(size, minLatTotMin, minLonTotMin, ret2, chunk);
+                LoadRawChunksIntoProcessedChunk(size, minLat, minLon, ret2, chunk);
             }
 
             SKColor[][] ret;
@@ -97,26 +97,49 @@ namespace AdfReader
 
         private static void LoadRawChunksIntoProcessedChunk(
             int size,
-            int minLatTotMin,
-            int minLonTotMin,
+            Angle minLat,
+            Angle minLon,
             List<SKColor>[][] ret,
             Tuple<double, double, SKColor>[] chunk)
         {
+            double minLatDecimal = minLat.DecimalDegree;
+            double minLonDecimal = minLon.DecimalDegree;
+            int minLatRoot = Math.Sign(chunk.Average(p => p.Item1)) * Math.Min(
+                Utils.TruncateTowardsZero(Math.Abs(chunk.Average(p => p.Item1))),
+                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(Math.Abs(chunk.Average(p => p.Item1))), 1));
+            int minLonRoot = Math.Sign(chunk.Average(p => p.Item2)) * Math.Min(
+                Utils.TruncateTowardsZero(Math.Abs(chunk.Average(p => p.Item2))),
+                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(Math.Abs(chunk.Average(p => p.Item2))), 1));
+
+            var lat2Min = (float)(minLatRoot + 0 * 1.0 / RawChunks.trueElements);
+            var lat2Max = (float)(minLatRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * smallBatch / size);
+            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * smallBatch / size);
+
+            var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
+            var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * smallBatch / size);
+            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * smallBatch / size);
+
             foreach (var element in chunk)
             {
                 // The chunk has smallBatch+1 elements, so each element is
                 // TargetElementCoord = angle * smallBatch / Size
 
-                int targetLat = (int)Math.Round(((element.Item1 * 60 - minLatTotMin) * smallBatch / size));
-                int targetLon = (int)Math.Round(((element.Item2 * 60 - minLonTotMin) * smallBatch / size));
-                if (targetLat >= 0 && targetLat <= smallBatch && targetLon >= 0 && targetLon <= smallBatch)
+                var lat2 = element.Item1;
+                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * smallBatch / size);
+                if (targetDeltaLat >= 0 && targetDeltaLat <= smallBatch)
                 {
-                    if (ret[targetLat][targetLon] == null)
+                    var lon2 = element.Item2;
+                    int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * smallBatch / size);
+                    if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                     {
-                        ret[targetLat][targetLon] = new List<SKColor>();
-                    }
-
-                    ret[targetLat][targetLon].Add(element.Item3);
+                        if (ret[targetDeltaLat][targetDeltaLon] == null)
+                        {
+                            ret[targetDeltaLat][targetDeltaLon] = new List<SKColor>();
+                        }
+                        ret[targetDeltaLat][targetDeltaLon].Add(element.Item3);
+                   }
                 }
             }
         }
@@ -133,15 +156,15 @@ namespace AdfReader
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static IEnumerable<Tuple<double, double, SKColor>[]> GetColors(double latA, double lonA, double latB, double lonB, int zoomLevel)
+        public static IEnumerable<Tuple<double, double, SKColor>[]> GetColors(Angle latA, Angle lonA, Angle latB, Angle lonB, int zoomLevel)
         {
             // Need to figure out which chunks to load.
             double invDeltaDegAtZoom = 15 * Math.Pow(2, zoomLevel - 12);
 
-            int latMin = Utils.TruncateTowardsZero(Math.Min(latA, latB) * invDeltaDegAtZoom - 0.0001);
-            int latMax = Utils.TruncateTowardsZero(Math.Max(latA, latB) * invDeltaDegAtZoom + 0.0001);
-            int lonMin = Utils.TruncateTowardsZero(Math.Min(lonA, lonB) * invDeltaDegAtZoom - 0.0001) - 1;
-            int lonMax = Utils.TruncateTowardsZero(Math.Max(lonA, lonB) * invDeltaDegAtZoom + 0.0001) - 1;
+            int latMin = Utils.TruncateTowardsZero(Math.Min(latA.DecimalDegree, latB.DecimalDegree) * invDeltaDegAtZoom - 0.0001);
+            int latMax = Utils.TruncateTowardsZero(Math.Max(latA.DecimalDegree, latB.DecimalDegree) * invDeltaDegAtZoom + 0.0001);
+            int lonMin = Utils.TruncateTowardsZero(Math.Min(lonA.DecimalDegree, lonB.DecimalDegree) * invDeltaDegAtZoom - 0.0001) - 1;
+            int lonMax = Utils.TruncateTowardsZero(Math.Max(lonA.DecimalDegree, lonB.DecimalDegree) * invDeltaDegAtZoom + 0.0001) - 1;
 
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {
@@ -195,7 +218,7 @@ namespace AdfReader
                     }
                     else
                     {
-                     //   throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                        //   throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
                     }
                 }
             }

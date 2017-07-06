@@ -11,8 +11,8 @@ namespace AdfReader
         private object locker = new object();
         private Action<T, FileStream> writeElement;
         private Func<FileStream, byte[], T> readElement;
-        private Func<int, int, int, int, int, int, int, int, T[][]> generateData;
-        private Cache<int, T[][]> chunkCache;
+        private Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, T[][]> generateData;
+        private Cache<long, T[][]> chunkCache;
 
         public CachingHelper(
             int smallBatch,
@@ -20,9 +20,9 @@ namespace AdfReader
             string description,
             Action<T, FileStream> writeElement,
             Func<FileStream, byte[], T> readElement,
-            Func<int, int, int, int, int, int, int, int, T[][]> generateData)
+            Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, T[][]> generateData)
         {
-            chunkCache = new Cache<int, T[][]>(TimeSpan.FromSeconds(15));
+            chunkCache = new Cache<long, T[][]>(TimeSpan.FromSeconds(15));
             SmallBatch = smallBatch;
             this.cachedFileTemplate = cachedFileTemplate;
             this.description = description;
@@ -31,17 +31,19 @@ namespace AdfReader
             this.generateData = generateData;
         }
 
-        public T GetValue(double lat, double lon, double cosLat, double metersPerElement)
+        public T GetValue(Angle lat, Angle lon, double cosLat, double metersPerElement)
         {
-            int zoomLevel = GetZoomLevel(lat, lon, cosLat, metersPerElement);
+            double latDec = lat.DecimalDegree;
+            double lonDec = lon.DecimalDegree;
+            int zoomLevel = GetZoomLevel(latDec, lonDec, cosLat, metersPerElement);
             T[][] chunk = GetValuesFromCache(lat, lon, zoomLevel);
             var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
-            int minLatTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lat * 60) / size, 1) * size, (Utils.TruncateTowardsZero(lat * 60) / size) * size);
-            int minLonTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lon * 60) / size, 1) * size, (Utils.TruncateTowardsZero(lon * 60) / size) * size);
+            int minLatTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60) / size, 1) * size, (Utils.TruncateTowardsZero(latDec * 60) / size) * size);
+            int minLonTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lonDec * 60) / size, 1) * size, (Utils.TruncateTowardsZero(lonDec * 60) / size) * size);
 
-            int targetLat = (int)Math.Round(((lat * 60 - minLatTotMin) * SmallBatch / size));
-            int targetLon = (int)Math.Round(((lon * 60 - minLonTotMin) * SmallBatch / size));
+            int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch / size));
+            int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch / size));
 
             return chunk[targetLat][targetLon];
         }
@@ -67,26 +69,26 @@ namespace AdfReader
             return zoomLevel;
         }
 
-        public T[][] GetValuesFromCache(double lat, double lon, int zoomLevel)
+        public T[][] GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
         {
             if (zoomLevel > 12 || zoomLevel < 4)
             {
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
 
-            // The size of the chunk in minutes.
+            // The size of the chunk in seconds.
             var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
-            int latTotMin = Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lat * 60) / size, 1) * size;
-            int lonTotMin = Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lon * 60) / size, 1) * size;
+            Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / 60 / size, 1) * 60 * size);
+            Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / 60 / size, 1) * 60 * size);
 
-            int latTotMin2 = (Utils.TruncateTowardsZero(lat * 60) / size) * size;
-            int lonTotMin2 = (Utils.TruncateTowardsZero(lon * 60) / size) * size;
+            Angle lat2 = Angle.FromSeconds((Utils.TruncateTowardsZero(lat.TotalSeconds / 60) / size) * 60 * size);
+            Angle lon2 = Angle.FromSeconds((Utils.TruncateTowardsZero(lon.TotalSeconds / 60) / size) * 60 * size);
 
-            int minLatTotMin = Math.Min(latTotMin, latTotMin2);
-            int minLonTotMin = Math.Min(lonTotMin, lonTotMin2);
+            Angle minLat = Angle.Min(lat1, lat2);
+            Angle minLon = Angle.Min(lon1, lon2);
 
-            int key = Utils.GetKey(zoomLevel, latTotMin, lonTotMin);
+            long key = Utils.GetKey(zoomLevel, lat1, lon1);
 
             T[][] ret;
             while (!chunkCache.TryGetValue(key, out ret) || ret == null)
@@ -99,7 +101,7 @@ namespace AdfReader
                     {
                         Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
                         Console.WriteLine("Starting generation...");
-                        ret = generateData(zoomLevel, size, latTotMin, lonTotMin, latTotMin2, lonTotMin2, minLatTotMin, minLonTotMin);
+                        ret = generateData(zoomLevel, size, lat1, lon1, lat2, lon2, minLat, minLon);
 
                         WriteChunk(ret, fullName);
                         Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);

@@ -8,7 +8,7 @@ namespace AdfReader
 {
     public static class Utils
     {
-        private static Dictionary<int, string> filenameCache = new Dictionary<int, string>();
+        private static Dictionary<long, string> filenameCache = new Dictionary<long, string>();
 
         private const double AlphaMeters = 6378000.0;
 
@@ -36,12 +36,12 @@ namespace AdfReader
             return Math.Sign(a) * (Math.Abs(a) + b);
         }
 
-        public static Tuple<double, double> APlusDeltaMeters(double lat, double lon, double deltaX, double deltaY, double? cosLat = null)
+        public static Tuple<Angle, Angle> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
         {
-            double cosLatVal = cosLat ?? Math.Cos(lat * Math.PI / 180);
-            return new Tuple<double, double>(
-                lat + deltaY / LengthOfLatDegree,
-                lon + deltaX / LengthOfLatDegree / cosLatVal);
+            double cosLatVal = cosLat ?? Math.Cos(lat.DecimalDegree * Math.PI / 180);
+            return new Tuple<Angle, Angle>(
+                Angle.Add(lat, deltaY / LengthOfLatDegree),
+                Angle.Add(lon, deltaX / LengthOfLatDegree / cosLatVal));
         }
 
         internal static T[][] Transpose<T>(T[][] items)
@@ -61,7 +61,7 @@ namespace AdfReader
             return ret;
         }
 
-        internal static U[][] Apply<T,U>(T[][] items, Func<T,U> map)
+        internal static U[][] Apply<T, U>(T[][] items, Func<T, U> map)
         {
             var ret = new U[items.Length][];
             for (int i = 0; i < items.Length; i++)
@@ -76,19 +76,16 @@ namespace AdfReader
             return ret;
         }
 
-        public static int GetKey(int zoomLevel, int latTotMin, int lonTotMin)
+        public static long GetKey(int zoomLevel, Angle lat, Angle lon)
         {
-            int laP = latTotMin;
-            int loP = -lonTotMin;
-            int ret0 = laP;
-            int ret1 = ret0 * (60 * 360);
-            int ret2 = ret1 + loP;
-            int ret3 = ret2 * 20;
-            int ret4 = ret3 + zoomLevel;
-            return ret4;
+            var key =
+                (long)(lat.TotalSeconds + 180 * 60 * 60) * (long)0x100000000 +
+                (long)(lon.TotalSeconds + 180 * 60 * 60) * (long)0x10 +
+                zoomLevel;
+            return key;
         }
 
-        public static string GetFileName(int key)
+        public static string GetFileName(long key)
         {
             string filename;
             while (!filenameCache.TryGetValue(key, out filename))
@@ -97,19 +94,12 @@ namespace AdfReader
                 {
                     if (!filenameCache.TryGetValue(key, out filename))
                     {
-                        int zoomLevel = key % 20;
-                        int lonTotMin = -(key / 20) % (60 * 360);
-                        int latTotMin = key / 20 / 60 / 360;
-
-                        char latDir = latTotMin > 0 ? 'n' : 's';
-                        char lonDir = lonTotMin > 0 ? 'e' : 'w';
-                        int latMin = Math.Abs(latTotMin) % 60;
-                        int lonMin = Math.Abs(lonTotMin) % 60;
-                        int latDeg = Math.Abs(latTotMin) / 60;
-                        int lonDeg = Math.Abs(lonTotMin) / 60;
-                        filename = string.Format("{0:D3}D{1:D2}M{2}{3:D3}D{4:D2}M{5}{6:D2}",
-                             latDeg, latMin, latDir,
-                             lonDeg, lonMin, lonDir, zoomLevel);
+                        int zoomLevel = (int)(key % 0x10);
+                        int lonTotSec = (int)(key % (long)(0x100000000)) / 0x10 - 180 * 60 * 60;
+                        int latTotSec = (int)(key / (long)(0x100000000)) - 180 * 60 * 60;
+                        Angle lat = Angle.FromSeconds(latTotSec);
+                        Angle lon = Angle.FromSeconds(lonTotSec);
+                        filename = string.Format("{0}{1}{2:D2}", lat.ToLatString(), lon.ToLonString(), zoomLevel);
                         filenameCache.Add(key, filename);
                     }
                 }

@@ -12,11 +12,11 @@ namespace AdfReader
     public static class Heights
     {
         private const int smallBatch = 540; // Number of 1/3 arc seconds per 3 minutes.
-        private const string cachedFileTemplate = "heightCache{0}.adf";
+        private const string cachedFileTemplate = "heightCache{0}.v2.adf";
         private const string description = "Heights";
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private static CachingHelper<Tuple<float, float, float>> ch = new CachingHelper<Tuple<float, float, float>>(
+        private static CachingHelper<float> ch = new CachingHelper<float>(
             smallBatch,
             Path.Combine(rootMapFolder, cachedFileTemplate),
             description,
@@ -24,64 +24,49 @@ namespace AdfReader
             ReadElement,
             GenerateData);
 
-        public static float GetHeight(double lat, double lon, double cosLat, double metersPerElement)
+        public static float GetHeight(Angle lat, Angle lon, double cosLat, double metersPerElement)
         {
-            return ch.GetValue(lat, lon, cosLat, metersPerElement).Item3;
+            return ch.GetValue(lat, lon, cosLat, metersPerElement);
         }
 
-        public static float[][] GetChunk(double lat, double lon, int zoomLevel)
+        public static float[][] GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
             var raw = ch.GetValuesFromCache(lat, lon, zoomLevel);
-            return Utils.Apply(raw, p => p.Item3);
+            return raw;
         }
 
-        private static void WriteElement(Tuple<float, float, float> item, FileStream stream)
+        private static void WriteElement(float item, FileStream stream)
         {
-            if (item != null)
-            {
-                stream.Write(BitConverter.GetBytes(item.Item1), 0, 4);
-                stream.Write(BitConverter.GetBytes(item.Item2), 0, 4);
-                stream.Write(BitConverter.GetBytes(item.Item3), 0, 4);
-            }
-            else
-            {
-                stream.Write(BitConverter.GetBytes(float.NaN), 0, 4);
-                stream.Write(BitConverter.GetBytes(float.NaN), 0, 4);
-                stream.Write(BitConverter.GetBytes(float.NaN), 0, 4);
-            }
+            stream.Write(BitConverter.GetBytes(item), 0, 4);
         }
 
-        private static Tuple<float, float, float> ReadElement(FileStream stream, byte[] buffer)
+        private static float ReadElement(FileStream stream, byte[] buffer)
         {
-            stream.Read(buffer, 0, 4);
-            float i1 = BitConverter.ToSingle(buffer, 0);
-            stream.Read(buffer, 0, 4);
-            float i2 = BitConverter.ToSingle(buffer, 0);
             stream.Read(buffer, 0, 4);
             float i3 = BitConverter.ToSingle(buffer, 0);
-            return new Tuple<float, float, float>(i1, i2, i3);
+            return i3;
         }
 
-        private static Tuple<float, float, float>[][] GenerateData(
+        private static float[][] GenerateData(
             int zoomLevel,
             int size,
-            int latTotMin,
-            int lonTotMin,
-            int latTotMin2,
-            int lonTotMin2,
-            int minLatTotMin,
-            int minLonTotMin)
+            Angle lat1,
+            Angle lon1,
+            Angle lat2,
+            Angle lon2,
+            Angle minLat,
+            Angle minLon)
         {
-            Tuple<float, float, float>[][] ret = new Tuple<float, float, float>[smallBatch + 1][];
+            float[][] ret = new float[smallBatch + 1][];
             for (int i = 0; i <= smallBatch; i++)
             {
-                ret[i] = new Tuple<float, float, float>[smallBatch + 1];
+                ret[i] = new float[smallBatch + 1];
             }
 
-            var chunks = RawChunks.GetRawHeightsInMeters(latTotMin / 60.0, lonTotMin / 60.0, latTotMin2 / 60.0, lonTotMin2 / 60.0);
+            var chunks = RawChunks.GetRawHeightsInMeters(lat1, lon1, lat2, lon2);
             foreach (var chunk in chunks)
             {
-                LoadRawChunksIntoProcessedChunk(size, minLatTotMin, minLonTotMin, ret, chunk);
+                LoadRawChunksIntoProcessedChunk(size, minLat, minLon, ret, chunk);
             }
 
             return ret;
@@ -89,37 +74,50 @@ namespace AdfReader
 
         private static void LoadRawChunksIntoProcessedChunk(
             int size,
-            int minLatTotMin,
-            int minLonTotMin,
-            Tuple<float, float, float>[][] ret,
+            Angle minLat,
+            Angle minLon,
+            float[][] ret,
             Tuple<double, double, float[][]> chunk)
         {
+            double minLatDecimal = minLat.DecimalDegree;
+            double minLonDecimal = minLon.DecimalDegree;
             int minLatRoot = Math.Min(
                 Utils.TruncateTowardsZero(chunk.Item1),
                 Utils.AddAwayFromZero(Utils.TruncateTowardsZero(chunk.Item1), 1));
             int minLonRoot = Math.Min(
                 Utils.TruncateTowardsZero(chunk.Item2),
                 Utils.AddAwayFromZero(Utils.TruncateTowardsZero(chunk.Item2), 1));
+
+            var lat2Min = (float)(minLatRoot + 0 * 1.0 / RawChunks.trueElements);
+            var lat2Max = (float)(minLatRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * smallBatch / size);
+            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * smallBatch / size);
+
+            var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
+            var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * smallBatch / size);
+            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * smallBatch / size);
+
             for (int j = 0; j <= RawChunks.trueElements; j++)
             {
                 // The chunk has smallBatch+1 elements, so each element is
                 // TargetElementCoord = angle * smallBatch / Size
 
-                float lat2 = (float)(minLatRoot + j * 1.0 / RawChunks.trueElements);
-                int targetDeltaLat = (int)Math.Round(((lat2 * 60 - minLatTotMin) * smallBatch / size));
+                var lat2 = (float)(minLatRoot + j * 1.0 / RawChunks.trueElements);
+                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * smallBatch / size);
                 if (targetDeltaLat >= 0 && targetDeltaLat <= smallBatch)
                 {
                     for (int i = 0; i <= RawChunks.trueElements; i++)
                     {
-                        float lon2 = (float)(minLonRoot + i * 1.0 / RawChunks.trueElements);
-                        int targetLon = (int)Math.Round(((lon2 * 60 - minLonTotMin) * smallBatch / size));
-                        if (targetLon >= 0 && targetLon <= smallBatch)
+                        var lon2 = (float)(minLonRoot + i * 1.0 / RawChunks.trueElements);
+                        int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * smallBatch / size);
+                        if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                         {
                             var val = chunk.Item3[RawChunks.trueElements - 1 - j + RawChunks.boundaryElements][i + RawChunks.boundaryElements];
-                            var cur = ret[targetDeltaLat][targetLon];
-                            if (cur == null || cur.Item3 < val)
+                            var cur = ret[targetDeltaLat][targetDeltaLon];
+                            if (cur < val)
                             {
-                                ret[targetDeltaLat][targetLon] = new Tuple<float, float, float>(lat2, lon2, val);
+                                ret[targetDeltaLat][targetDeltaLon] = val;
                             }
                         }
                     }
@@ -141,12 +139,12 @@ namespace AdfReader
         private static Dictionary<string, float[][]> cache = new Dictionary<string, float[][]>();
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static IEnumerable<Tuple<double, double, float[][]>> GetRawHeightsInMeters(double latA, double lonA, double latB, double lonB)
+        public static IEnumerable<Tuple<double, double, float[][]>> GetRawHeightsInMeters(Angle latA, Angle lonA, Angle latB, Angle lonB)
         {
-            int latMin = Utils.TruncateTowardsZero(Math.Min(latA, latB) - 0.0001);
-            int latMax = Utils.TruncateTowardsZero(Math.Max(latA, latB) + 0.0001);
-            int lonMin = Utils.TruncateTowardsZero(Math.Min(lonA, lonB) - 0.0001);
-            int lonMax = Utils.TruncateTowardsZero(Math.Max(lonA, lonB) + 0.0001);
+            int latMin = Utils.TruncateTowardsZero(Math.Min(latA.DecimalDegree, latB.DecimalDegree) - 0.0001);
+            int latMax = Utils.TruncateTowardsZero(Math.Max(latA.DecimalDegree, latB.DecimalDegree) + 0.0001);
+            int lonMin = Utils.TruncateTowardsZero(Math.Min(lonA.DecimalDegree, lonB.DecimalDegree) - 0.0001);
+            int lonMax = Utils.TruncateTowardsZero(Math.Max(lonA.DecimalDegree, lonB.DecimalDegree) + 0.0001);
 
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {

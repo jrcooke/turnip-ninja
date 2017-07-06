@@ -63,9 +63,9 @@ namespace AdfReader
 
                 c = new Config()
                 {
-                    Lat = 47.695736,
-                    Lon = -122.232330,
-                    R = 60000,
+                    Lat = Angle.FromDecimalDegrees(47.695736),
+                    Lon = Angle.FromDecimalDegrees(-122.232330),
+                    R = 80000, // 60000,
                     DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,
@@ -203,13 +203,13 @@ namespace AdfReader
         }
 
         public static Func<Tuple<int, T[]>>[] GetPolarData<T>(
-            double lat, double lon,
+            Angle lat, Angle lon,
             double R, double deltaR,
             double minTheta, double maxTheta, double deltaTheta,
-            Func<double, double, double, double, T> getValue)
+            Func<Angle, Angle, double, double, T> getValue)
         {
             double deltaThetaRad = deltaTheta * Math.PI / 180;
-            double cosLat = Math.Cos(lat * Math.PI / 180.0);
+            double cosLat = Math.Cos(lat.DecimalDegree * Math.PI / 180.0);
 
             List<Func<Tuple<int, T[]>>> actions = new List<Func<Tuple<int, T[]>>>();
 
@@ -227,8 +227,8 @@ namespace AdfReader
 
         public class Config
         {
-            public double Lat { get; set; }
-            public double Lon { get; set; }
+            public Angle Lat { get; set; }
+            public Angle Lon { get; set; }
             public double R { get; set; }
             public double DeltaR { get; set; }
             public double MinAngle { get; set; }
@@ -238,9 +238,9 @@ namespace AdfReader
             public double AngularResolution { get; set; }
         }
 
-        private static T[] ComputeAlongRadius<T>(double lat, double lon,
+        private static T[] ComputeAlongRadius<T>(Angle lat, Angle lon,
             double R, double deltaR,
-            Func<double, double, double, double, T> getValue,
+            Func<Angle, Angle, double, double, T> getValue,
             double deltaThetaRad,
             double cosLat,
             int iTheta)
