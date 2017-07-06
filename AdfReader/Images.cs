@@ -211,7 +211,7 @@ namespace AdfReader
                 {
                     var metadataUrl = new Uri(string.Format(metadUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
                     string rawMetadata = client.GetStringAsync(metadataUrl).Result;
-                    var deserializedMetadata = JsonConvert.DeserializeObject<metadata>(rawMetadata);
+                    var deserializedMetadata = JsonConvert.DeserializeObject<Metadata>(rawMetadata);
                     var metadataResource = deserializedMetadata.resourceSets[0].resources[0];
                     var processedMetadata = new CachedResource(inputFile, metadataResource.MinLat, metadataResource.MinLon, metadataResource.MaxLat, metadataResource.MaxLon);
                     var serializedProcessedMetaedata = JsonConvert.SerializeObject(processedMetadata);
@@ -271,7 +271,7 @@ namespace AdfReader
             public Resource[] resources;
         }
 
-        private struct metadata
+        private struct Metadata
         {
             public ResourceSet[] resourceSets;
         }
