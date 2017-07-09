@@ -37,15 +37,25 @@ namespace AdfReader
             double lonDec = lon.DecimalDegree;
             int zoomLevel = GetZoomLevel(latDec, lonDec, cosLat, metersPerElement);
             T[][] chunk = GetValuesFromCache(lat, lon, zoomLevel);
-            var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
+            var size = (int)(3 * 15 * Math.Pow(2, 14 - zoomLevel));
 
-            int minLatTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60) / size, 1) * size, (Utils.TruncateTowardsZero(latDec * 60) / size) * size);
-            int minLonTotMin = Math.Min(Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lonDec * 60) / size, 1) * size, (Utils.TruncateTowardsZero(lonDec * 60) / size) * size);
+            int minLatTotMin = Math.Min(
+                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60 * 60) / size, 1),
+                (Utils.TruncateTowardsZero(latDec * 60 * 60) / size)) * size / 60;
+            int minLonTotMin = Math.Min(
+                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lonDec * 60 * 60) / size, 1),
+                (Utils.TruncateTowardsZero(lonDec * 60 * 60) / size)) * size / 60;
 
-            int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch / size));
-            int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch / size));
+            int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch * 60 / size));
+            int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch * 60 / size));
 
-            return chunk[targetLat][targetLon];
+            if (targetLat >= 0 && targetLat < chunk.Length && targetLon >= 0 && targetLon < chunk.Length)
+            {
+                return chunk[targetLat][targetLon];
+            } else
+            {
+                return default(T);
+            }
         }
 
         public int GetZoomLevel(double lat, double lon, double cosLat, double metersPerElement)
@@ -61,9 +71,9 @@ namespace AdfReader
             //     size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
             int zoomLevel = (int)(12 - Math.Log(metersPerElement * SmallBatch * 20 / len, 2));
-            if (zoomLevel > 12)
+            if (zoomLevel > 14)
             {
-                zoomLevel = 12;
+                zoomLevel = 14;
             }
 
             return zoomLevel;
@@ -71,19 +81,19 @@ namespace AdfReader
 
         public T[][] GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
         {
-            if (zoomLevel > 12 || zoomLevel < 4)
+            if (zoomLevel > 14 || zoomLevel < 4)
             {
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
 
-            // The size of the chunk in seconds.
-            var size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
+            // The size of the chunk in 1/60 seconds.
+            int size = (int)(3 * 15 * Math.Pow(2, 14 - zoomLevel));
 
-            Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / 60 / size, 1) * 60 * size);
-            Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / 60 / size, 1) * 60 * size);
+            Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / size, 1) * size);
+            Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / size, 1) * size);
 
-            Angle lat2 = Angle.FromSeconds((Utils.TruncateTowardsZero(lat.TotalSeconds / 60) / size) * 60 * size);
-            Angle lon2 = Angle.FromSeconds((Utils.TruncateTowardsZero(lon.TotalSeconds / 60) / size) * 60 * size);
+            Angle lat2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lat.TotalSeconds / size) * size);
+            Angle lon2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lon.TotalSeconds / size) * size);
 
             Angle minLat = Angle.Min(lat1, lat2);
             Angle minLon = Angle.Min(lon1, lon2);

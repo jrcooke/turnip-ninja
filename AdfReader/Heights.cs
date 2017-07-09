@@ -90,13 +90,13 @@ namespace AdfReader
 
             var lat2Min = (float)(minLatRoot + 0 * 1.0 / RawChunks.trueElements);
             var lat2Max = (float)(minLatRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
-            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * smallBatch / size);
-            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * smallBatch / size);
+            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * 60 * smallBatch / size);
+            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * 60 * smallBatch / size);
 
             var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
             var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
-            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * smallBatch / size);
-            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * smallBatch / size);
+            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * 60 * smallBatch / size);
+            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * 60 * smallBatch / size);
 
             for (int j = 0; j <= RawChunks.trueElements; j++)
             {
@@ -104,13 +104,13 @@ namespace AdfReader
                 // TargetElementCoord = angle * smallBatch / Size
 
                 var lat2 = (float)(minLatRoot + j * 1.0 / RawChunks.trueElements);
-                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * smallBatch / size);
+                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * 60 * smallBatch / size);
                 if (targetDeltaLat >= 0 && targetDeltaLat <= smallBatch)
                 {
                     for (int i = 0; i <= RawChunks.trueElements; i++)
                     {
                         var lon2 = (float)(minLonRoot + i * 1.0 / RawChunks.trueElements);
-                        int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * smallBatch / size);
+                        int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * 60 * smallBatch / size);
                         if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                         {
                             var val = chunk.Item3[RawChunks.trueElements - 1 - j + RawChunks.boundaryElements][i + RawChunks.boundaryElements];

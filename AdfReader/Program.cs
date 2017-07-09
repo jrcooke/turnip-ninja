@@ -65,7 +65,7 @@ namespace AdfReader
                 {
                     Lat = Angle.FromDecimalDegrees(47.695736),
                     Lon = Angle.FromDecimalDegrees(-122.232330),
-                    R = 80000, // 60000,
+                    R = 10000, // 60000,
                     DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,

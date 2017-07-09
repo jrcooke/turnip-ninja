@@ -113,13 +113,13 @@ namespace AdfReader
 
             var lat2Min = (float)(minLatRoot + 0 * 1.0 / RawChunks.trueElements);
             var lat2Max = (float)(minLatRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
-            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * smallBatch / size);
-            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * smallBatch / size);
+            int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * 60 * smallBatch / size);
+            int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * 60 * smallBatch / size);
 
             var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
             var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
-            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * smallBatch / size);
-            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * smallBatch / size);
+            int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * 60 * smallBatch / size);
+            int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * 60 * smallBatch / size);
 
             foreach (var element in chunk)
             {
@@ -127,11 +127,11 @@ namespace AdfReader
                 // TargetElementCoord = angle * smallBatch / Size
 
                 var lat2 = element.Item1;
-                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * smallBatch / size);
+                int targetDeltaLat = (int)Math.Round((lat2 - minLatDecimal) * 60 * 60 * smallBatch / size);
                 if (targetDeltaLat >= 0 && targetDeltaLat <= smallBatch)
                 {
                     var lon2 = element.Item2;
-                    int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * smallBatch / size);
+                    int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * 60 * smallBatch / size);
                     if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                     {
                         if (ret[targetDeltaLat][targetDeltaLon] == null)
