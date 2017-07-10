@@ -204,7 +204,7 @@ namespace AdfReader
 
             string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat, lon, zoomLevel));
             string metadFile = Path.Combine(rootMapFolder, string.Format(metadCacheTemplate, lat, lon, zoomLevel));
-            if (File.Exists(metadFile))
+            if (!File.Exists(metadFile))
             {
                 return new SourceColorInfo()
                 {

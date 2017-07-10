@@ -52,7 +52,6 @@ namespace AdfReader.NewFolder
 
             // Allocate info structure.
             AIGInfo_t psInfo = new AIGInfo_t();
-            psInfo.bHasWarned = 0;
             psInfo.pszCoverName = pszCoverName;
 
             // Read the header file.
@@ -118,9 +117,6 @@ namespace AdfReader.NewFolder
             {
                 psInfo.pasTileInfo[i] = new AIGTileInfo();
             }
-
-            // Read the statistics.
-            GridLib.AIGReadStatistics(pszCoverName, psInfo);
 
             return psInfo;
         }

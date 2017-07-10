@@ -16,7 +16,7 @@ namespace AdfReader
             try
             {
 
-                string outputFolder = ConfigurationManager.AppSettings["OutputFolder"];
+                string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
 
                 //float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n43w077\grdn43w077_13");
 
@@ -65,7 +65,7 @@ namespace AdfReader
                 {
                     Lat = Angle.FromDecimalDegrees(47.695736),
                     Lon = Angle.FromDecimalDegrees(-122.232330),
-                    R = 60000, // 60000,
+                    R = 10000, // 60000,
                     DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,
@@ -191,7 +191,7 @@ namespace AdfReader
                         (byte)((Math.Sin(a.Item1 / 20.0 / 100.0) + 1.0) * 128.0)));
 
                 int numParts = (int)(bothData.Length * (c.ElevationViewMax - c.ElevationViewMin) / (c.MaxAngle - c.MinAngle));
-                IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
+                IEnumerable<Tuple<double, SKColor>[]> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
                 Utils.WriteImageFile(
                     polimage,
                     bothData.Length, numParts,
@@ -204,7 +204,7 @@ namespace AdfReader
             }
         }
 
-        public static Func<Tuple<int, T[]>>[] GetPolarData<T>(
+        public static Func<T[]>[] GetPolarData<T>(
             Angle lat, Angle lon,
             double R, double deltaR,
             double minTheta, double maxTheta, double deltaTheta,
@@ -213,7 +213,7 @@ namespace AdfReader
             double deltaThetaRad = deltaTheta * Math.PI / 180;
             double cosLat = Math.Cos(lat.DecimalDegree * Math.PI / 180.0);
 
-            List<Func<Tuple<int, T[]>>> actions = new List<Func<Tuple<int, T[]>>>();
+            List<Func<T[]>> actions = new List<Func<T[]>>();
 
             int iThetaMin = (int)(minTheta / deltaTheta);
             int iThetaMax = (int)(maxTheta / deltaTheta);
@@ -221,7 +221,7 @@ namespace AdfReader
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
                 int i = iTheta;
-                actions.Add(() => new Tuple<int, T[]>(i - iThetaMin, ComputeAlongRadius(lat, lon, R, deltaR, getValue, deltaThetaRad, cosLat, i)));
+                actions.Add(() => ComputeAlongRadius(lat, lon, R, deltaR, getValue, deltaThetaRad, cosLat, i));
             }
 
             return actions.ToArray();
@@ -265,8 +265,8 @@ namespace AdfReader
             return ret;
         }
 
-        private static IEnumerable<Tuple<int, Tuple<double, SKColor>[]>> CollapseToViewFromHere(
-            Func<Tuple<int, Tuple<float, SKColor>[]>>[] thetaRad,
+        private static IEnumerable<Tuple<double, SKColor>[]> CollapseToViewFromHere(
+            Func<Tuple<float, SKColor>[]>[] thetaRad,
             double deltaR,
             double elevationViewMin, double elevationViewMax,
             int numParts)
@@ -280,16 +280,14 @@ namespace AdfReader
             int batchSize = 50;
             for (int outerThetaLoop = 0; outerThetaLoop < w; outerThetaLoop += batchSize)
             {
-                ConcurrentQueue<Tuple<int, Tuple<double, SKColor>[]>> ret = new ConcurrentQueue<Tuple<int, Tuple<double, SKColor>[]>>();
+                ConcurrentQueue<Tuple<double, SKColor>[]> ret = new ConcurrentQueue<Tuple<double, SKColor>[]>();
 
                 var workers = thetaRad.Skip(outerThetaLoop).Take(batchSize);
                 Parallel.ForEach(workers, (a) =>
                 {
                     var itemResult = a();
-                    Tuple<float, SKColor>[] heightsAtAngle = itemResult.Item2;
-                    var item = new Tuple<int, Tuple<double, SKColor>[]>(
-                        itemResult.Item1,
-                        CollapseToViewAlongRay(heightsAtAngle, deltaR, minViewAngle, deltaTheta, numParts));
+                    Tuple<float, SKColor>[] heightsAtAngle = itemResult;
+                    var item = CollapseToViewAlongRay(heightsAtAngle, deltaR, minViewAngle, deltaTheta, numParts);
                     ret.Enqueue(item);
                 });
 

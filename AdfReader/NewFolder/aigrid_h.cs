@@ -31,12 +31,6 @@ using System;
 
 namespace AdfReader.NewFolder
 {
-    internal static class DefineConstants
-    {
-        public const int ESRI_GRID_NO_DATA = -2147483647;
-        public const float ESRI_GRID_FLOAT_NO_DATA = (float)(-340282346638528859811704183484516925440.0);
-    }
-
     public class AIGTileInfo
     {
         public int nBlocks;
@@ -50,14 +44,9 @@ namespace AdfReader.NewFolder
     {
         /* Private information */
         public AIGTileInfo[] pasTileInfo;
-        public int bHasWarned;
 
         /* public information */
         public string pszCoverName; // Path of coverage directory.
-        public Int32 nCellType;
-        public Int32 bCompressed;
-        public const int AIG_CELLTYPE_INT = 1;
-        public const int AIG_CELLTYPE_FLOAT = 2;
         public Int32 nBlockXSize;
         public Int32 nBlockYSize;
         public Int32 nBlocksPerRow;
@@ -74,9 +63,5 @@ namespace AdfReader.NewFolder
         public double dfCellSizeY;
         public int nPixels;
         public int nLines;
-        public double dfMin;
-        public double dfMax;
-        public double dfMean;
-        public double dfStdDev;
     }
 }

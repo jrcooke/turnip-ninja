@@ -44,22 +44,14 @@ namespace AdfReader.NewFolder
             int nBlockSize,
             int nBlockXSize,
             int nBlockYSize,
-            float[] panData,
-            int nCellType,
-            int bCompressed)
+            float[] panData)
         {
-            // Handle float files and uncompressed integer files directly.
-            if (nCellType != AIGInfo_t.AIG_CELLTYPE_FLOAT)
-            {
-                throw new NotImplementedException();
-            }
-
             // If the block has zero size it is all dummies.
             if (nBlockSize == 0)
             {
                 for (int i = 0; i < nBlockXSize * nBlockYSize; i++)
                 {
-                    panData[i] = DefineConstants.ESRI_GRID_NO_DATA;
+                    panData[i] = float.NaN;
                 }
 
                 return;
@@ -98,8 +90,6 @@ namespace AdfReader.NewFolder
             fp.VSIFCloseL();
 
             // Read the block size information.
-            psInfo.nCellType = MyBitConverter.ToInt32(abyData, 16);
-            psInfo.bCompressed = MyBitConverter.ToInt32(abyData, 20);
             psInfo.nBlocksPerRow = MyBitConverter.ToInt32(abyData, 288);
             psInfo.nBlocksPerColumn = MyBitConverter.ToInt32(abyData, 292);
             psInfo.nBlockXSize = MyBitConverter.ToInt32(abyData, 296);
@@ -124,7 +114,7 @@ namespace AdfReader.NewFolder
             if (abyHeader[3] == 0x0D && abyHeader[4] == 0x0A)
             {
                 fp.VSIFCloseL();
-                throw new InvalidOperationException("w001001x.adf file header has been corrupted by unix to dos text conversion.");
+                throw new InvalidOperationException("w001001x.adf file header has been corrupted.");
             }
 
             if (abyHeader[0] != 0x00 || abyHeader[1] != 0x00 || abyHeader[2] != 0x27 || abyHeader[3] != 0x0A || abyHeader[4] != 0xFF || abyHeader[5] != 0xFF)
@@ -205,31 +195,6 @@ namespace AdfReader.NewFolder
             psInfo.dfLLY = adfBound[1];
             psInfo.dfURX = adfBound[2];
             psInfo.dfURY = adfBound[3];
-        }
-
-        /// <summary>
-        /// Read the sta.adf file for the layer statistics.
-        /// </summary>
-        public static void AIGReadStatistics(string pszCoverName, AIGInfo_t psInfo)
-        {
-            psInfo.dfMin = 0.0;
-            psInfo.dfMax = 0.0;
-            psInfo.dfMean = 0.0;
-            psInfo.dfStdDev = -1.0;
-
-            // Open the file sta.adf file.
-            string pszHDRFilename = Path.Combine(pszCoverName, "sta.adf");
-            VSILFILE fp = AigOpen.AIGLLOpen(pszHDRFilename);
-
-            // Get the contents - 3 or 4 doubles.
-            double[] adfStats = new double[4];
-            fp.ReadDoubleArray(adfStats, 4);
-            fp.VSIFCloseL();
-
-            psInfo.dfMin = adfStats[0];
-            psInfo.dfMax = adfStats[1];
-            psInfo.dfMean = adfStats[2];
-            psInfo.dfStdDev = adfStats[3];
         }
     }
 }

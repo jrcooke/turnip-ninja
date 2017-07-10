@@ -38,10 +38,6 @@ namespace AdfReader.NewFolder
             // Open dataset.
             AIGInfo_t psInfo = AigOpen.AIGOpen(folder);
             AigOpen.AIGAccessTile(psInfo, 0, 0);
-            if (psInfo.nCellType == AIGInfo_t.AIG_CELLTYPE_INT)
-            {
-                throw new NotImplementedException();
-            }
 
             AIGTileInfo psTInfo = psInfo.pasTileInfo[0];
             float[][] output = new float[psInfo.nPixels][];
@@ -59,9 +55,7 @@ namespace AdfReader.NewFolder
                     psTInfo.panBlockSize[nBlock],
                     psInfo.nBlockXSize,
                     psInfo.nBlockYSize,
-                    panRaster,
-                    psInfo.nCellType,
-                    psInfo.bCompressed);
+                    panRaster);
 
                 int tileOffsetX = (nBlock % psInfo.nBlocksPerRow) * psInfo.nBlockXSize;
                 int tileOffsetY = (nBlock / psInfo.nBlocksPerRow) * psInfo.nBlockYSize;

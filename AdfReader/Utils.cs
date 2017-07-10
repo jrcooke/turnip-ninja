@@ -120,11 +120,12 @@ namespace AdfReader
                 int i = 0;
                 foreach (var col in colorBuff)
                 {
-                    i++;
                     for (int j = 0; j < height; j++)
                     {
                         bm.SetPixel(i, j, transform(col[j]));
                     }
+
+                    i++;
                 }
 
                 File.Delete(fileName);
