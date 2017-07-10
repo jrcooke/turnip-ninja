@@ -109,7 +109,7 @@ namespace AdfReader
         }
 
         public static void WriteImageFile<T>(
-            IEnumerable<Tuple<int, T[]>> colorBuff,
+            IEnumerable<T[]> colorBuff,
             int width,
             int height,
             string fileName,
@@ -117,13 +117,13 @@ namespace AdfReader
         {
             using (DirectBitmap bm = new DirectBitmap(width, height))
             {
+                int i = 0;
                 foreach (var col in colorBuff)
                 {
-                    int i = col.Item1;
-                    var cbc = col.Item2;
+                    i++;
                     for (int j = 0; j < height; j++)
                     {
-                        bm.SetPixel(i, j, transform(cbc[j]));
+                        bm.SetPixel(i, j, transform(col[j]));
                     }
                 }
 

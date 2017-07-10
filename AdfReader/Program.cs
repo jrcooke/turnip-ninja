@@ -33,7 +33,7 @@ namespace AdfReader
                         .ToArray();
 
                     Utils.WriteImageFile(
-                        reduced.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                        reduced,
                         reduced.Length, reduced[0].Length,
                         Path.Combine(outputFolder, "NewFull.png"),
                         (a) => new SKColor(
@@ -44,7 +44,7 @@ namespace AdfReader
                     int n = 100;
                     newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
                     Utils.WriteImageFile(
-                        newONe.Select((p, i) => new Tuple<int, float[]>(i, p)),
+                        newONe,
                         newONe.Length, newONe[0].Length,
                         Path.Combine(outputFolder, "newONe.png"),
                         (a) => new SKColor(
@@ -65,7 +65,7 @@ namespace AdfReader
                 {
                     Lat = Angle.FromDecimalDegrees(47.695736),
                     Lon = Angle.FromDecimalDegrees(-122.232330),
-                    R = 10000, // 60000,
+                    R = 60000, // 60000,
                     DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,
@@ -89,7 +89,7 @@ namespace AdfReader
                 //};
 
 
-                if (false)
+                if (true)
                 {
                     // test
                     //c = new Config()
@@ -105,23 +105,25 @@ namespace AdfReader
                     //    AngularResolution = 0.05,
                     //};
 
-                    int zoomLevel = 11;
-                    var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
-                    Utils.WriteImageFile(
-                        pixels2.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                        pixels2.Length, pixels2[0].Length,
-                        Path.Combine(outputFolder, "ChunkH.png"),
-                        (a) => new SKColor(
-                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                    for (int zoomLevel = 10; zoomLevel <= 14; zoomLevel++)
+                    {
+                        var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
+                        Utils.WriteImageFile(
+                            pixels2.Data,
+                            pixels2.Width, pixels2.Height,
+                            Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),
+                            (a) => new SKColor(
+                                (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                                (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                                (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
-                    var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
-                    Utils.WriteImageFile(
-                        pixels.Select((p, i) => new Tuple<int, SKColor[]>(i, p)),
-                        pixels.Length, pixels[0].Length,
-                        Path.Combine(outputFolder, "ChunkC.png"),
-                        (a) => a);
+                        var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
+                        Utils.WriteImageFile(
+                            pixels.Data,
+                            pixels.Width, pixels.Height,
+                            Path.Combine(outputFolder, "ChunkC" + zoomLevel + ".png"),
+                            (a) => a);
+                    }
                 }
 
                 ////var data = RawChunks.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
@@ -169,7 +171,7 @@ namespace AdfReader
                 // Cache the function results.
                 bothData = bothData
                     .Select(p => p())
-                    .Select(p => new Func<Tuple<int, Tuple<float, SKColor>[]>>(() => p))
+                    .Select(p => new Func<Tuple<float, SKColor>[]>(() => p))
                     .ToArray();
 
                 int height = (int)(c.R / c.DeltaR) - 1;

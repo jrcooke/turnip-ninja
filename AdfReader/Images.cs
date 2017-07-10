@@ -7,6 +7,7 @@ using SkiaSharp;
 using Newtonsoft.Json;
 using System.Threading;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace AdfReader
 {
@@ -30,7 +31,7 @@ namespace AdfReader
             return ch.GetValue(lat, lon, cosLat, metersPerElement);
         }
 
-        public static SKColor[][] GetChunk(Angle lat, Angle lon, int zoomLevel)
+        public static ChunkHolder<SKColor> GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
             return ch.GetValuesFromCache(lat, lon, zoomLevel);
         }
@@ -53,7 +54,7 @@ namespace AdfReader
                 (byte)alpha);
         }
 
-        private static SKColor[][] GenerateData(
+        private static ChunkHolder<SKColor> GenerateData(
             int zoomLevel,
             int size,
             Angle lat1,
@@ -75,11 +76,9 @@ namespace AdfReader
                 LoadRawChunksIntoProcessedChunk(size, minLat, minLon, ret2, chunk);
             }
 
-            SKColor[][] ret;
-            ret = new SKColor[smallBatch + 1][];
+            ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(smallBatch + 1, smallBatch + 1);
             for (int i = 0; i <= smallBatch; i++)
             {
-                ret[i] = new SKColor[smallBatch + 1];
                 for (int j = 0; j <= smallBatch; j++)
                 {
                     if (ret2[i][j] != null)
@@ -87,7 +86,7 @@ namespace AdfReader
                         byte r = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Red);
                         byte g = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Green);
                         byte b = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Blue);
-                        ret[i][j] = new SKColor(r, g, b);
+                        ret.Data[i][j] = new SKColor(r, g, b);
                     }
                 }
             }
@@ -139,7 +138,7 @@ namespace AdfReader
                             ret[targetDeltaLat][targetDeltaLon] = new List<SKColor>();
                         }
                         ret[targetDeltaLat][targetDeltaLon].Add(element.Item3);
-                   }
+                    }
                 }
             }
         }
@@ -166,6 +165,23 @@ namespace AdfReader
             int lonMin = Utils.TruncateTowardsZero(Math.Min(lonA.DecimalDegree, lonB.DecimalDegree) * invDeltaDegAtZoom - 0.0001) - 1;
             int lonMax = Utils.TruncateTowardsZero(Math.Max(lonA.DecimalDegree, lonB.DecimalDegree) * invDeltaDegAtZoom + 0.0001) - 1;
 
+            Dictionary<string, SourceColorInfo> missingChunks = new Dictionary<string, SourceColorInfo>();
+            for (int latInt = latMin; latInt <= latMax; latInt++)
+            {
+                for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
+                {
+                    var chunk = MissingColorFilesFromWeb(latInt, lonInt, zoomLevel);
+                    if (chunk != null && !missingChunks.ContainsKey(chunk.metadFile))
+                    {
+                        missingChunks.Add(chunk.metadFile, chunk);
+                    }
+                }
+            }
+
+            // This pattern should be fine because the number of tasks is small.
+            var tasks = missingChunks.Select(p => LoadMissingColorsFromWeb(p.Value)).ToArray();
+            Task.WaitAll(tasks);
+
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
@@ -176,6 +192,73 @@ namespace AdfReader
                         yield return chunk;
                     }
                 }
+            }
+
+        }
+
+        private static SourceColorInfo MissingColorFilesFromWeb(int latDelta, double lonDelta, int zoomLevel)
+        {
+            double invDeltaDegAtZoom = 15 * Math.Pow(2, zoomLevel - 12);
+            double lat = latDelta * 1.0 / invDeltaDegAtZoom;
+            double lon = lonDelta * 1.0 / invDeltaDegAtZoom;
+
+            string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat, lon, zoomLevel));
+            string metadFile = Path.Combine(rootMapFolder, string.Format(metadCacheTemplate, lat, lon, zoomLevel));
+            if (File.Exists(metadFile))
+            {
+                return new SourceColorInfo()
+                {
+                    inputFile = inputFile,
+                    inputUrl = new Uri(string.Format(imageUrlTemplate, lat, lon, zoomLevel, bingMapsKey)),
+                    metadFile = metadFile,
+                    metadataUrl = new Uri(string.Format(metadUrlTemplate, lat, lon, zoomLevel, bingMapsKey)),
+                };
+            }
+
+            return null;
+        }
+
+        private class SourceColorInfo
+        {
+            public string inputFile;
+            public Uri inputUrl;
+            public string metadFile;
+            public Uri metadataUrl;
+        }
+
+        private static async Task LoadMissingColorsFromWeb(SourceColorInfo info)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                HttpResponseMessage message = null;
+                try
+                {
+                    message = await client.GetAsync(info.inputUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+
+                if (message != null && message.StatusCode == HttpStatusCode.OK)
+                {
+                    var content = await message.Content.ReadAsByteArrayAsync();
+                    File.WriteAllBytes(info.inputFile, content);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                }
+            }
+
+            using (HttpClient client = new HttpClient())
+            {
+                string rawMetadata = await client.GetStringAsync(info.metadataUrl);
+                var deserializedMetadata = JsonConvert.DeserializeObject<Metadata>(rawMetadata);
+                var metadataResource = deserializedMetadata.resourceSets[0].resources[0];
+                var processedMetadata = new CachedResource(info.inputFile, metadataResource.MinLat, metadataResource.MinLon, metadataResource.MaxLat, metadataResource.MaxLon);
+                var serializedProcessedMetaedata = JsonConvert.SerializeObject(processedMetadata);
+                File.WriteAllText(info.metadFile, serializedProcessedMetaedata);
             }
         }
 
@@ -189,57 +272,9 @@ namespace AdfReader
             string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat, lon, zoomLevel));
             string metadFile = Path.Combine(rootMapFolder, string.Format(metadCacheTemplate, lat, lon, zoomLevel));
 
-            if (!File.Exists(inputFile))
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    var url = new Uri(string.Format(imageUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
-                    HttpResponseMessage message = null;
-                    try
-                    {
-                        var messageTask = client.GetAsync(url);
-                        while (!messageTask.IsCompleted)
-                        {
-                            Thread.Sleep(TimeSpan.FromSeconds(5));
-                            Console.Write(".");
-                        }
-
-                        message = messageTask.Result;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.ToString());
-                    }
-
-                    if (message != null && message.StatusCode == HttpStatusCode.OK)
-                    {
-                        var content = message.Content.ReadAsByteArrayAsync().Result;
-                        File.WriteAllBytes(inputFile, content);
-                    }
-                    else
-                    {
-                        //   throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
-                    }
-                }
-            }
-
-            if (!File.Exists(inputFile))
-            {
-                return null;
-            }
-
             if (!File.Exists(metadFile))
             {
-                using (HttpClient client = new HttpClient())
-                {
-                    var metadataUrl = new Uri(string.Format(metadUrlTemplate, lat, lon, zoomLevel, bingMapsKey));
-                    string rawMetadata = client.GetStringAsync(metadataUrl).Result;
-                    var deserializedMetadata = JsonConvert.DeserializeObject<Metadata>(rawMetadata);
-                    var metadataResource = deserializedMetadata.resourceSets[0].resources[0];
-                    var processedMetadata = new CachedResource(inputFile, metadataResource.MinLat, metadataResource.MinLon, metadataResource.MaxLat, metadataResource.MaxLon);
-                    var serializedProcessedMetaedata = JsonConvert.SerializeObject(processedMetadata);
-                    File.WriteAllText(metadFile, serializedProcessedMetaedata);
-                }
+                return null;
             }
 
             Tuple<double, double, SKColor>[] data;

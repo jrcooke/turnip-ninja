@@ -11,8 +11,8 @@ namespace AdfReader
         private object locker = new object();
         private Action<T, FileStream> writeElement;
         private Func<FileStream, byte[], T> readElement;
-        private Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, T[][]> generateData;
-        private Cache<long, T[][]> chunkCache;
+        private Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, ChunkHolder<T>> generateData;
+        private Cache<long, ChunkHolder<T>> chunkCache;
 
         public CachingHelper(
             int smallBatch,
@@ -20,9 +20,9 @@ namespace AdfReader
             string description,
             Action<T, FileStream> writeElement,
             Func<FileStream, byte[], T> readElement,
-            Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, T[][]> generateData)
+            Func<int, int, Angle, Angle, Angle, Angle, Angle, Angle, ChunkHolder<T>> generateData)
         {
-            chunkCache = new Cache<long, T[][]>(TimeSpan.FromSeconds(15));
+            chunkCache = new Cache<long, ChunkHolder<T>>(TimeSpan.FromSeconds(15));
             SmallBatch = smallBatch;
             this.cachedFileTemplate = cachedFileTemplate;
             this.description = description;
@@ -36,8 +36,8 @@ namespace AdfReader
             double latDec = lat.DecimalDegree;
             double lonDec = lon.DecimalDegree;
             int zoomLevel = GetZoomLevel(latDec, lonDec, cosLat, metersPerElement);
-            T[][] chunk = GetValuesFromCache(lat, lon, zoomLevel);
-            var size = (int)(3 * 15 * Math.Pow(2, 14 - zoomLevel));
+            ChunkHolder<T> chunk = GetValuesFromCache(lat, lon, zoomLevel);
+            var size = GetSize(zoomLevel);
 
             int minLatTotMin = Math.Min(
                 Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60 * 60) / size, 1),
@@ -49,13 +49,19 @@ namespace AdfReader
             int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch * 60 / size));
             int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch * 60 / size));
 
-            if (targetLat >= 0 && targetLat < chunk.Length && targetLon >= 0 && targetLon < chunk.Length)
+            if (targetLat >= 0 && targetLat < chunk.Width && targetLon >= 0 && targetLon < chunk.Height)
             {
-                return chunk[targetLat][targetLon];
-            } else
+                return chunk.Data[targetLat][targetLon];
+            }
+            else
             {
                 return default(T);
             }
+        }
+
+        private static int GetSize(int zoomLevel)
+        {
+            return (int)(3 * 15 * Math.Pow(2, 14 - zoomLevel));
         }
 
         public int GetZoomLevel(double lat, double lon, double cosLat, double metersPerElement)
@@ -79,7 +85,7 @@ namespace AdfReader
             return zoomLevel;
         }
 
-        public T[][] GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
+        public ChunkHolder<T> GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
         {
             if (zoomLevel > 14 || zoomLevel < 4)
             {
@@ -87,7 +93,7 @@ namespace AdfReader
             }
 
             // The size of the chunk in 1/60 seconds.
-            int size = (int)(3 * 15 * Math.Pow(2, 14 - zoomLevel));
+            int size = GetSize(zoomLevel);
 
             Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / size, 1) * size);
             Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / size, 1) * size);
@@ -100,7 +106,7 @@ namespace AdfReader
 
             long key = Utils.GetKey(zoomLevel, lat1, lon1);
 
-            T[][] ret;
+            ChunkHolder<T> ret;
             while (!chunkCache.TryGetValue(key, out ret) || ret == null)
             {
                 string filename = Utils.GetFileName(key);
@@ -130,37 +136,36 @@ namespace AdfReader
             return ret;
         }
 
-        private void WriteChunk(T[][] ret, string fullName)
+        private void WriteChunk(ChunkHolder<T> ret, string fullName)
         {
             using (FileStream stream = File.OpenWrite(fullName))
             {
-                stream.Write(BitConverter.GetBytes(ret.Length), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret[0].Length), 0, 4);
-                for (int i = 0; i < ret.Length; i++)
+                stream.Write(BitConverter.GetBytes(ret.Width), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.Height), 0, 4);
+                for (int i = 0; i < ret.Width; i++)
                 {
-                    for (int j = 0; j < ret[i].Length; j++)
+                    for (int j = 0; j < ret.Height; j++)
                     {
-                        writeElement(ret[i][j], stream);
+                        writeElement(ret.Data[i][j], stream);
                     }
                 }
             }
         }
-        private T[][] ReadChunk(string fullName)
+        private ChunkHolder<T> ReadChunk(string fullName)
         {
-            T[][] ret = null;
+            ChunkHolder<T> ret = null;
             byte[] buffer = new byte[4];
             using (var stream = File.OpenRead(fullName))
             {
                 int width = Utils.ReadInt(stream, buffer);
                 int height = Utils.ReadInt(stream, buffer);
 
-                ret = new T[width][];
+                ret = new ChunkHolder<T>(width, height);
                 for (int i = 0; i < width; i++)
                 {
-                    ret[i] = new T[height];
                     for (int j = 0; j < height; j++)
                     {
-                        ret[i][j] = readElement(stream, buffer);
+                        ret.Data[i][j] = readElement(stream, buffer);
                     }
                 }
             }

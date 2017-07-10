@@ -29,7 +29,7 @@ namespace AdfReader
             return ch.GetValue(lat, lon, cosLat, metersPerElement);
         }
 
-        public static float[][] GetChunk(Angle lat, Angle lon, int zoomLevel)
+        public static ChunkHolder<float> GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
             var raw = ch.GetValuesFromCache(lat, lon, zoomLevel);
             return raw;
@@ -47,7 +47,7 @@ namespace AdfReader
             return i3;
         }
 
-        private static float[][] GenerateData(
+        private static ChunkHolder<float> GenerateData(
             int zoomLevel,
             int size,
             Angle lat1,
@@ -57,11 +57,7 @@ namespace AdfReader
             Angle minLat,
             Angle minLon)
         {
-            float[][] ret = new float[smallBatch + 1][];
-            for (int i = 0; i <= smallBatch; i++)
-            {
-                ret[i] = new float[smallBatch + 1];
-            }
+            ChunkHolder<float> ret = new ChunkHolder<float>(smallBatch + 1, smallBatch + 1);
 
             var chunks = RawChunks.GetRawHeightsInMeters(lat1, lon1, lat2, lon2);
             foreach (var chunk in chunks)
@@ -76,7 +72,7 @@ namespace AdfReader
             int size,
             Angle minLat,
             Angle minLon,
-            float[][] ret,
+            ChunkHolder<float> ret,
             Tuple<double, double, float[][]> chunk)
         {
             double minLatDecimal = minLat.DecimalDegree;
@@ -114,10 +110,10 @@ namespace AdfReader
                         if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                         {
                             var val = chunk.Item3[RawChunks.trueElements - 1 - j + RawChunks.boundaryElements][i + RawChunks.boundaryElements];
-                            var cur = ret[targetDeltaLat][targetDeltaLon];
+                            var cur = ret.Data[targetDeltaLat][targetDeltaLon];
                             if (cur < val)
                             {
-                                ret[targetDeltaLat][targetDeltaLon] = val;
+                                ret.Data[targetDeltaLat][targetDeltaLon] = val;
                             }
                         }
                     }
@@ -272,113 +268,6 @@ namespace AdfReader
             }
 
             return message;
-        }
-
-        private static float[][] ReadDataToChunks(string adfFile)
-        {
-            int elements = trueElements + boundaryElements * 2;
-            var bytes = File.ReadAllBytes(adfFile);
-
-            byte[] buff = new byte[4];
-
-            int frameIndex = 0;
-            int indexWithinFrame = 0;
-            float[] currentFrame2 = null;
-
-            int index = 16 * 6 + 4;
-            int terminator1 = bytes[index];
-            int terminator2 = bytes[index + 1];
-
-            int numberOfBatches = bytes[index] / 2;
-
-            List<float[]> runningList = new List<float[]>();
-            while (index < bytes.Length)
-            {
-                if (bytes[index] == terminator1 && bytes[index + 1] == terminator2)
-                {
-                    index += 2;
-                    frameIndex++;
-
-                    indexWithinFrame = 0;
-                    currentFrame2 = new float[256];
-                }
-
-                // Need to map explicitly because in the opposite end-ness in file.
-                buff[3] = bytes[index++];
-                buff[2] = bytes[index++];
-                buff[1] = bytes[index++];
-                buff[0] = bytes[index++];
-
-                currentFrame2[indexWithinFrame] = BitConverter.ToSingle(buff, 0);
-
-                indexWithinFrame++;
-                if (indexWithinFrame % 256 == 0)
-                {
-                    runningList.Add(currentFrame2);
-                    indexWithinFrame = 0;
-                }
-            }
-
-            if (indexWithinFrame != 0)
-            {
-                throw new InvalidOperationException("Incomplete frame read");
-            }
-
-            float[][] rows = new float[numberOfBatches][];
-            for (int i = 0; i < numberOfBatches; i++)
-            {
-                rows[i] = new float[elements];
-            }
-
-            int widthIndex = 0;
-
-            float[][] batchData = new float[numberOfBatches][];
-            int batch = 0;
-
-            float[][] data = new float[elements][];
-            int dataIndex = 0;
-
-            foreach (var part in runningList)
-            {
-                batchData[batch] = part;
-                batch++;
-
-                if (batch == numberOfBatches)
-                {
-                    batch = 0;
-                    for (int k = 0; k < 256; k++)
-                    {
-                        if (widthIndex < elements)
-                        {
-                            for (int i = 0; i < numberOfBatches; i++)
-                            {
-                                rows[i][widthIndex] = (batchData[i][k]);
-                            }
-
-                            widthIndex++;
-                        }
-                    }
-
-                    if (widthIndex == elements)
-                    {
-                        widthIndex = 0;
-                        for (int i = 0; i < numberOfBatches; i++)
-                        {
-                            if (dataIndex < data.Length)
-                            {
-                                data[dataIndex++] = rows[i];
-                            }
-                            else
-                            {
-
-                            }
-                            rows[i] = new float[elements];
-                        }
-                    }
-                }
-            }
-
-            return data;
         }
     }
 }
