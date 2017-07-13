@@ -113,14 +113,14 @@ namespace AdfReader
             string fileName,
             Func<T, SKColor> transform)
         {
-            using (DirectBitmap bm = new DirectBitmap(colorBuff.Height, colorBuff.Width))
+            using (DirectBitmap bm = new DirectBitmap(colorBuff.Width, colorBuff.Height))
             {
                 for (int i = 0; i < colorBuff.Width; i++)
                 {
-                    var col = colorBuff.Data[colorBuff.Width - 1 - i];
+                    var col = colorBuff.Data[i];
                     for (int j = 0; j < colorBuff.Height; j++)
                     {
-                        bm.SetPixel(j, i, transform(col[j]));
+                        bm.SetPixel(i, j, transform(col[colorBuff.Height - 1 - j]));
                     }
                 }
 
