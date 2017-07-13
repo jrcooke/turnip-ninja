@@ -57,7 +57,9 @@ namespace AdfReader
             Angle minLat,
             Angle minLon)
         {
-            ChunkHolder<float> ret = new ChunkHolder<float>(smallBatch + 1, smallBatch + 1);
+            var maxLat = Angle.Add(minLat, 1.0);
+            var maxLon = Angle.Add(minLon, 1.0);
+            ChunkHolder<float> ret = new ChunkHolder<float>(smallBatch + 1, smallBatch + 1, lat1, lon1, lat2, lon2);
 
             var chunks = RawChunks.GetRawHeightsInMeters(lat1, lon1, lat2, lon2);
             foreach (var chunk in chunks)
@@ -73,24 +75,21 @@ namespace AdfReader
             Angle minLat,
             Angle minLon,
             ChunkHolder<float> ret,
-            Tuple<double, double, float[][]> chunk)
+            ChunkHolder<float> chunk)
         {
             double minLatDecimal = minLat.DecimalDegree;
             double minLonDecimal = minLon.DecimalDegree;
-            int minLatRoot = Math.Min(
-                Utils.TruncateTowardsZero(chunk.Item1),
-                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(chunk.Item1), 1));
-            int minLonRoot = Math.Min(
-                Utils.TruncateTowardsZero(chunk.Item2),
-                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(chunk.Item2), 1));
+            double minLatRoot = Angle.Min(chunk.LatLo, chunk.LatHi).DecimalDegree;
+            double minLonRoot = Angle.Min(chunk.LonLo, chunk.LonHi).DecimalDegree;
 
             var lat2Min = (float)(minLatRoot + 0 * 1.0 / RawChunks.trueElements);
             var lat2Max = (float)(minLatRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+            var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
+            var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
+
             int targetDeltaLatMin = (int)Math.Round((lat2Min - minLatDecimal) * 60 * 60 * smallBatch / size);
             int targetDeltaLatMax = (int)Math.Round((lat2Max - minLatDecimal) * 60 * 60 * smallBatch / size);
 
-            var lon2Min = (float)(minLonRoot + 0 * 1.0 / RawChunks.trueElements);
-            var lon2Max = (float)(minLonRoot + RawChunks.trueElements * 1.0 / RawChunks.trueElements);
             int targetDeltaLonMin = (int)Math.Round((lon2Min - minLonDecimal) * 60 * 60 * smallBatch / size);
             int targetDeltaLonMax = (int)Math.Round((lon2Max - minLonDecimal) * 60 * 60 * smallBatch / size);
 
@@ -109,7 +108,7 @@ namespace AdfReader
                         int targetDeltaLon = (int)Math.Round((lon2 - minLonDecimal) * 60 * 60 * smallBatch / size);
                         if (targetDeltaLon >= 0 && targetDeltaLon <= smallBatch)
                         {
-                            var val = chunk.Item3[RawChunks.trueElements - 1 - j + RawChunks.boundaryElements][i + RawChunks.boundaryElements];
+                            var val = chunk.Data[i + RawChunks.boundaryElements][RawChunks.trueElements - 1 - j + RawChunks.boundaryElements];
                             var cur = ret.Data[targetDeltaLat][targetDeltaLon];
                             if (cur < val)
                             {
@@ -132,10 +131,10 @@ namespace AdfReader
         private const string sourceUrlTemplate2 = @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip";
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
         private const string sourceZipDestTemplate = "{0}";
-        private static Dictionary<string, float[][]> cache = new Dictionary<string, float[][]>();
+        private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static IEnumerable<Tuple<double, double, float[][]>> GetRawHeightsInMeters(Angle latA, Angle lonA, Angle latB, Angle lonB)
+        public static IEnumerable<ChunkHolder<float>> GetRawHeightsInMeters(Angle latA, Angle lonA, Angle latB, Angle lonB)
         {
             int latMin = Utils.TruncateTowardsZero(Math.Min(latA.DecimalDegree, latB.DecimalDegree) - 0.0001);
             int latMax = Utils.TruncateTowardsZero(Math.Max(latA.DecimalDegree, latB.DecimalDegree) + 0.0001);
@@ -151,13 +150,13 @@ namespace AdfReader
                     var chunk = GetRawHeightsInMeters((int)lat, (int)lon);
                     if (chunk != null)
                     {
-                        yield return new Tuple<double, double, float[][]>(lat, lon, chunk);
+                        yield return chunk;
                     }
                 }
             }
         }
 
-        public static float[][] GetRawHeightsInMeters(int lat, int lon)
+        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -223,7 +222,7 @@ namespace AdfReader
                 if (!missing)
                 {
                     //cache[fileName] = ReadDataToChunks(inputFile);
-                    cache[fileName] = AiTest.Test(inputFile);
+                    cache[fileName] = AIGInfo_t.GetChunk(new FileInfo(inputFile).Directory.ToString());
                     Console.WriteLine("Loaded raw " + description + " data to cache: " + fileName);
                 }
                 else

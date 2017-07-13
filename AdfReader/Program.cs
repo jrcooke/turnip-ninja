@@ -20,39 +20,41 @@ namespace AdfReader
 
                 //float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n43w077\grdn43w077_13");
 
-                if (false)
+                if (true)
                 {
-                    float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    var newONe = AIGInfo_t.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    var homeLat = Angle.FromDecimalDegrees(47.684124);
+                    var homeLon = Angle.FromDecimalDegrees(-122.292357);
+                    ChunkHolder<float> ddd = newONe.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));
 
-                    var reduced = newONe
+                    Utils.WriteImageFile(
+                        ddd,
+                        Path.Combine(outputFolder, "ddd.png"),
+                        (a) => new SKColor(
+                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+
+                    var reducedRaw = newONe.Data
                         .Select((p, i) => i % 10 == 0 ? p : null)
                         .Where(p => p != null)
                         .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
                             .Where(q => !float.IsNaN(q))
                             .ToArray())
                         .ToArray();
+                    ChunkHolder<float> reduced = new ChunkHolder<float>(
+                        reducedRaw,
+                        newONe.LatLo, newONe.LonLo,
+                        newONe.LatHi, newONe.LatHi);
 
                     Utils.WriteImageFile(
                         reduced,
-                        reduced.Length, reduced[0].Length,
                         Path.Combine(outputFolder, "NewFull.png"),
                         (a) => new SKColor(
                             (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
                             (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
                             (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
-
-                    int n = 100;
-                    newONe = newONe.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
-                    Utils.WriteImageFile(
-                        newONe,
-                        newONe.Length, newONe[0].Length,
-                        Path.Combine(outputFolder, "newONe.png"),
-                        (a) => new SKColor(
-                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
                 }
-
 
                 //// Home
                 //double lat = 47.684124;
@@ -109,8 +111,7 @@ namespace AdfReader
                     {
                         var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
                         Utils.WriteImageFile(
-                            pixels2.Data,
-                            pixels2.Width, pixels2.Height,
+                            pixels2,
                             Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),
                             (a) => new SKColor(
                                 (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
@@ -119,8 +120,7 @@ namespace AdfReader
 
                         var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
                         Utils.WriteImageFile(
-                            pixels.Data,
-                            pixels.Width, pixels.Height,
+                            pixels,
                             Path.Combine(outputFolder, "ChunkC" + zoomLevel + ".png"),
                             (a) => a);
                     }
@@ -176,13 +176,13 @@ namespace AdfReader
 
                 int height = (int)(c.R / c.DeltaR) - 1;
                 Utils.WriteImageFile(
-                    bothData.Select(p => p()),
+                    bothData.Select(p => p()).ToArray(),
                     bothData.Length, height,
                     Path.Combine(outputFolder, "bbb.png"),
                     (a) => a.Item2);
 
                 Utils.WriteImageFile(
-                    bothData.Select(p => p()),
+                    bothData.Select(p => p()).ToArray(),
                     bothData.Length, height,
                     Path.Combine(outputFolder, "aaa.png"),
                     (a) => new SKColor(
@@ -193,7 +193,7 @@ namespace AdfReader
                 int numParts = (int)(bothData.Length * (c.ElevationViewMax - c.ElevationViewMin) / (c.MaxAngle - c.MinAngle));
                 IEnumerable<Tuple<double, SKColor>[]> polimage = CollapseToViewFromHere(bothData, c.DeltaR, c.ElevationViewMin, c.ElevationViewMax, numParts);
                 Utils.WriteImageFile(
-                    polimage,
+                    polimage.ToArray(),
                     bothData.Length, numParts,
                     Path.Combine(outputFolder, "testPol.png"),
                     (a) => a == null ? default(SKColor) : a.Item2);

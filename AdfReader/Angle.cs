@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace AdfReader
 {
@@ -8,11 +9,13 @@ namespace AdfReader
         public int Degrees;
         public int Minutes;
         public int Seconds;
+        public int Thirds;
+
         public double DecimalDegree
         {
             get
             {
-                return TotalSeconds / (60.0 * 60.0);
+                return TotalThirds / (60.0 * 60.0 * 60.0);
             }
         }
 
@@ -24,42 +27,95 @@ namespace AdfReader
             }
         }
 
-        internal static Angle FromSeconds(int totalSeconds)
+        public int TotalThirds
         {
-            bool isNeg = totalSeconds < 0;
-            int abs = isNeg ? -totalSeconds : totalSeconds;
-            return new Angle()
+            get
+            {
+                return (IsNegative ? -1 : 1) * (((Degrees * 60 + Minutes) * 60 + Seconds) * 60 + Thirds);
+            }
+        }
+
+        internal static Angle FromThirds(int totalThirds)
+        {
+            bool isNeg = totalThirds < 0;
+            int abs = isNeg ? -totalThirds : totalThirds;
+            var ret= new Angle()
             {
                 IsNegative = isNeg,
-                Seconds = abs % 60,
-                Minutes = abs / 60 % 60,
-                Degrees = abs / (60 * 60),
+                Thirds = abs % 60,
+                Seconds = (abs / (60)) % 60,
+                Minutes = (abs / (60 * 60)) % 60,
+                Degrees = (abs / (60 * 60 * 60)),
             };
+            return ret;
+        }
+
+        internal static Angle FromSeconds(int totalSeconds)
+        {
+            return FromThirds(totalSeconds * 60);
+        }
+
+        internal static Angle FromMinutes(int totalMinutes)
+        {
+            return FromThirds(totalMinutes * 60 * 60);
         }
 
         internal static Angle FromDecimalDegrees(double v)
         {
-            return FromSeconds((int)(v * 60 * 60));
+            double thirds = v * 60 * 60 * 60;
+            thirds = Math.Round(thirds);
+
+            return FromThirds((int)thirds);
         }
 
         internal static Angle Min(Angle a, Angle b)
         {
-            return (a.TotalSeconds < b.TotalSeconds) ? a : b;
+            return (a.TotalThirds < b.TotalThirds) ? a : b;
         }
 
-        public string ToLatString()
+        internal static Angle Multiply(Angle a, int b)
         {
-            return ToXString() + (IsNegative ? 's': 'n');
+            return Angle.FromThirds(a.TotalThirds * b);
         }
 
-        public string ToLonString()
+        internal static int Divide(Angle a, Angle b)
         {
-            return ToXString() + (IsNegative ? 'w': 'e');
+            var remainder = a.TotalThirds % b.TotalThirds;
+            Debug.WriteLine(remainder);
+            return a.TotalThirds / b.TotalThirds;
+        }
+
+        internal static Angle Divide(Angle a, int b)
+        {
+            var remainder = a.TotalThirds % b;
+            Debug.WriteLine(remainder);
+            return Angle.FromThirds(a.TotalThirds / b);
+        }
+
+        internal static Angle Subtract(Angle a, Angle b)
+        {
+            return Angle.FromThirds(a.TotalThirds - b.TotalThirds);
         }
 
         internal static Angle Add(Angle a, double b)
         {
-            return Angle.FromSeconds(a.TotalSeconds + (int)(b * 60 * 60));
+            return Angle.FromThirds(a.TotalThirds + (int)(b * 60 * 60 * 60));
+        }
+
+        internal static Angle Add(Angle a, Angle b)
+        {
+            return Angle.FromThirds(a.TotalThirds + b.TotalThirds);
+        }
+
+
+        public string ToLatString()
+        {
+            return ToXString() + (IsNegative ? 's' : 'n');
+        }
+
+        public string ToLonString()
+        {
+            return ToXString() + (IsNegative ? 'w' : 'e');
         }
 
         public override string ToString()
@@ -69,6 +125,10 @@ namespace AdfReader
 
         public string ToXString()
         {
+            if (this.Thirds > 0)
+            {
+                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T", this.Degrees, this.Minutes, this.Seconds, this.Thirds);
+            }
             if (this.Seconds > 0)
             {
                 return string.Format("{0:D3}D{1:D2}M{2:D2}S", this.Degrees, this.Minutes, this.Seconds);

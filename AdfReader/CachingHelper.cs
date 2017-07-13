@@ -77,9 +77,9 @@ namespace AdfReader
             //     size = (int)(3 * Math.Pow(2, 12 - zoomLevel));
 
             int zoomLevel = (int)(12 - Math.Log(metersPerElement * SmallBatch * 20 / len, 2));
-            if (zoomLevel > 14)
+            if (zoomLevel > 12)
             {
-                zoomLevel = 14;
+                zoomLevel = 12;
             }
 
             return zoomLevel;
@@ -142,6 +142,10 @@ namespace AdfReader
             {
                 stream.Write(BitConverter.GetBytes(ret.Width), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.Height), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LatLo.TotalSeconds), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LonLo.TotalSeconds), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LatHi.TotalSeconds), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LonHi.TotalSeconds), 0, 4);
                 for (int i = 0; i < ret.Width; i++)
                 {
                     for (int j = 0; j < ret.Height; j++)
@@ -160,7 +164,12 @@ namespace AdfReader
                 int width = Utils.ReadInt(stream, buffer);
                 int height = Utils.ReadInt(stream, buffer);
 
-                ret = new ChunkHolder<T>(width, height);
+                Angle latLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+                Angle lonLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+                Angle latHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+                Angle lonHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+
+                ret = new ChunkHolder<T>(width, height, latLo, lonLo, latHi, lonHi);
                 for (int i = 0; i < width; i++)
                 {
                     for (int j = 0; j < height; j++)

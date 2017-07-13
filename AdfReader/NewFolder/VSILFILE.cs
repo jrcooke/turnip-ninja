@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace AdfReader.NewFolder
@@ -63,11 +64,32 @@ namespace AdfReader.NewFolder
             return MyBitConverter.ToDouble(readDoubleBuffer, 0);
         }
 
-        private byte[] readSingleBuffer = new byte[4];
-        internal float ReadSingle()
+        private Dictionary<int, byte[]> readSingleBufferCache = new Dictionary<int, byte[]>();
+        private byte[] readSingleBuffer2 = new byte[4];
+
+        internal void ReadSingleArray(float[] panRaster)
         {
-            ReadByteArray(readSingleBuffer);
-            return MyBitConverter.ToSingle(readSingleBuffer, 0);
+            byte[] readSingleBuffer;
+            if (!readSingleBufferCache.TryGetValue(panRaster.Length, out readSingleBuffer))
+            {
+                readSingleBuffer = new byte[panRaster.Length * 4];
+                readSingleBufferCache.Add(panRaster.Length, readSingleBuffer);
+            }
+
+            if (this.fs.Read(readSingleBuffer, 0, readSingleBuffer.Length) != readSingleBuffer.Length)
+            {
+                throw new InvalidOperationException();
+            }
+
+            for (int j = 0; j < panRaster.Length; j++)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    readSingleBuffer2[3 - i] = readSingleBuffer[j * 4 + i];
+                }
+
+                panRaster[j] = BitConverter.ToSingle(readSingleBuffer2, 0);
+            }
         }
 
         private byte[] readInt16Buffer = new byte[2];

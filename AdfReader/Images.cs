@@ -76,7 +76,7 @@ namespace AdfReader
                 LoadRawChunksIntoProcessedChunk(size, minLat, minLon, ret2, chunk);
             }
 
-            ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(smallBatch + 1, smallBatch + 1);
+            ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(smallBatch + 1, smallBatch + 1, lat1, lon1, lat2, lon2);
             for (int i = 0; i <= smallBatch; i++)
             {
                 for (int j = 0; j <= smallBatch; j++)

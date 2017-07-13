@@ -109,6 +109,28 @@ namespace AdfReader
         }
 
         public static void WriteImageFile<T>(
+            ChunkHolder<T> colorBuff,
+            string fileName,
+            Func<T, SKColor> transform)
+        {
+            using (DirectBitmap bm = new DirectBitmap(colorBuff.Height, colorBuff.Width))
+            {
+                for (int i = 0; i < colorBuff.Width; i++)
+                {
+                    var col = colorBuff.Data[colorBuff.Width - 1 - i];
+                    for (int j = 0; j < colorBuff.Height; j++)
+                    {
+                        bm.SetPixel(j, i, transform(col[j]));
+                    }
+                }
+
+                File.Delete(fileName);
+                bm.WriteFile(fileName);
+            }
+        }
+
+
+        public static void WriteImageFile<T>(
             IEnumerable<T[]> colorBuff,
             int width,
             int height,
