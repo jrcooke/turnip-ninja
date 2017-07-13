@@ -67,13 +67,13 @@ namespace AdfReader
                 {
                     Lat = Angle.FromDecimalDegrees(47.695736),
                     Lon = Angle.FromDecimalDegrees(-122.232330),
-                    R = 10000, // 60000,
+                    R = 20000, // 60000,
                     DeltaR = 5,
                     MinAngle = 85,
                     MaxAngle = 95,
-                    ElevationViewMin = -5.0,
-                    ElevationViewMax = 5.0,
-                    AngularResolution = 0.005,
+                    ElevationViewMin = -10.0,
+                    ElevationViewMax = 10.0,
+                    AngularResolution = 0.01,
                 };
 
                 // owego

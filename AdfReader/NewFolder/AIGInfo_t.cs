@@ -99,10 +99,10 @@ namespace AdfReader.NewFolder
             AIGReadBlockIndex();
 
             // Open the file w001001.adf file itself.
-            var fpGrid = new VSILFILE(Path.Combine(pszCoverName, szBasename + ".adf"));
             ChunkHolder<float> output = null;
-            try
+            using (FileStream fs = File.OpenRead(Path.Combine(pszCoverName, szBasename + ".adf")))
             {
+                //                var fpGrid = new VSILFILE(Path.Combine(pszCoverName, szBasename + ".adf"));
                 output = new ChunkHolder<float>(nPixels, nLines,
                     Angle.FromDecimalDegrees(dfLLY),
                     Angle.FromDecimalDegrees(dfLLX),
@@ -110,6 +110,9 @@ namespace AdfReader.NewFolder
                     Angle.FromDecimalDegrees(dfURX));
 
                 float[] panRaster = new float[nBlockXSize * nBlockYSize];
+                byte[] panRasterBuffer = new byte[4 * nBlockXSize * nBlockYSize];
+                byte[] readInt16Buffer = new byte[2];
+
                 for (int nBlock = 0; nBlock < nBlocks; nBlock++)
                 {
                     // If the block has zero size it is all dummies.
@@ -123,15 +126,15 @@ namespace AdfReader.NewFolder
                     else
                     {
                         // Verify the block size.
-                        fpGrid.Seek(panBlockOffset[nBlock]);
-                        int actualBlockSize = fpGrid.ReadInt16();
+                        fs.Seek(panBlockOffset[nBlock], SeekOrigin.Begin);
+                        int actualBlockSize = ReadInt16(fs, readInt16Buffer);
                         if (panBlockSize[nBlock] != actualBlockSize * 2)
                         {
                             throw new InvalidOperationException("Block is corrupt, block size was " + (actualBlockSize * 2) + ", but expected to be " + panBlockSize[nBlock]);
                         }
 
                         // Collect raw data.
-                        fpGrid.ReadSingleArray(panRaster);
+                        ReadSingleArray(fs, panRaster, panRasterBuffer);
                     }
 
                     int tileOffsetX = (nBlock % nBlocksPerRow) * nBlockXSize;
@@ -145,11 +148,6 @@ namespace AdfReader.NewFolder
                     }
                 }
             }
-            finally
-            {
-                fpGrid.VSIFCloseL();
-            }
-
             return output;
         }
 
@@ -160,20 +158,20 @@ namespace AdfReader.NewFolder
         private void AIGReadHeader()
         {
             // Open the file hdr.adf file.
-            VSILFILE fp = new VSILFILE(Path.Combine(pszCoverName, "hdr.adf"));
-
-            // Read the whole file (we expect it to always be 308 bytes).
-            Byte[] abyData = new Byte[308];
-            fp.ReadByteArray(abyData);
-            fp.VSIFCloseL();
+            byte[] abyData = new byte[308];
+            using (FileStream fs = File.OpenRead(Path.Combine(pszCoverName, "hdr.adf")))
+            {
+                // Read the whole file (we expect it to always be 308 bytes).
+                ReadByteArray(fs, abyData);
+            }
 
             // Read the block size information.
-            this.nBlocksPerRow = MyBitConverter.ToInt32(abyData, 288);
-            this.nBlocksPerColumn = MyBitConverter.ToInt32(abyData, 292);
-            this.nBlockXSize = MyBitConverter.ToInt32(abyData, 296);
-            this.nBlockYSize = MyBitConverter.ToInt32(abyData, 304);
-            this.dfCellSizeX = MyBitConverter.ToDouble(abyData, 256);
-            this.dfCellSizeY = MyBitConverter.ToDouble(abyData, 264);
+            this.nBlocksPerRow = BitConverter.ToInt32(OrderSwap4Bytes(abyData, 288), 288);
+            this.nBlocksPerColumn = BitConverter.ToInt32(OrderSwap4Bytes(abyData, 292), 292);
+            this.nBlockXSize = BitConverter.ToInt32(OrderSwap4Bytes(abyData, 296), 296);
+            this.nBlockYSize = BitConverter.ToInt32(OrderSwap4Bytes(abyData, 304), 304);
+            this.dfCellSizeX = BitConverter.ToDouble(OrderSwap8Bytes(abyData, 256), 256);
+            this.dfCellSizeY = BitConverter.ToDouble(OrderSwap8Bytes(abyData, 264), 264);
         }
 
 
@@ -183,12 +181,14 @@ namespace AdfReader.NewFolder
         private void AIGReadBounds()
         {
             // Open the file dblbnd.adf file.
-            VSILFILE fp = new VSILFILE(Path.Combine(pszCoverName, "dblbnd.adf"));
-            this.dfLLX = fp.ReadDouble();
-            this.dfLLY = fp.ReadDouble();
-            this.dfURX = fp.ReadDouble();
-            this.dfURY = fp.ReadDouble();
-            fp.VSIFCloseL();
+            byte[] readDoubleBuffer = new byte[8];
+            using (FileStream fs = File.OpenRead(Path.Combine(pszCoverName, "dblbnd.adf")))
+            {
+                this.dfLLX = ReadDouble(fs, readDoubleBuffer);
+                this.dfLLY = ReadDouble(fs, readDoubleBuffer);
+                this.dfURX = ReadDouble(fs, readDoubleBuffer);
+                this.dfURY = ReadDouble(fs, readDoubleBuffer);
+            }
         }
 
         /// <summary>
@@ -198,34 +198,34 @@ namespace AdfReader.NewFolder
         public void AIGReadBlockIndex()
         {
             // Open the file hdr.adf file.
-            VSILFILE fp = new VSILFILE(Path.Combine(this.pszCoverName, szBasename + "x.adf"));
-
-            // Verify the magic number.  This is often corrupted by CR/LF translation.
-            Byte[] abyHeader = new Byte[8];
-            fp.ReadByteArray(abyHeader);
-            if (abyHeader[0] != 0x00 || abyHeader[1] != 0x00 || abyHeader[2] != 0x27 || abyHeader[3] != 0x0A || abyHeader[4] != 0xFF || abyHeader[5] != 0xFF)
+            UInt32[] panIndex = null;
+            using (FileStream fs = File.OpenRead(Path.Combine(pszCoverName, szBasename + "x.adf")))
             {
-                fp.VSIFCloseL();
-                throw new InvalidOperationException("w001001x.adf file header magic number is corrupt.");
+                // Verify the magic number.  This is often corrupted by CR/LF translation.
+                byte[] abyHeader = new byte[8];
+                ReadByteArray(fs, abyHeader);
+                if (abyHeader[0] != 0x00 || abyHeader[1] != 0x00 || abyHeader[2] != 0x27 || abyHeader[3] != 0x0A || abyHeader[4] != 0xFF || abyHeader[5] != 0xFF)
+                {
+                    throw new InvalidOperationException("w001001x.adf file header magic number is corrupt.");
+                }
+
+                // Get the file length (in 2 byte shorts)
+                byte[] bufferLen4 = new byte[4];
+                fs.Seek(24, SeekOrigin.Begin);
+                uint nLength = ReadUInt32(fs, bufferLen4) * 2;
+                if (nLength <= 100)
+                {
+                    throw new InvalidOperationException("AIGReadBlockIndex: Bad length");
+                }
+
+                // Allocate buffer, and read the file (from beyond the header)
+                // into the buffer.
+                this.nBlocks = (int)((nLength - 100) / 8);
+                panIndex = new UInt32[2 * this.nBlocks];
+
+                fs.Seek(100, SeekOrigin.Begin);
+                ReadUInt32Array(fs, bufferLen4, panIndex);
             }
-
-            // Get the file length (in 2 byte shorts)
-            fp.Seek(24);
-            uint nLength = fp.ReadUInt32() * 2;
-            if (nLength <= 100)
-            {
-                fp.VSIFCloseL();
-                throw new InvalidOperationException("AIGReadBlockIndex: Bad length");
-            }
-
-            // Allocate buffer, and read the file (from beyond the header)
-            // into the buffer.
-            this.nBlocks = (int)((nLength - 100) / 8);
-            UInt32[] panIndex = new UInt32[2 * this.nBlocks];
-
-            fp.Seek(100);
-            fp.ReadUInt32Array(panIndex);
-            fp.VSIFCloseL();
 
             // Allocate AIGInfo block info arrays.
             this.panBlockOffset = new UInt32[this.nBlocks];
@@ -239,5 +239,108 @@ namespace AdfReader.NewFolder
             }
         }
 
+        internal static void ReadByteArray(FileStream fs, byte[] value)
+        {
+            int len = fs.Read(value, 0, value.Length);
+            if (len != value.Length)
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+        internal static UInt32 ReadUInt32(FileStream fs,
+            byte[] bufferLen4)
+        {
+            if (bufferLen4.Length != 4)
+            {
+                throw new InvalidOperationException();
+            }
+
+            ReadByteArray(fs, bufferLen4);
+            OrderSwap4Bytes(bufferLen4, 0);
+            return BitConverter.ToUInt32(bufferLen4, 0);
+        }
+
+        internal static void ReadUInt32Array(FileStream fs, byte[] bufferLen4, uint[] value)
+        {
+            for (int i = 0; i < value.Length; i++)
+            {
+                value[i] = ReadUInt32(fs, bufferLen4);
+            }
+        }
+
+        internal static double ReadDouble(FileStream fs, byte[] bufferLen8)
+        {
+            if (bufferLen8.Length != 8)
+            {
+                throw new InvalidOperationException();
+            }
+
+            ReadByteArray(fs, bufferLen8);
+            OrderSwap8Bytes(bufferLen8, 0);
+            return BitConverter.ToDouble(bufferLen8, 0);
+        }
+
+        internal static void ReadSingleArray(FileStream fs, float[] data, byte[] bufferLen4xDataLen)
+        {
+            if (bufferLen4xDataLen.Length != data.Length * 4)
+            {
+                throw new ArgumentException("bufferLen4xDataLen");
+            }
+
+            if (fs.Read(bufferLen4xDataLen, 0, bufferLen4xDataLen.Length) != bufferLen4xDataLen.Length)
+            {
+                throw new InvalidOperationException();
+            }
+
+            for (int j = 0; j < data.Length; j++)
+            {
+                byte tmp = bufferLen4xDataLen[j * 4 + 3];
+                bufferLen4xDataLen[j * 4 + 3] = bufferLen4xDataLen[j * 4 + 0];
+                bufferLen4xDataLen[j * 4 + 0] = tmp;
+                tmp = bufferLen4xDataLen[j * 4 + 2];
+                bufferLen4xDataLen[j * 4 + 2] = bufferLen4xDataLen[j * 4 + 1];
+                bufferLen4xDataLen[j * 4 + 1] = tmp;
+                data[j] = BitConverter.ToSingle(bufferLen4xDataLen, j * 4);
+            }
+        }
+
+        internal static int ReadInt16(FileStream fs, byte[] bufferLen2)
+        {
+            if (bufferLen2.Length != 2)
+            {
+                throw new InvalidOperationException();
+            }
+
+            ReadByteArray(fs, bufferLen2);
+            byte tmp = bufferLen2[1];
+            bufferLen2[1] = bufferLen2[0];
+            bufferLen2[0] = tmp;
+            return BitConverter.ToInt16(bufferLen2, 0);
+        }
+
+        internal static byte[] OrderSwap8Bytes(byte[] value, int startIndex)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                byte tmp = value[startIndex + 7 - i];
+                value[startIndex + 7 - i] = value[startIndex + i];
+                value[startIndex + i] = tmp;
+            }
+
+            return value;
+        }
+
+        internal static byte[] OrderSwap4Bytes(byte[] value, int startIndex)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                byte tmp = value[startIndex + 3 - i];
+                value[startIndex + 3 - i] = value[startIndex + i];
+                value[startIndex + i] = tmp;
+            }
+
+            return value;
+        }
     }
 }
