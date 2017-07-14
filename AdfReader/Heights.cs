@@ -4,7 +4,6 @@ using System.IO;
 using System.Net;
 using System.IO.Compression;
 using System.Net.Http;
-using AdfReader.NewFolder;
 using System.Threading;
 
 namespace AdfReader

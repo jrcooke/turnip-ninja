@@ -7,7 +7,7 @@
 using System;
 using System.IO;
 
-namespace AdfReader.NewFolder
+namespace AdfReader
 {
     public class AdfReaderWorker
     {
