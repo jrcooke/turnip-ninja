@@ -22,7 +22,7 @@ namespace AdfReader
 
                 if (true)
                 {
-                    var newONe = AIGInfo_t.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
                     var homeLat = Angle.FromDecimalDegrees(47.684124);
                     var homeLon = Angle.FromDecimalDegrees(-122.292357);
                     ChunkHolder<float> ddd = newONe.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));

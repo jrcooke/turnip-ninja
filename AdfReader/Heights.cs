@@ -222,7 +222,7 @@ namespace AdfReader
                 if (!missing)
                 {
                     //cache[fileName] = ReadDataToChunks(inputFile);
-                    cache[fileName] = AIGInfo_t.GetChunk(new FileInfo(inputFile).Directory.ToString());
+                    cache[fileName] = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
                     Console.WriteLine("Loaded raw " + description + " data to cache: " + fileName);
                 }
                 else
