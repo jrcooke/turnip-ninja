@@ -5,16 +5,15 @@ using System.Linq;
 using System.Net.Http;
 using SkiaSharp;
 using Newtonsoft.Json;
-using System.Threading;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace AdfReader
+namespace MountainView
 {
     public static class Images
     {
         private const int smallBatch = 540; // Number of 1/3 arc seconds per 3 minutes.
-        private const string cachedFileTemplate = "colorCache{0}.v2.data";
+        private const string cachedFileTemplate = "{0}.cdata";
         private const string description = "Colors";
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 

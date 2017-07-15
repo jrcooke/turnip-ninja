@@ -6,12 +6,12 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Threading;
 
-namespace AdfReader
+namespace MountainView
 {
     public static class Heights
     {
         private const int smallBatch = 540; // Number of 1/3 arc seconds per 3 minutes.
-        private const string cachedFileTemplate = "heightCache{0}.v2.adf";
+        private const string cachedFileTemplate = "{0}.hdata";
         private const string description = "Heights";
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 

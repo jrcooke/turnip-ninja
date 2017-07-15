@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace AdfReader
+namespace MountainView
 {
     internal class ConfigurationManager
     {
