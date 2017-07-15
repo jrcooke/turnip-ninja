@@ -16,46 +16,34 @@ namespace AdfReader
             byte[] buffer = new byte[8];
 
             // Read the header file.
-            int nBlocksPerRow, nBlocksPerColumn, nBlockXSize, nBlockYSize, nTileXSize, nTileYSize;
             double dfCellSizeX, dfCellSizeY;
+            int nBlocksPerRow, nBlocksPerColumn, nBlockXSize, nBlockYSize;
             using (FileStream fs = File.OpenRead(Path.Combine(folder, "hdr.adf")))
             {
                 // Read the block size information.
+                dfCellSizeX = ReadDouble(fs, buffer, 256);
+                dfCellSizeY = ReadDouble(fs, buffer, 264);
                 nBlocksPerRow = ReadInt32(fs, buffer, 288);
                 nBlocksPerColumn = ReadInt32(fs, buffer, 292);
                 nBlockXSize = ReadInt32(fs, buffer, 296);
                 nBlockYSize = ReadInt32(fs, buffer, 304);
-                dfCellSizeX = ReadDouble(fs, buffer, 256);
-                dfCellSizeY = ReadDouble(fs, buffer, 264);
-                nTileXSize = nBlockXSize * nBlocksPerRow;
-                nTileYSize = nBlockYSize * nBlocksPerColumn;
             }
 
             // Read the extents.
             double latLo, lonLo, latHi, lonHi;
-            int nPixels, nLines, nTilesPerRow, nTilesPerColumn;
             using (FileStream fs = File.OpenRead(Path.Combine(folder, "dblbnd.adf")))
             {
                 lonLo = ReadDouble(fs, buffer);
                 latLo = ReadDouble(fs, buffer);
                 lonHi = ReadDouble(fs, buffer);
                 latHi = ReadDouble(fs, buffer);
-
-                // Compute the number of pixels and lines, and the number of tile files.
-                nPixels = (int)((lonHi - lonLo + 0.5 * dfCellSizeX) / dfCellSizeX);
-                nLines = (int)((latHi - latLo + 0.5 * dfCellSizeY) / dfCellSizeY);
-                nTilesPerRow = (nPixels - 1) / nTileXSize + 1;
-                nTilesPerColumn = (nLines - 1) / nTileYSize + 1;
             }
 
             // Read the block index file.
             int[] panBlockOffset, panBlockSize;
             using (FileStream fs = File.OpenRead(Path.Combine(folder, "w001001x.adf")))
             {
-                // Get the file length (in 2 byte shorts)
                 int nBlocks = (int)((ReadInt32(fs, buffer, 24) * 2 - 100) / 8);
-
-                // Allocate AIGInfo block info arrays.
                 panBlockOffset = new int[nBlocks];
                 panBlockSize = new int[nBlocks];
                 fs.Seek(100, SeekOrigin.Begin);
@@ -65,6 +53,10 @@ namespace AdfReader
                     panBlockSize[i] = ReadInt32(fs, buffer) * 2;
                 }
             }
+
+            // Compute the number of pixels and lines, and the number of tile files.
+            int nPixels = (int)((lonHi - lonLo + 0.5 * dfCellSizeX) / dfCellSizeX);
+            int nLines = (int)((latHi - latLo + 0.5 * dfCellSizeY) / dfCellSizeY);
 
             // Open the file w001001.adf file itself.
             ChunkHolder<float> output = null;
