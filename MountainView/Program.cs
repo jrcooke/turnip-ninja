@@ -24,23 +24,24 @@ namespace MountainView
                     var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
                     var homeLat = Angle.FromDecimalDegrees(47.684124);
                     var homeLon = Angle.FromDecimalDegrees(-122.292357);
-                    ChunkHolder<float> ddd = newONe.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));
+                    ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
+                        Angle.FromMinutes(20), Angle.FromMinutes(20),
+                        Angle.FromThirds(20), Angle.FromThirds(20));
 
-                    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 12).Result;
-                    ChunkHolder<SKColor> ddd2 = tttt.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));
+                    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 10).Result;
+                    ChunkHolder<SKColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
+                        Angle.FromMinutes(20), Angle.FromMinutes(20),
+                        Angle.FromThirds(20), Angle.FromThirds(20));
 
                     Utils.WriteImageFile(
                         ddd2,
                         Path.Combine(outputFolder, "ddd2.png"),
-                        (a) => a);
+                        a => a);
 
                     Utils.WriteImageFile(
                         ddd,
                         Path.Combine(outputFolder, "ddd.png"),
-                        (a) => new SKColor(
-                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                        a => Utils.GetColorForHeight(a));
 
                     //var reducedRaw = newONe.Data
                     //    .Select((p, i) => i % 10 == 0 ? p : null)
@@ -57,10 +58,7 @@ namespace MountainView
                     //Utils.WriteImageFile(
                     //    reduced,
                     //    Path.Combine(outputFolder, "NewFull.png"),
-                    //    (a) => new SKColor(
-                    //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                    //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                    //        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                    //    a => Utils.GetColorForHeight(a));
 
 
 
@@ -123,16 +121,13 @@ namespace MountainView
                         Utils.WriteImageFile(
                             pixels2,
                             Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),
-                            (a) => new SKColor(
-                                (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                                (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                                (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                            a => Utils.GetColorForHeight(a));
 
                         var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
                         Utils.WriteImageFile(
                             pixels,
                             Path.Combine(outputFolder, "ChunkC" + zoomLevel + ".png"),
-                            (a) => a);
+                            a => a);
                     }
                 }
 
@@ -150,10 +145,7 @@ namespace MountainView
                 ////    reduced2.Select((p, i) => new Tuple<int, float[]>(i, p)),
                 ////    reduced2.Length, reduced2[0].Length,
                 ////    Path.Combine(outputFolder, "OldFull.png"),
-                ////    (a) => new SKColor(
-                ////        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                ////        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                ////        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                ////    a => Utils.GetColorForHeight(a));
 
                 //data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
                 //var heights = data;
@@ -161,10 +153,7 @@ namespace MountainView
                 //    heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
                 //    heights.Length, heights[0].Length,
                 //    Path.Combine(outputFolder, "test2.png"),
-                //    (a) => new SKColor(
-                //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 20.000) + 1.0) * 128.0),
-                //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0)));
+                //    a => Utils.GetColorForHeight(a));
 
 
                 var bothData = GetPolarData(

@@ -81,14 +81,14 @@ namespace MountainView
         internal static int Divide(Angle a, Angle b)
         {
             var remainder = a.TotalThirds % b.TotalThirds;
-            Debug.WriteLine(remainder);
+    //        Debug.WriteLine(remainder);
             return a.TotalThirds / b.TotalThirds;
         }
 
         internal static Angle Divide(Angle a, int b)
         {
             var remainder = a.TotalThirds % b;
-            Debug.WriteLine(remainder);
+      //      Debug.WriteLine(remainder);
             return Angle.FromThirds(a.TotalThirds / b);
         }
 

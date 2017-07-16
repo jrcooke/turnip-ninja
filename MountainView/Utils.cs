@@ -61,6 +61,14 @@ namespace MountainView
             return ret;
         }
 
+        internal static SKColor GetColorForHeight(float a)
+        {
+            return new SKColor(
+                (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
+        }
+
         internal static U[][] Apply<T, U>(T[][] items, Func<T, U> map)
         {
             var ret = new U[items.Length][];
