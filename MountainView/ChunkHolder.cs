@@ -18,6 +18,8 @@ namespace MountainView
 
         public ChunkHolder(int width, int height, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null)
         {
+            this.Width = width;
+            this.Height = height;
             this.LatLo = latLo;
             this.LonLo = lonLo;
             this.LatHi = latHi;
@@ -26,8 +28,6 @@ namespace MountainView
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
             this.PixelSizeLat = Angle.Divide(LatDelta, Width);
             this.PixelSizeLon = Angle.Divide(LonDelta, Height);
-            this.Width = width;
-            this.Height = height;
             this.Data = new T[this.Width][];
             for (int i = 0; i < this.Width; i++)
             {
@@ -50,19 +50,13 @@ namespace MountainView
             ChunkHolder<T> subChunk = new ChunkHolder<T>(
                 Angle.Divide(deltaLat, pixelSizeLat),
                 Angle.Divide(deltaLon, pixelSizeLon),
-                Angle.Add(lat, Angle.Divide(Angle.Multiply(deltaLat, -1), 2)),
-                Angle.Add(lon, Angle.Divide(Angle.Multiply(deltaLon, -1), 2)),
-                Angle.Add(lat, Angle.Divide(deltaLat, 2)),
-                Angle.Add(lon, Angle.Divide(deltaLon, 2)));
+                Angle.Add(lat, Angle.Divide(deltaLat, -2)), Angle.Add(lon, Angle.Divide(deltaLon, -2)),
+                Angle.Add(lat, Angle.Divide(deltaLat, +2)), Angle.Add(lon, Angle.Divide(deltaLon, +2)));
 
-            //int[][] subChunk2 = new int[width][];
-            //for (int i = 0; i < width; i++)
-            //{
-            //    subChunk2[i] = new int[height];
-            //}
-
+            int[][] subChunk2 = new int[subChunk.Width][];
             for (int i = 0; i < subChunk.Width; i++)
             {
+                subChunk2[i] = new int[subChunk.Height];
                 int iPrime = this.GetLatIndex(subChunk.GetLat(i));
                 if (iPrime >= 0 && iPrime < this.Width)
                 {
