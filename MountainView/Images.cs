@@ -150,7 +150,6 @@ namespace MountainView
         private const string imageCacheTemplate = "image{0}_{1}_{2}.png";
         private const string metadCacheTemplate = "image{0}_{1}_{2}.meta";
         private const int footerHeight = 25;
-        private const double baseScale = 156543.04;
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 

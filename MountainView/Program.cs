@@ -26,6 +26,14 @@ namespace MountainView
                     var homeLon = Angle.FromDecimalDegrees(-122.292357);
                     ChunkHolder<float> ddd = newONe.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));
 
+                    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 12).Result;
+                    ChunkHolder<SKColor> ddd2 = tttt.GetSubChunk(homeLat, homeLon, Angle.FromMinutes(2), Angle.FromMinutes(2));
+
+                    Utils.WriteImageFile(
+                        ddd2,
+                        Path.Combine(outputFolder, "ddd2.png"),
+                        (a) => a);
+
                     Utils.WriteImageFile(
                         ddd,
                         Path.Combine(outputFolder, "ddd.png"),
@@ -34,25 +42,28 @@ namespace MountainView
                             (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
                             (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
 
-                    var reducedRaw = newONe.Data
-                        .Select((p, i) => i % 10 == 0 ? p : null)
-                        .Where(p => p != null)
-                        .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
-                            .Where(q => !float.IsNaN(q))
-                            .ToArray())
-                        .ToArray();
-                    ChunkHolder<float> reduced = new ChunkHolder<float>(
-                        reducedRaw,
-                        newONe.LatLo, newONe.LonLo,
-                        newONe.LatHi, newONe.LatHi);
+                    //var reducedRaw = newONe.Data
+                    //    .Select((p, i) => i % 10 == 0 ? p : null)
+                    //    .Where(p => p != null)
+                    //    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
+                    //        .Where(q => !float.IsNaN(q))
+                    //        .ToArray())
+                    //    .ToArray();
+                    //ChunkHolder<float> reduced = new ChunkHolder<float>(
+                    //    reducedRaw,
+                    //    newONe.LatLo, newONe.LonLo,
+                    //    newONe.LatHi, newONe.LatHi);
 
-                    Utils.WriteImageFile(
-                        reduced,
-                        Path.Combine(outputFolder, "NewFull.png"),
-                        (a) => new SKColor(
-                            (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                            (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+                    //Utils.WriteImageFile(
+                    //    reduced,
+                    //    Path.Combine(outputFolder, "NewFull.png"),
+                    //    (a) => new SKColor(
+                    //        (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                    //        (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                    //        (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0)));
+
+
+
                 }
 
                 //// Home
