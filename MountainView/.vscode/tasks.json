@@ -7,7 +7,7 @@
         {
             "taskName": "build",
             "args": [
-                "${workspaceRoot}/AdfReader.csproj"
+                "${workspaceRoot}/MountainView.csproj"
             ],
             "isBuildCommand": true,
             "problemMatcher": "$msCompile"

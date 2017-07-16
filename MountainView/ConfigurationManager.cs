@@ -1,24 +1,20 @@
+using System;
 using Microsoft.Extensions.Configuration;
 
 namespace MountainView
 {
     internal class ConfigurationManager
     {
-        private static IConfigurationRoot configuration;
+        private static Lazy<IConfigurationRoot> configuration = new Lazy<IConfigurationRoot>(() =>
+        {
+            return new ConfigurationBuilder()
+                .AddJsonFile("app.config.json", optional: true)
+                .Build();
+        });
 
         public static IConfigurationRoot AppSettings
         {
-            get
-            {
-                if (configuration == null)
-                {
-                    configuration = new ConfigurationBuilder()
-                        .AddJsonFile("app.config.json", optional: true)
-                        .Build();
-                }
-
-                return configuration;
-            }
+            get { return configuration.Value; }
         }
     }
 }
