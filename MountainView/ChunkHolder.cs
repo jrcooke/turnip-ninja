@@ -18,8 +18,6 @@ namespace MountainView
 
         public ChunkHolder(int width, int height, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null)
         {
-            this.Width = width;
-            this.Height = height;
             this.LatLo = latLo;
             this.LonLo = lonLo;
             this.LatHi = latHi;
@@ -28,63 +26,21 @@ namespace MountainView
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
             this.PixelSizeLat = Angle.Divide(LatDelta, Width);
             this.PixelSizeLon = Angle.Divide(LonDelta, Height);
-            Data = new T[Width][];
-            for (int i = 0; i < Width; i++)
+            this.Width = width;
+            this.Height = height;
+            this.Data = new T[this.Width][];
+            for (int i = 0; i < this.Width; i++)
             {
-                Data[i] = new T[Height];
+                this.Data[i] = new T[this.Height];
                 if (pixelGetter != null)
                 {
-                    for (int j = 0; j < Height; j++)
+                    for (int j = 0; j < this.Height; j++)
                     {
-                        Data[i][j] = pixelGetter(i, j);
+                        this.Data[i][j] = pixelGetter(i, j);
                     }
                 }
             }
         }
-
-        public ChunkHolder(T[][] data, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
-        {
-            this.Width = data.Length;
-            this.Height = data[0].Length;
-            this.LatLo = latLo;
-            this.LonLo = lonLo;
-            this.LatHi = latHi;
-            this.LonHi = lonHi;
-            this.LatDelta = Angle.Subtract(LatHi, LatLo);
-            this.LonDelta = Angle.Subtract(LonHi, LonLo);
-            this.PixelSizeLat = Angle.Divide(LatDelta, Width);
-            this.PixelSizeLon = Angle.Divide(LonDelta, Height);
-            this.Data = data;
-        }
-
-        //internal ChunkHolder<T> GetSubChunk(Angle lat, Angle lon, Angle deltaLat, Angle deltaLon)
-        //{
-        //    var lowerLatIndex = GetLatIndex(Angle.Add(lat, Angle.Divide(Angle.Multiply(deltaLat, -1), 2)));
-        //    var lowerLonIndex = GetLonIndex(Angle.Add(lon, Angle.Divide(Angle.Multiply(deltaLon, -1), 2)));
-        //    var upperLatIndex = GetLatIndex(Angle.Add(lat, Angle.Divide(deltaLat, 2)));
-        //    var upperLonIndex = GetLonIndex(Angle.Add(lon, Angle.Divide(deltaLon, 2)));
-        //    ChunkHolder<T> subChunk = new ChunkHolder<T>(
-        //        upperLatIndex - lowerLatIndex,
-        //        upperLonIndex - lowerLonIndex,
-        //        GetLat(lowerLatIndex), GetLon(lowerLonIndex),
-        //        GetLat(upperLatIndex), GetLon(upperLonIndex));
-        //    for (int i = lowerLatIndex; i < upperLatIndex; i++)
-        //    {
-        //        for (int j = lowerLonIndex; j < upperLonIndex; j++)
-        //        {
-        //            if (i > Width || i < 0 || j < 0 || j > Height)
-        //            {
-        //                subChunk.Data[i - lowerLatIndex][upperLonIndex - 1 - j] = default(T);
-        //            }
-        //            else
-        //            {
-        //                subChunk.Data[i - lowerLatIndex][upperLonIndex - 1 - j] = Data[i][Height - 1 - j];
-        //            }
-        //        }
-        //    }
-
-        //    return subChunk;
-        //}
 
         internal ChunkHolder<T> RenderSubChunk(
             Angle lat, Angle lon,
