@@ -49,7 +49,7 @@ namespace MountainView
             int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch * 60 / size));
             int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch * 60 / size));
 
-            if (targetLat >= 0 && targetLat < chunk.Width && targetLon >= 0 && targetLon < chunk.Height)
+            if (targetLat >= 0 && targetLat < chunk.LatSteps && targetLon >= 0 && targetLon < chunk.LonSteps)
             {
                 return chunk.Data[targetLat][targetLon];
             }
@@ -140,15 +140,15 @@ namespace MountainView
         {
             using (FileStream stream = File.OpenWrite(fullName))
             {
-                stream.Write(BitConverter.GetBytes(ret.Width), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.Height), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
+                stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LatLo.TotalSeconds), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LonLo.TotalSeconds), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LatHi.TotalSeconds), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LonHi.TotalSeconds), 0, 4);
-                for (int i = 0; i < ret.Width; i++)
+                for (int i = 0; i < ret.LatSteps; i++)
                 {
-                    for (int j = 0; j < ret.Height; j++)
+                    for (int j = 0; j < ret.LonSteps; j++)
                     {
                         writeElement(ret.Data[i][j], stream);
                     }

@@ -69,6 +69,26 @@ namespace MountainView
                 (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
         }
 
+        public static SKColor WeightedColorAverage(int prevAveraged, SKColor prevAverage, SKColor toAdd)
+        {
+            if (prevAveraged == 0)
+            {
+                return toAdd;
+            }
+            else
+            {
+                return new SKColor(
+                    (byte)((prevAverage.Red * prevAveraged + toAdd.Red) / (prevAveraged + 1)),
+                    (byte)((prevAverage.Green * prevAveraged + toAdd.Green) / (prevAveraged + 1)),
+                    (byte)((prevAverage.Blue * prevAveraged + toAdd.Blue) / (prevAveraged + 1)));
+            }
+        }
+
+        public static float WeightedFloatAverage(int prevAveraged, float prevAverage, float toAdd)
+        {
+            return prevAveraged == 0 ? toAdd : (prevAverage * prevAveraged + toAdd) / (prevAveraged + 1);
+        }
+
         internal static U[][] Apply<T, U>(T[][] items, Func<T, U> map)
         {
             var ret = new U[items.Length][];
@@ -121,14 +141,14 @@ namespace MountainView
             string fileName,
             Func<T, SKColor> transform)
         {
-            using (DirectBitmap bm = new DirectBitmap(colorBuff.Width, colorBuff.Height))
+            using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
             {
-                for (int i = 0; i < colorBuff.Width; i++)
+                for (int i = 0; i < colorBuff.LatSteps; i++)
                 {
                     var col = colorBuff.Data[i];
-                    for (int j = 0; j < colorBuff.Height; j++)
+                    for (int j = 0; j < colorBuff.LonSteps; j++)
                     {
-                        bm.SetPixel(i, j, transform(col[colorBuff.Height - 1 - j]));
+                        bm.SetPixel(j, i, transform(col[colorBuff.LonSteps - 1 - j]));
                     }
                 }
 
@@ -136,7 +156,6 @@ namespace MountainView
                 bm.WriteFile(fileName);
             }
         }
-
 
         public static void WriteImageFile<T>(
             IEnumerable<T[]> colorBuff,

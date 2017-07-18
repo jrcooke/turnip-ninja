@@ -14,63 +14,31 @@ namespace MountainView
         {
             try
             {
-
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-
-                //float[][] newONe = AiTest.Test(@"C:\Users\jrcoo\Desktop\Map\n43w077\grdn43w077_13");
-
                 if (true)
                 {
-                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
                     var homeLat = Angle.FromDecimalDegrees(47.684124);
                     var homeLon = Angle.FromDecimalDegrees(-122.292357);
+
+                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    // Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
                     ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
-                        Angle.FromMinutes(20), Angle.FromMinutes(20),
-                        Angle.FromThirds(20), Angle.FromThirds(20));
+                        Angle.FromMinutes(2), Angle.FromMinutes(2),
+                        Angle.FromThirds(20), Angle.FromThirds(20),
+                        Utils.WeightedFloatAverage);
+                    Utils.WriteImageFile(ddd, Path.Combine(outputFolder, "ddd.png"), a => Utils.GetColorForHeight(a));
 
-                    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 10).Result;
+                    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 13).Result;
                     ChunkHolder<SKColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
-                        Angle.FromMinutes(20), Angle.FromMinutes(20),
-                        Angle.FromThirds(20), Angle.FromThirds(20));
-
-                    Utils.WriteImageFile(
-                        ddd2,
-                        Path.Combine(outputFolder, "ddd2.png"),
-                        a => a);
-
-                    Utils.WriteImageFile(
-                        ddd,
-                        Path.Combine(outputFolder, "ddd.png"),
-                        a => Utils.GetColorForHeight(a));
-
-                    //var reducedRaw = newONe.Data
-                    //    .Select((p, i) => i % 10 == 0 ? p : null)
-                    //    .Where(p => p != null)
-                    //    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
-                    //        .Where(q => !float.IsNaN(q))
-                    //        .ToArray())
-                    //    .ToArray();
-                    //ChunkHolder<float> reduced = new ChunkHolder<float>(
-                    //    reducedRaw,
-                    //    newONe.LatLo, newONe.LonLo,
-                    //    newONe.LatHi, newONe.LatHi);
-
-                    //Utils.WriteImageFile(
-                    //    reduced,
-                    //    Path.Combine(outputFolder, "NewFull.png"),
-                    //    a => Utils.GetColorForHeight(a));
-
-
-
+                        Angle.FromMinutes(2), Angle.FromMinutes(2),
+                        Angle.FromThirds(20), Angle.FromThirds(20),
+                        Utils.WeightedColorAverage);
+                    Utils.WriteImageFile(tttt, Path.Combine(outputFolder, "tttt.png"), a => a);
+                    Utils.WriteImageFile(ddd2, Path.Combine(outputFolder, "ddd2.png"), a => a);
                 }
-
-                //// Home
-                //double lat = 47.684124;
-                //double lon = -122.292357;
 
                 // Near Juanteta
                 Config c = new Config();
-
                 c = new Config()
                 {
                     Lat = Angle.FromDecimalDegrees(47.695736),
@@ -101,20 +69,6 @@ namespace MountainView
 
                 if (true)
                 {
-                    // test
-                    //c = new Config()
-                    //{
-                    //    Lat = 42.5,
-                    //    Lon = -76.5,
-                    //    R = 5000,
-                    //    DeltaR = 1,
-                    //    MinAngle = 0,
-                    //    MaxAngle = 360,
-                    //    ElevationViewMin = -65.0,
-                    //    ElevationViewMax = 15.0,
-                    //    AngularResolution = 0.05,
-                    //};
-
                     for (int zoomLevel = 10; zoomLevel <= 14; zoomLevel++)
                     {
                         var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
@@ -130,31 +84,6 @@ namespace MountainView
                             a => a);
                     }
                 }
-
-                ////var data = RawChunks.GetRawHeightsInMeters((int)c.Lat, (int)c.Lon);
-
-                ////var reduced2 = data
-                ////    .Select((p, i) => i % 10 == 0 ? p : null)
-                ////    .Where(p => p != null)
-                ////    .Select(p => p.Select((q, i) => i % 10 == 0 ? q : float.NaN)
-                ////        .Where(q => !float.IsNaN(q))
-                ////        .ToArray())
-                ////    .ToArray();
-
-                ////Utils.WriteImageFile(
-                ////    reduced2.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                ////    reduced2.Length, reduced2[0].Length,
-                ////    Path.Combine(outputFolder, "OldFull.png"),
-                ////    a => Utils.GetColorForHeight(a));
-
-                //data = data.Take(n).Select(p => p.Skip(p.Length - n).ToArray()).ToArray();
-                //var heights = data;
-                //Utils.WriteImageFile(
-                //    heights.Select((p, i) => new Tuple<int, float[]>(i, p)),
-                //    heights.Length, heights[0].Length,
-                //    Path.Combine(outputFolder, "test2.png"),
-                //    a => Utils.GetColorForHeight(a));
-
 
                 var bothData = GetPolarData(
                     c.Lat, c.Lon,

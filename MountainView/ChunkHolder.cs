@@ -5,8 +5,8 @@ namespace MountainView
     public class ChunkHolder<T>
     {
         public T[][] Data { get; private set; }
-        public int Width { get; private set; }
-        public int Height { get; private set; }
+        public int LatSteps { get; private set; }
+        public int LonSteps { get; private set; }
         public Angle LatLo { get; private set; }
         public Angle LonLo { get; private set; }
         public Angle LatHi { get; private set; }
@@ -16,25 +16,25 @@ namespace MountainView
         public Angle PixelSizeLat { get; private set; }
         public Angle PixelSizeLon { get; private set; }
 
-        public ChunkHolder(int width, int height, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null)
+        public ChunkHolder(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null)
         {
-            this.Width = width;
-            this.Height = height;
+            this.LatSteps = latSteps;
+            this.LonSteps = lonSteps;
             this.LatLo = latLo;
             this.LonLo = lonLo;
             this.LatHi = latHi;
             this.LonHi = lonHi;
             this.LatDelta = Angle.Subtract(LatHi, LatLo);
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
-            this.PixelSizeLat = Angle.Divide(LatDelta, Width);
-            this.PixelSizeLon = Angle.Divide(LonDelta, Height);
-            this.Data = new T[this.Width][];
-            for (int i = 0; i < this.Width; i++)
+            this.PixelSizeLat = Angle.Divide(LatDelta, LatSteps);
+            this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps);
+            this.Data = new T[this.LatSteps][];
+            for (int i = 0; i < this.LatSteps; i++)
             {
-                this.Data[i] = new T[this.Height];
+                this.Data[i] = new T[this.LonSteps];
                 if (pixelGetter != null)
                 {
-                    for (int j = 0; j < this.Height; j++)
+                    for (int j = 0; j < this.LonSteps; j++)
                     {
                         this.Data[i][j] = pixelGetter(i, j);
                     }
@@ -45,27 +45,59 @@ namespace MountainView
         internal ChunkHolder<T> RenderSubChunk(
             Angle lat, Angle lon,
             Angle deltaLat, Angle deltaLon,
-            Angle pixelSizeLat, Angle pixelSizeLon)
+            Angle pixelSizeLat, Angle pixelSizeLon,
+            Func<int, T, T, T> aggregate = null)
         {
+            if (aggregate == null)
+            {
+                aggregate = (i, a, b) => b;
+            }
+
             ChunkHolder<T> subChunk = new ChunkHolder<T>(
                 Angle.Divide(deltaLat, pixelSizeLat),
                 Angle.Divide(deltaLon, pixelSizeLon),
                 Angle.Add(lat, Angle.Divide(deltaLat, -2)), Angle.Add(lon, Angle.Divide(deltaLon, -2)),
                 Angle.Add(lat, Angle.Divide(deltaLat, +2)), Angle.Add(lon, Angle.Divide(deltaLon, +2)));
 
-            int[][] subChunk2 = new int[subChunk.Width][];
-            for (int i = 0; i < subChunk.Width; i++)
+            Console.WriteLine("Source pixel size:" + this.PixelSizeLat.ToLatString() + ", " + this.PixelSizeLon.ToLonString());
+            Console.WriteLine("Dest   pixel size:" + subChunk.PixelSizeLat.ToLatString() + ", " + subChunk.PixelSizeLon.ToLonString());
+
+            if (this.PixelSizeLat.DecimalDegree < subChunk.PixelSizeLat.DecimalDegree &&
+                this.PixelSizeLon.DecimalDegree < subChunk.PixelSizeLon.DecimalDegree)
             {
-                subChunk2[i] = new int[subChunk.Height];
+                Console.WriteLine("Will need to aggregate");
+            }
+            else if (this.PixelSizeLat.DecimalDegree > subChunk.PixelSizeLat.DecimalDegree &&
+                 this.PixelSizeLon.DecimalDegree > subChunk.PixelSizeLon.DecimalDegree)
+            {
+                Console.WriteLine("Will need to interpolate");
+            }
+
+            int[][] subChunk2 = new int[subChunk.LatSteps][];
+            for (int i = 0; i < subChunk.LatSteps; i++)
+            {
+                subChunk2[i] = new int[subChunk.LonSteps];
                 int iPrime = this.GetLatIndex(subChunk.GetLat(i));
-                if (iPrime >= 0 && iPrime < this.Width)
+                if (iPrime >= 0 && iPrime < this.LatSteps)
                 {
-                    for (int j = 0; j < subChunk.Height; j++)
+                    for (int j = 0; j < subChunk.LonSteps; j++)
                     {
-                        int jPrime = this.GetLonIndex(subChunk.GetLon(j));
-                        if (jPrime >= 0 && jPrime < this.Height)
+                        int jPrime = this.LonSteps - 1 - this.GetLonIndex(subChunk.GetLon(subChunk.LonSteps - 1 - j));
+                        if (jPrime >= 0 && jPrime < this.LonSteps)
                         {
-                            subChunk.Data[i][subChunk.Height - 1 - j] = this.Data[iPrime][this.Height - 1 - jPrime];
+                            if (subChunk2[i][j] > 0)
+                            {
+                                subChunk.Data[i][j] = aggregate(
+                                    subChunk2[i][j],
+                                    subChunk.Data[i][j],
+                                    this.Data[iPrime][jPrime]);
+                            }
+                            else
+                            {
+                                subChunk.Data[i][j] = this.Data[iPrime][jPrime];
+                            }
+
+                            subChunk2[i][j]++;
                         }
                     }
                 }
@@ -76,12 +108,12 @@ namespace MountainView
 
         public Angle GetLat(int i)
         {
-            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), Width));
+            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps));
         }
 
         public Angle GetLon(int j)
         {
-            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), Height));
+            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), LonSteps));
         }
 
         public int GetLatIndex(Angle lat)

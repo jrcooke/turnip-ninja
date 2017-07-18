@@ -22,13 +22,12 @@ namespace MountainView
             // Need to figure out which chunks to load.
             string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat.ToLatString(), lon.ToLonString(), zoomLevel));
             string metadFile = Path.Combine(rootMapFolder, string.Format(metadCacheTemplate, lat.ToLatString(), lon.ToLonString(), zoomLevel));
-            Uri inputUrl = new Uri(string.Format(imageUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
-            Uri metadUrl = new Uri(string.Format(metadUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
-
             if (!File.Exists(metadFile))
             {
                 using (HttpClient client = new HttpClient())
                 {
+                    Uri inputUrl = new Uri(string.Format(imageUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
+                    Uri metadUrl = new Uri(string.Format(metadUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
                     HttpResponseMessage message = await client.GetAsync(inputUrl);
                     var content = await message.Content.ReadAsByteArrayAsync();
                     File.WriteAllBytes(inputFile, content);
@@ -38,19 +37,21 @@ namespace MountainView
                 }
             }
 
-            var jObject = JObject.Parse(File.ReadAllText(metadFile));
+            JObject jObject = JObject.Parse(File.ReadAllText(metadFile));
             double[] bbox = jObject["resourceSets"].First["resources"].First["bbox"].ToObject<double[]>();
-
-            ChunkHolder <SKColor> ret = null;
+            Angle latLo = Angle.FromDecimalDegrees(bbox[0]);
+            Angle lonLo = Angle.FromDecimalDegrees(bbox[1]);
+            Angle latHi = Angle.FromDecimalDegrees(bbox[2]);
+            Angle lonHi = Angle.FromDecimalDegrees(bbox[3]);
             using (SKBitmap bm = SKBitmap.Decode(inputFile))
             {
-                ret = new ChunkHolder<SKColor>(bm.Width, bm.Height - footerHeight,
-                    Angle.FromDecimalDegrees(bbox[0]), Angle.FromDecimalDegrees(bbox[1]),
-                    Angle.FromDecimalDegrees(bbox[2]), Angle.FromDecimalDegrees(bbox[3]),
-                    (i, j) => bm.GetPixel(i, j));
+                Angle footerSize = Angle.Divide(Angle.Multiply(Angle.Subtract(latHi, latLo), footerHeight), bm.Height);
+                Angle adjustedlatLo = Angle.Add(latLo, footerSize);
+                return new ChunkHolder<SKColor>(bm.Height - footerHeight, bm.Width,
+                    adjustedlatLo, lonLo,
+                    latHi, lonHi,
+                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - footerHeight - 1 - i));
             }
-
-            return ret;
         }
     }
 }

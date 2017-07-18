@@ -62,7 +62,7 @@ namespace MountainView
             ChunkHolder<float> output = null;
             using (FileStream fs = File.OpenRead(Path.Combine(folder, "w001001.adf")))
             {
-                output = new ChunkHolder<float>(nPixels, nLines,
+                output = new ChunkHolder<float>(nLines,nPixels,
                     Angle.FromDecimalDegrees(latLo),
                     Angle.FromDecimalDegrees(lonLo),
                     Angle.FromDecimalDegrees(latHi),
@@ -88,11 +88,11 @@ namespace MountainView
 
                     int tileOffsetX = (nBlock % nBlocksPerRow) * nBlockXSize;
                     int tileOffsetY = (nBlock / nBlocksPerRow) * nBlockYSize;
-                    for (int i = 0; i < nBlockXSize && i < output.Width - tileOffsetX; i++)
+                    for (int j = 0; j < nBlockYSize && j < output.LonSteps - tileOffsetY; j++)
                     {
-                        for (int j = 0; j < nBlockYSize && j < output.Height - tileOffsetY; j++)
+                        for (int i = 0; i < nBlockXSize && i < output.LatSteps - tileOffsetX; i++)
                         {
-                            output.Data[i + tileOffsetX][j + tileOffsetY] = panRaster[i + j * nBlockXSize];
+                            output.Data[nLines - 1 - j - tileOffsetY][nPixels - 1 - i - tileOffsetX] = panRaster[i + j * nBlockXSize];
                         }
                     }
                 }
