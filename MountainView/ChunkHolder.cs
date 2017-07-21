@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MountainView
 {
-    public class ChunkHolder<T>
+    public class ChunkMetadata
     {
-        public T[][] Data { get; private set; }
         public int LatSteps { get; private set; }
         public int LonSteps { get; private set; }
         public Angle LatLo { get; private set; }
@@ -16,7 +16,7 @@ namespace MountainView
         public Angle PixelSizeLat { get; private set; }
         public Angle PixelSizeLon { get; private set; }
 
-        public ChunkHolder(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null)
+        public ChunkMetadata(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
         {
             this.LatSteps = latSteps;
             this.LonSteps = lonSteps;
@@ -28,6 +28,36 @@ namespace MountainView
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
             this.PixelSizeLat = Angle.Divide(LatDelta, LatSteps);
             this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps);
+        }
+
+        public Angle GetLat(int i)
+        {
+            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps));
+        }
+
+        public Angle GetLon(int j)
+        {
+            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), LonSteps));
+        }
+
+        public int GetLatIndex(Angle lat)
+        {
+            var curLatDelta = Angle.Subtract(lat, LatLo);
+            return Angle.Divide(curLatDelta, PixelSizeLat);
+        }
+
+        public int GetLonIndex(Angle lon)
+        {
+            var curLonDelta = Angle.Subtract(lon, LonLo);
+            return Angle.Divide(curLonDelta, PixelSizeLon);
+        }
+    }
+    public class ChunkHolder<T> : ChunkMetadata
+    {
+        public T[][] Data { get; private set; }
+
+        public ChunkHolder(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null) : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
+        {
             this.Data = new T[this.LatSteps][];
             for (int i = 0; i < this.LatSteps; i++)
             {
@@ -106,26 +136,56 @@ namespace MountainView
             return subChunk;
         }
 
-        public Angle GetLat(int i)
+
+        internal static void RenderChunksInto(
+            IEnumerable<ChunkHolder<T>> chunks,
+            ChunkHolder<T> target,
+            Func<int, T, T, T> aggregate = null)
         {
-            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps));
+            if (aggregate == null)
+            {
+                aggregate = (i, a, b) => b;
+            }
+
+            ChunkHolder<T> subChunk = target;
+
+            int[][] subChunk2 = new int[subChunk.LatSteps][];
+            for (int i = 0; i < subChunk.LatSteps; i++)
+            {
+                subChunk2[i] = new int[subChunk.LonSteps];
+            }
+
+            foreach(var chunk in chunks)
+            {
+                for (int i = 0; i < subChunk.LatSteps; i++)
+                {
+                    int iPrime = chunk.GetLatIndex(subChunk.GetLat(i));
+                    if (iPrime >= 0 && iPrime < chunk.LatSteps)
+                    {
+                        for (int j = 0; j < subChunk.LonSteps; j++)
+                        {
+                            int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(subChunk.GetLon(subChunk.LonSteps - 1 - j));
+                            if (jPrime >= 0 && jPrime < chunk.LonSteps)
+                            {
+                                if (subChunk2[i][j] > 0)
+                                {
+                                    subChunk.Data[i][j] = aggregate(
+                                        subChunk2[i][j],
+                                        subChunk.Data[i][j],
+                                        chunk.Data[iPrime][jPrime]);
+                                }
+                                else
+                                {
+                                    subChunk.Data[i][j] = chunk.Data[iPrime][jPrime];
+                                }
+
+                                subChunk2[i][j]++;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        public Angle GetLon(int j)
-        {
-            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), LonSteps));
-        }
-
-        public int GetLatIndex(Angle lat)
-        {
-            var curLatDelta = Angle.Subtract(lat, LatLo);
-            return Angle.Divide(curLatDelta, PixelSizeLat);
-        }
-
-        public int GetLonIndex(Angle lon)
-        {
-            var curLonDelta = Angle.Subtract(lon, LonLo);
-            return Angle.Divide(curLonDelta, PixelSizeLon);
-        }
     }
 }

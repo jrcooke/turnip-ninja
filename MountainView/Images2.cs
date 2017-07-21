@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using SkiaSharp;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -16,6 +17,44 @@ namespace MountainView
         private const int footerHeight = 25;
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
+
+        public static async Task<ChunkHolder<SKColor>> GenerateData(Angle lat, Angle lon, int zoomLevel)
+        {
+            ChunkMetadata template = StandardChunkScheme.GetRangeContaingPoint(lat, lon, zoomLevel);
+            ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
+                template.LatSteps, template.LonSteps,
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi);
+
+            // Need to get the images that optimally fill this chunk.
+            // Start by picking a chunk in the center at the same zoom level.
+
+            var tmp = await ImageWorker2.GetColors(
+                Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2)),
+                Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2)), zoomLevel + 2);
+
+            var chunks = new List<ChunkHolder<SKColor>>();
+            chunks.Add(tmp);
+            ChunkHolder<SKColor>.RenderChunksInto(chunks, ret);
+
+            //for (int i = 0; i <= smallBatch; i++)
+            //{
+            //    for (int j = 0; j <= smallBatch; j++)
+            //    {
+            //        if (ret2[i][j] != null)
+            //        {
+            //            byte r = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Red);
+            //            byte g = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Green);
+            //            byte b = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Blue);
+            //            ret.Data[i][j] = new SKColor(r, g, b);
+            //        }
+            //    }
+            //}
+
+            return ret;
+        }
+
+
 
         public static async Task<ChunkHolder<SKColor>> GetColors(Angle lat, Angle lon, int zoomLevel)
         {

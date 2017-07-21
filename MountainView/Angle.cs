@@ -39,7 +39,7 @@ namespace MountainView
         {
             bool isNeg = totalThirds < 0;
             int abs = isNeg ? -totalThirds : totalThirds;
-            var ret= new Angle()
+            var ret = new Angle()
             {
                 IsNegative = isNeg,
                 Thirds = abs % 60,
@@ -81,14 +81,14 @@ namespace MountainView
         internal static int Divide(Angle a, Angle b)
         {
             var remainder = a.TotalThirds % b.TotalThirds;
-    //        Debug.WriteLine(remainder);
-            return a.TotalThirds / b.TotalThirds;
+            //        Debug.WriteLine(remainder);
+            return (a.IsNegative  == b.IsNegative ? 1 : -1) * a.TotalThirds / b.TotalThirds;
         }
 
         internal static Angle Divide(Angle a, int b)
         {
             var remainder = a.TotalThirds % b;
-      //      Debug.WriteLine(remainder);
+            //      Debug.WriteLine(remainder);
             return Angle.FromThirds(a.TotalThirds / b);
         }
 

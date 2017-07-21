@@ -5,6 +5,7 @@ using System.Net;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MountainView
 {
@@ -22,6 +23,47 @@ namespace MountainView
             WriteElement,
             ReadElement,
             GenerateData);
+
+
+        public static ChunkHolder<float> GenerateData(Angle lat, Angle lon, int zoomLevel)
+        {
+            ChunkMetadata template = StandardChunkScheme.GetRangeContaingPoint(lat, lon, zoomLevel);
+            ChunkHolder<float> ret = new ChunkHolder<float>(
+                template.LatSteps, template.LonSteps,
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi);
+
+            // Need to get the images that optimally fill this chunk.
+            // Start by picking a chunk in the center at the same zoom level.
+
+            var tmp =
+                RawChunks.GetRawHeightsInMeters(
+                (int)Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2)).DecimalDegree,
+                (int)Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2)).DecimalDegree);
+
+            var chunks = RawChunks.GetRawHeightsInMeters(
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi);
+
+            ChunkHolder<float>.RenderChunksInto(chunks, ret);
+
+            //for (int i = 0; i <= smallBatch; i++)
+            //{
+            //    for (int j = 0; j <= smallBatch; j++)
+            //    {
+            //        if (ret2[i][j] != null)
+            //        {
+            //            byte r = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Red);
+            //            byte g = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Green);
+            //            byte b = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Blue);
+            //            ret.Data[i][j] = new SKColor(r, g, b);
+            //        }
+            //    }
+            //}
+
+            return ret;
+        }
+
 
         public static float GetHeight(Angle lat, Angle lon, double cosLat, double metersPerElement)
         {
@@ -149,13 +191,13 @@ namespace MountainView
                     var chunk = GetRawHeightsInMeters((int)lat, (int)lon);
                     if (chunk != null)
                     {
-                        yield return chunk;
+                        yield return chunk.Result;
                     }
                 }
             }
         }
 
-        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
+        public static async Task<ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -182,10 +224,10 @@ namespace MountainView
                         Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
                         using (HttpClient client = new HttpClient())
                         {
-                            HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client);
+                            HttpResponseMessage message = await TryDownloadDifferentFormats(shortWebFile, client);
                             if (message != null && message.StatusCode == HttpStatusCode.OK)
                             {
-                                var content = message.Content.ReadAsByteArrayAsync().Result;
+                                var content = await message.Content.ReadAsByteArrayAsync();
                                 File.WriteAllBytes(target, content);
                             }
                             else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
@@ -234,31 +276,24 @@ namespace MountainView
             return cache[fileName];
         }
 
-        private static HttpResponseMessage TryDownloadDifferentFormats(string shortWebFile, HttpClient client)
+        private static async Task<HttpResponseMessage> TryDownloadDifferentFormats(string shortWebFile, HttpClient client)
         {
-            var ret = TryDownloadDifferentFormats(sourceUrlTemplate, shortWebFile, client);
+            var ret = await TryDownloadDifferentFormats(sourceUrlTemplate, shortWebFile, client);
             if (ret == null || ret.StatusCode != HttpStatusCode.OK)
             {
-                ret = TryDownloadDifferentFormats(sourceUrlTemplate2, shortWebFile, client);
+                ret = await TryDownloadDifferentFormats(sourceUrlTemplate2, shortWebFile, client);
             }
 
             return ret;
         }
 
-        private static HttpResponseMessage TryDownloadDifferentFormats(string template, string shortWebFile, HttpClient client)
+        private static async Task<HttpResponseMessage> TryDownloadDifferentFormats(string template, string shortWebFile, HttpClient client)
         {
             var url = new Uri(string.Format(template, shortWebFile));
             HttpResponseMessage message = null;
             try
             {
-                var messageTask = client.GetAsync(url);
-                while (!messageTask.IsCompleted)
-                {
-                    Thread.Sleep(TimeSpan.FromSeconds(5));
-                    Console.Write(".");
-                }
-
-                message = messageTask.Result;
+                message = await client.GetAsync(url);
             }
             catch (Exception ex)
             {

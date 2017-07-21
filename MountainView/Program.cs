@@ -17,16 +17,22 @@ namespace MountainView
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
                 if (true)
                 {
-                    var homeLat = Angle.FromDecimalDegrees(47.684124);
-                    var homeLon = Angle.FromDecimalDegrees(-122.292357);
+                    var homeLat = Angle.FromDecimalDegrees(47.6867797);
+                    var homeLon = Angle.FromDecimalDegrees(-122.2907541);
 
-                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
-                    // Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
-                    ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
-                        Angle.FromMinutes(2), Angle.FromMinutes(2),
-                        Angle.FromThirds(20), Angle.FromThirds(20),
-                        Utils.WeightedFloatAverage);
-                    Utils.WriteImageFile(ddd, Path.Combine(outputFolder, "ddd.png"), a => Utils.GetColorForHeight(a));
+                    var xxx = ImageWorker2.GenerateData(homeLat, homeLon, 10).Result;
+                    Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.png"), a => a);
+
+                    var yyy = Heights.GenerateData(homeLat, homeLon, 10);
+                    Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.png"), a => Utils.GetColorForHeight(a));
+
+//                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    //// Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
+                    //ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
+                    //    Angle.FromMinutes(2), Angle.FromMinutes(2),
+                    //    Angle.FromThirds(20), Angle.FromThirds(20),
+                    //    Utils.WeightedFloatAverage);
+                    //Utils.WriteImageFile(ddd, Path.Combine(outputFolder, "ddd.png"), a => Utils.GetColorForHeight(a));
 
                     var tttt = ImageWorker2.GetColors(homeLat, homeLon, 13).Result;
                     ChunkHolder<SKColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
