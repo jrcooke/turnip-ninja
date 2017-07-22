@@ -178,29 +178,32 @@ namespace MountainView
 
             foreach(var chunk in chunks)
             {
-                for (int i = 0; i < this.LatSteps; i++)
+                if (chunk != null)
                 {
-                    int iPrime = chunk.GetLatIndex(this.GetLat(i));
-                    if (iPrime >= 0 && iPrime < chunk.LatSteps)
+                    for (int i = 0; i < this.LatSteps; i++)
                     {
-                        for (int j = 0; j < this.LonSteps; j++)
+                        int iPrime = chunk.GetLatIndex(this.GetLat(i));
+                        if (iPrime >= 0 && iPrime < chunk.LatSteps)
                         {
-                            int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(this.GetLon(this.LonSteps - 1 - j));
-                            if (jPrime >= 0 && jPrime < chunk.LonSteps)
+                            for (int j = 0; j < this.LonSteps; j++)
                             {
-                                if (subChunk2[i][j] > 0)
+                                int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(this.GetLon(this.LonSteps - 1 - j));
+                                if (jPrime >= 0 && jPrime < chunk.LonSteps)
                                 {
-                                    this.Data[i][j] = aggregate(
-                                        subChunk2[i][j],
-                                        this.Data[i][j],
-                                        chunk.Data[iPrime][jPrime]);
-                                }
-                                else
-                                {
-                                    this.Data[i][j] = chunk.Data[iPrime][jPrime];
-                                }
+                                    if (subChunk2[i][j] > 0)
+                                    {
+                                        this.Data[i][j] = aggregate(
+                                            subChunk2[i][j],
+                                            this.Data[i][j],
+                                            chunk.Data[iPrime][jPrime]);
+                                    }
+                                    else
+                                    {
+                                        this.Data[i][j] = chunk.Data[iPrime][jPrime];
+                                    }
 
-                                subChunk2[i][j]++;
+                                    subChunk2[i][j]++;
+                                }
                             }
                         }
                     }

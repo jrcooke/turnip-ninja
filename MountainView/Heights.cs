@@ -23,7 +23,7 @@ namespace MountainView
         //    ReadElement,
         //    GenerateData);
 
-        public static ChunkHolder<float> GenerateData(Angle lat, Angle lon, int zoomLevel)
+        public static async Task<ChunkHolder<float>> GenerateData(Angle lat, Angle lon, int zoomLevel)
         {
             ChunkMetadata template = ChunkMetadata.GetStandardRangeContaingPoint(lat, lon, zoomLevel);
             ChunkHolder<float> ret = new ChunkHolder<float>(
@@ -31,24 +31,17 @@ namespace MountainView
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi);
 
-
-            int latMin = Utils.TruncateTowardsZero(Math.Min(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree) - 0.0001);
-            int latMax = Utils.TruncateTowardsZero(Math.Max(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree) + 0.0001);
-            int lonMin = Utils.TruncateTowardsZero(Math.Min(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree) - 0.0001);
-            int lonMax = Utils.TruncateTowardsZero(Math.Max(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree) + 0.0001);
+            int latMin = (int)Math.Min(template.LatLo.Degrees, template.LatHi.Degrees);
+            int latMax = (int)Math.Max(template.LatLo.Degrees, template.LatHi.Degrees);
+            int lonMin = (int)Math.Min(template.LonLo.Degrees, template.LonHi.Degrees);
+            int lonMax = (int)Math.Max(template.LonLo.Degrees, template.LonHi.Degrees);
 
             List<ChunkHolder<float>> chunks = new List<ChunkHolder<float>>();
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
                 {
-                    double lat2 = Utils.AddAwayFromZero(latInt, 0.01);
-                    double lon2 = Utils.AddAwayFromZero(lonInt, 0.01);
-                    var chunk = RawChunks.GetRawHeightsInMeters((int)lat2, (int)lon2).Result;
-                    if (chunk != null)
-                    {
-                        chunks.Add(chunk);
-                    }
+                    chunks.Add(await RawChunks.GetRawHeightsInMeters(latInt, lonInt));
                 }
             }
 

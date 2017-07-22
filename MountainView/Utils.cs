@@ -15,50 +15,12 @@ namespace MountainView
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;
 
-        public static int ReadInt(FileStream stream, byte[] buffer)
-        {
-            stream.Read(buffer, 0, 4);
-            return BitConverter.ToInt32(buffer, 0);
-        }
-
-        public static int TruncateTowardsZero(double a)
-        {
-            return Math.Sign(a) * (int)Math.Abs(a);
-        }
-
-        public static double AddAwayFromZero(double a, double b)
-        {
-            return Math.Sign(a) * (Math.Abs(a) + b);
-        }
-
-        public static int AddAwayFromZero(int a, int b)
-        {
-            return Math.Sign(a) * (Math.Abs(a) + b);
-        }
-
         public static Tuple<Angle, Angle> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
         {
             double cosLatVal = cosLat ?? Math.Cos(lat.DecimalDegree * Math.PI / 180);
             return new Tuple<Angle, Angle>(
                 Angle.Add(lat, deltaY / LengthOfLatDegree),
                 Angle.Add(lon, deltaX / LengthOfLatDegree / cosLatVal));
-        }
-
-        internal static T[][] Transpose<T>(T[][] items)
-        {
-            int width = items.Length;
-            int height = items[0].Length;
-            var ret = new T[height][];
-            for (int i = 0; i < height; i++)
-            {
-                ret[i] = new T[width];
-                for (int j = 0; j < width; j++)
-                {
-                    ret[i][j] = items[j][i];
-                }
-            }
-
-            return ret;
         }
 
         internal static SKColor GetColorForHeight(float a)
@@ -87,21 +49,6 @@ namespace MountainView
         public static float WeightedFloatAverage(int prevAveraged, float prevAverage, float toAdd)
         {
             return prevAveraged == 0 ? toAdd : (prevAverage * prevAveraged + toAdd) / (prevAveraged + 1);
-        }
-
-        internal static U[][] Apply<T, U>(T[][] items, Func<T, U> map)
-        {
-            var ret = new U[items.Length][];
-            for (int i = 0; i < items.Length; i++)
-            {
-                ret[i] = new U[items[i].Length];
-                for (int j = 0; j < items[i].Length; j++)
-                {
-                    ret[i][j] = map(items[i][j]);
-                }
-            }
-
-            return ret;
         }
 
         public static long GetKey(int zoomLevel, Angle lat, Angle lon)

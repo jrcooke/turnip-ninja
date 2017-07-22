@@ -23,7 +23,7 @@ namespace MountainView
                     var xxx = ImageWorker2.GenerateData(homeLat, homeLon, 10).Result;
                     Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.png"), a => a);
 
-                    var yyy = Heights.GenerateData(homeLat, homeLon, 10);
+                    var yyy = Heights.GenerateData(homeLat, homeLon, 10).Result;
                     Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.png"), a => Utils.GetColorForHeight(a));
 
                     //                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
@@ -80,7 +80,7 @@ namespace MountainView
 
                     for (int zoomLevel = 10; zoomLevel <= 14; zoomLevel++)
                     {
-                        var pixels2 = Heights.GenerateData(c.Lat, c.Lon, zoomLevel);
+                        var pixels2 = Heights.GenerateData(c.Lat, c.Lon, zoomLevel).Result;
                         Utils.WriteImageFile(
                             pixels2,
                             Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),

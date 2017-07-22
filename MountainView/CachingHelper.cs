@@ -39,24 +39,25 @@ namespace MountainView
             ChunkHolder<T> chunk = null; //  GetValuesFromCache(lat, lon, zoomLevel);
             var size = GetSize(zoomLevel);
 
-            int minLatTotMin = Math.Min(
-                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60 * 60) / size, 1),
-                (Utils.TruncateTowardsZero(latDec * 60 * 60) / size)) * size / 60;
-            int minLonTotMin = Math.Min(
-                Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lonDec * 60 * 60) / size, 1),
-                (Utils.TruncateTowardsZero(lonDec * 60 * 60) / size)) * size / 60;
+            throw new NotImplementedException();
+            //int minLatTotMin = Math.Min(
+            //    Utils.AddAwayFromZero(Utils.TruncateTowardsZero(latDec * 60 * 60) / size, 1),
+            //    (Utils.TruncateTowardsZero(latDec * 60 * 60) / size)) * size / 60;
+            //int minLonTotMin = Math.Min(
+            //    Utils.AddAwayFromZero(Utils.TruncateTowardsZero(lonDec * 60 * 60) / size, 1),
+            //    (Utils.TruncateTowardsZero(lonDec * 60 * 60) / size)) * size / 60;
 
-            int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch * 60 / size));
-            int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch * 60 / size));
+            //int targetLat = (int)Math.Round(((latDec * 60 - minLatTotMin) * SmallBatch * 60 / size));
+            //int targetLon = (int)Math.Round(((lonDec * 60 - minLonTotMin) * SmallBatch * 60 / size));
 
-            if (targetLat >= 0 && targetLat < chunk.LatSteps && targetLon >= 0 && targetLon < chunk.LonSteps)
-            {
-                return chunk.Data[targetLat][targetLon];
-            }
-            else
-            {
-                return default(T);
-            }
+            //if (targetLat >= 0 && targetLat < chunk.LatSteps && targetLon >= 0 && targetLon < chunk.LonSteps)
+            //{
+            //    return chunk.Data[targetLat][targetLon];
+            //}
+            //else
+            //{
+            //    return default(T);
+            //}
         }
 
         private static int GetSize(int zoomLevel)
