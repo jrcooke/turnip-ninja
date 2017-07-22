@@ -20,7 +20,7 @@ namespace MountainView
 
         public static async Task<ChunkHolder<SKColor>> GenerateData(Angle lat, Angle lon, int zoomLevel)
         {
-            ChunkMetadata template = StandardChunkScheme.GetRangeContaingPoint(lat, lon, zoomLevel);
+            ChunkMetadata template = ChunkMetadata.GetStandardRangeContaingPoint(lat, lon, zoomLevel);
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,

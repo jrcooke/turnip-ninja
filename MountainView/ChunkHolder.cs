@@ -5,6 +5,9 @@ namespace MountainView
 {
     public class ChunkMetadata
     {
+        private const int smallBatch = 540;
+        private const int maxZoom = 14;
+
         public int LatSteps { get; private set; }
         public int LonSteps { get; private set; }
         public Angle LatLo { get; private set; }
@@ -15,6 +18,23 @@ namespace MountainView
         public Angle LatDelta { get; private set; }
         public Angle PixelSizeLat { get; private set; }
         public Angle PixelSizeLon { get; private set; }
+
+        public static ChunkMetadata GetStandardRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
+        {
+            if (zoomLevel > maxZoom || zoomLevel < 4)
+            {
+                throw new ArgumentOutOfRangeException("zoomLevel");
+            }
+
+            var thirds = (int)(60 * 45 * Math.Pow(2, 14 - zoomLevel));
+            Angle size = Angle.FromThirds(thirds);
+            Angle latLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lat, Angle.Whole), size)), Angle.Whole);
+            Angle lonLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lon, Angle.Whole), size)), Angle.Whole);
+            Angle latHi = Angle.Add(latLo, size);
+            Angle lonHi = Angle.Add(lonLo, size);
+            ChunkMetadata ret = new ChunkMetadata(smallBatch + 1, smallBatch + 1, latLo, lonLo, latHi, lonHi);
+            return ret;
+        }
 
         public ChunkMetadata(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
         {
@@ -30,23 +50,23 @@ namespace MountainView
             this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps);
         }
 
-        public Angle GetLat(int i)
+        protected Angle GetLat(int i)
         {
             return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps));
         }
 
-        public Angle GetLon(int j)
+        protected Angle GetLon(int j)
         {
             return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), LonSteps));
         }
 
-        public int GetLatIndex(Angle lat)
+        protected int GetLatIndex(Angle lat)
         {
             var curLatDelta = Angle.Subtract(lat, LatLo);
             return Angle.Divide(curLatDelta, PixelSizeLat);
         }
 
-        public int GetLonIndex(Angle lon)
+        protected int GetLonIndex(Angle lon)
         {
             var curLonDelta = Angle.Subtract(lon, LonLo);
             return Angle.Divide(curLonDelta, PixelSizeLon);

@@ -95,11 +95,11 @@ namespace MountainView
         //    // The size of the chunk in 1/60 seconds.
         //    int size = GetSize(zoomLevel);
 
-        //    Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / size, 1) * size);
-        //    Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / size, 1) * size);
+        //    Angle lat1 = Angle.Add(Angle.Multiply(Angle.Divide(lat, size), size), size);
+        //    Angle lon1 = Angle.Add(Angle.Multiply(Angle.Divide(lon, size), size), size);
 
-        //    Angle lat2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lat.TotalSeconds / size) * size);
-        //    Angle lon2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lon.TotalSeconds / size) * size);
+        //    Angle lat2 = Angle.Multiply(Angle.Divide(lat, size), size);
+        //    Angle lon2 = Angle.Multiply(Angle.Divide(lon, size), size);
 
         //    Angle minLat = Angle.Min(lat1, lat2);
         //    Angle minLon = Angle.Min(lon1, lon2);

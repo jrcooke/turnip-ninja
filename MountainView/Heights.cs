@@ -24,10 +24,9 @@ namespace MountainView
             ReadElement,
             GenerateData);
 
-
         public static ChunkHolder<float> GenerateData(Angle lat, Angle lon, int zoomLevel)
         {
-            ChunkMetadata template = StandardChunkScheme.GetRangeContaingPoint(lat, lon, zoomLevel);
+            ChunkMetadata template = ChunkMetadata.GetStandardRangeContaingPoint(lat, lon, zoomLevel);
             ChunkHolder<float> ret = new ChunkHolder<float>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
