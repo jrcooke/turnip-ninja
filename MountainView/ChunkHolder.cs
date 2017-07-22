@@ -161,10 +161,8 @@ namespace MountainView
             return subChunk;
         }
 
-
-        internal static void RenderChunksInto(
+        internal void RenderChunksInto(
             IEnumerable<ChunkHolder<T>> chunks,
-            ChunkHolder<T> target,
             Func<int, T, T, T> aggregate = null)
         {
             if (aggregate == null)
@@ -172,36 +170,34 @@ namespace MountainView
                 aggregate = (i, a, b) => b;
             }
 
-            ChunkHolder<T> subChunk = target;
-
-            int[][] subChunk2 = new int[subChunk.LatSteps][];
-            for (int i = 0; i < subChunk.LatSteps; i++)
+            int[][] subChunk2 = new int[this.LatSteps][];
+            for (int i = 0; i < this.LatSteps; i++)
             {
-                subChunk2[i] = new int[subChunk.LonSteps];
+                subChunk2[i] = new int[this.LonSteps];
             }
 
             foreach(var chunk in chunks)
             {
-                for (int i = 0; i < subChunk.LatSteps; i++)
+                for (int i = 0; i < this.LatSteps; i++)
                 {
-                    int iPrime = chunk.GetLatIndex(subChunk.GetLat(i));
+                    int iPrime = chunk.GetLatIndex(this.GetLat(i));
                     if (iPrime >= 0 && iPrime < chunk.LatSteps)
                     {
-                        for (int j = 0; j < subChunk.LonSteps; j++)
+                        for (int j = 0; j < this.LonSteps; j++)
                         {
-                            int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(subChunk.GetLon(subChunk.LonSteps - 1 - j));
+                            int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(this.GetLon(this.LonSteps - 1 - j));
                             if (jPrime >= 0 && jPrime < chunk.LonSteps)
                             {
                                 if (subChunk2[i][j] > 0)
                                 {
-                                    subChunk.Data[i][j] = aggregate(
+                                    this.Data[i][j] = aggregate(
                                         subChunk2[i][j],
-                                        subChunk.Data[i][j],
+                                        this.Data[i][j],
                                         chunk.Data[iPrime][jPrime]);
                                 }
                                 else
                                 {
-                                    subChunk.Data[i][j] = chunk.Data[iPrime][jPrime];
+                                    this.Data[i][j] = chunk.Data[iPrime][jPrime];
                                 }
 
                                 subChunk2[i][j]++;
@@ -211,6 +207,5 @@ namespace MountainView
                 }
             }
         }
-
     }
 }

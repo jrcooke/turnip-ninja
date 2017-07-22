@@ -63,7 +63,7 @@ namespace MountainView
                 chunks.Add(worker.Result);
             }
 
-            ChunkHolder<SKColor>.RenderChunksInto(chunks, ret);
+            ret.RenderChunksInto(chunks, Utils.WeightedColorAverage);
             return ret;
         }
 
