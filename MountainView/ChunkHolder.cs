@@ -56,6 +56,11 @@ namespace MountainView
     {
         public T[][] Data { get; private set; }
 
+        public ChunkHolder(long latSteps, long lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null) : base(
+            (int)latSteps, (int)lonSteps, latLo, lonLo, latHi, lonHi)
+        {
+        }
+
         public ChunkHolder(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi, Func<int, int, T> pixelGetter = null) : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
         {
             this.Data = new T[this.LatSteps][];

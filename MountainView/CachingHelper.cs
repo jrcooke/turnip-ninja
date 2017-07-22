@@ -155,31 +155,31 @@ namespace MountainView
         //        }
         //    }
         //}
-        private ChunkHolder<T> ReadChunk(string fullName)
-        {
-            ChunkHolder<T> ret = null;
-            byte[] buffer = new byte[4];
-            using (var stream = File.OpenRead(fullName))
-            {
-                int width = Utils.ReadInt(stream, buffer);
-                int height = Utils.ReadInt(stream, buffer);
+        //private ChunkHolder<T> ReadChunk(string fullName)
+        //{
+        //    ChunkHolder<T> ret = null;
+        //    byte[] buffer = new byte[4];
+        //    using (var stream = File.OpenRead(fullName))
+        //    {
+        //        int width = Utils.ReadInt(stream, buffer);
+        //        int height = Utils.ReadInt(stream, buffer);
 
-                Angle latLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
-                Angle lonLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
-                Angle latHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
-                Angle lonHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+        //        Angle latLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+        //        Angle lonLo = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+        //        Angle latHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
+        //        Angle lonHi = Angle.FromSeconds(Utils.ReadInt(stream, buffer));
 
-                ret = new ChunkHolder<T>(width, height, latLo, lonLo, latHi, lonHi);
-                for (int i = 0; i < width; i++)
-                {
-                    for (int j = 0; j < height; j++)
-                    {
-                        ret.Data[i][j] = readElement(stream, buffer);
-                    }
-                }
-            }
+        //        ret = new ChunkHolder<T>(width, height, latLo, lonLo, latHi, lonHi);
+        //        for (int i = 0; i < width; i++)
+        //        {
+        //            for (int j = 0; j < height; j++)
+        //            {
+        //                ret.Data[i][j] = readElement(stream, buffer);
+        //            }
+        //        }
+        //    }
 
-            return ret;
-        }
+        //    return ret;
+        //}
     }
 }

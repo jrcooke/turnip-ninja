@@ -17,103 +17,99 @@ namespace MountainView
         {
             get
             {
-                return TotalThirds / (60.0 * 60.0 * 60.0);
+                return Total / (60.0 * 60.0 * 60.0 * 60.0);
             }
         }
 
-        private int TotalSeconds
+        public static Angle FromDecimalDegrees(double v)
         {
-            get
-            {
-                return (IsNegative ? -1 : 1) * ((Degrees * 60 + Minutes) * 60 + Seconds);
-            }
+            double fourths = v * 60 * 60 * 60 * 60;
+            return FromFourths((int)Math.Round(fourths));
         }
 
-        private int TotalThirds
+        public static Angle FromFourths(long totalFourths)
         {
-            get
-            {
-                return (IsNegative ? -1 : 1) * (((Degrees * 60 + Minutes) * 60 + Seconds) * 60 + Thirds);
-            }
+            return FromTotal(totalFourths);
         }
 
-        internal static Angle FromThirds(int totalThirds)
+        public static Angle FromThirds(long totalThirds)
         {
-            bool isNeg = totalThirds < 0;
-            int abs = isNeg ? -totalThirds : totalThirds;
-            var ret = new Angle()
-            {
-                IsNegative = isNeg,
-                Thirds = abs % 60,
-                Seconds = (abs / (60)) % 60,
-                Minutes = (abs / (60 * 60)) % 60,
-                Degrees = (abs / (60 * 60 * 60)),
-            };
-            return ret;
+            return FromFourths(totalThirds * 60);
         }
 
-        internal static Angle FromSeconds(int totalSeconds)
+        public static Angle FromSeconds(long totalSeconds)
         {
             return FromThirds(totalSeconds * 60);
         }
 
-        internal static Angle FromMinutes(int totalMinutes)
+        public static Angle FromMinutes(long totalMinutes)
         {
-            return FromThirds(totalMinutes * 60 * 60);
+            return FromSeconds(totalMinutes * 60);
         }
 
-        internal static Angle FromDecimalDegrees(double v)
+        private static Angle FromTotal(long totalFourths)
         {
-            double thirds = v * 60 * 60 * 60;
-            thirds = Math.Round(thirds);
-
-            return FromThirds((int)thirds);
+            bool isNeg = totalFourths < 0;
+            long abs = isNeg ? -totalFourths : totalFourths;
+            var ret = new Angle()
+            {
+                IsNegative = isNeg,
+                Fourths = (int)(abs % 60),
+                Thirds = (int)((abs / (60)) % 60),
+                Seconds = (int)((abs / (60 * 60)) % 60),
+                Minutes = (int)((abs / (60 * 60 * 60) % 60)),
+                Degrees = (int)((abs / (60 * 60 * 60 * 60))),
+            };
+            return ret;
         }
 
-        internal static Angle Min(Angle a, Angle b)
+        private long Total
         {
-            return (a.TotalThirds < b.TotalThirds) ? a : b;
+            get
+            {
+                return (IsNegative ? -1 : 1) * ((((Degrees * 60L + Minutes) * 60 + Seconds) * 60 + Thirds) * 60 + Fourths);
+            }
         }
 
-        internal static Angle Multiply(Angle a, int b)
+        public static Angle Min(Angle a, Angle b)
         {
-            return Angle.FromThirds(a.TotalThirds * b);
+            return (a.Total < b.Total) ? a : b;
         }
 
-        internal static int Divide(Angle a, Angle b)
+        public static Angle Multiply(Angle a, int b)
         {
-            var remainder = a.TotalThirds % b.TotalThirds;
-            //        Debug.WriteLine(remainder);
-            return a.TotalThirds / b.TotalThirds;
+            return Angle.FromTotal(a.Total * b);
         }
 
-        internal static Angle Divide(Angle a, int b)
+        public static int Divide(Angle a, Angle b)
         {
-            var remainder = a.TotalThirds % b;
-            //      Debug.WriteLine(remainder);
-            return Angle.FromThirds(a.TotalThirds / b);
+            return (int)(a.Total / b.Total);
         }
 
-        internal static Angle Divide(Angle a, double b)
+        public static Angle Divide(Angle a, int b)
         {
-            return Angle.FromThirds((int)(a.TotalThirds / b));
+            return Angle.FromTotal(a.Total / b);
+        }
+
+        public static Angle Divide(Angle a, double b)
+        {
+            return Angle.FromTotal((int)(a.Total / b));
         }
 
         internal static Angle Subtract(Angle a, Angle b)
         {
-            return Angle.FromThirds(a.TotalThirds - b.TotalThirds);
+            return Angle.FromTotal(a.Total - b.Total);
         }
 
-        internal static Angle Add(Angle a, double b)
+        public static Angle Add(Angle a, double b)
         {
-            return Angle.FromThirds(a.TotalThirds + (int)(b * 60 * 60 * 60));
+            return Angle.FromTotal(a.Total + FromDecimalDegrees(b).Total);
         }
 
-        internal static Angle Add(Angle a, Angle b)
+        public static Angle Add(Angle a, Angle b)
         {
-            return Angle.FromThirds(a.TotalThirds + b.TotalThirds);
+            return Angle.FromTotal(a.Total + b.Total);
         }
-
 
         public string ToLatString()
         {
@@ -130,8 +126,12 @@ namespace MountainView
             return (IsNegative ? "-" : "") + ToXString();
         }
 
-        public string ToXString()
+        private string ToXString()
         {
+            if (this.Fourths > 0)
+            {
+                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T{4:D2}F", this.Degrees, this.Minutes, this.Seconds, this.Thirds, this.Fourths);
+            }
             if (this.Thirds > 0)
             {
                 return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T", this.Degrees, this.Minutes, this.Seconds, this.Thirds);
