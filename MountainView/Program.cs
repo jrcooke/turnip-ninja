@@ -94,6 +94,7 @@ namespace MountainView
                     }
                 }
 
+                /*
                 var bothData = GetPolarData(
                     c.Lat, c.Lon,
                     c.R, c.DeltaR,
@@ -134,6 +135,9 @@ namespace MountainView
                     bothData.Length, numParts,
                     Path.Combine(outputFolder, "testPol.png"),
                     (a) => a == null ? default(SKColor) : a.Item2);
+
+
+    */
             }
             catch (Exception ex)
             {

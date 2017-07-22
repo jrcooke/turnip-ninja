@@ -106,11 +106,12 @@ namespace MountainView
 
         public static long GetKey(int zoomLevel, Angle lat, Angle lon)
         {
-            long key = 0;
-            //                (long)(lat.TotalSeconds + 180 * 60 * 60) * (long)0x100000000 +
+            throw new NotImplementedException();
+            //long key = 0;
+            //                (long)(lat. + 180 * 60 * 60) * (long)0x100000000 +
             //              (long)(lon.TotalSeconds + 180 * 60 * 60) * (long)0x10 +
-            //B            zoomLevel;
-            return key;
+            //            zoomLevel;
+            //return key;
         }
 
         public static string GetFileName(long key)

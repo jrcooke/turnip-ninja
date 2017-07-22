@@ -32,13 +32,12 @@ namespace MountainView
             Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
 
             var chunks = new List<ChunkHolder<SKColor>>();
-            var tmp = await ImageWorker2.GetColors(midLat, midLon, zoomLevel + 2);
+            var tmp = await GetColors(midLat, midLon, zoomLevel + 2);
             chunks.Add(tmp);
 
             // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
             Angle subLatDelta = Angle.Divide(tmp.LatDelta, 1.2);
             Angle subLonDelta = Angle.Divide(tmp.LonDelta, 1.2);
-
             int latRange = Angle.Divide(ret.LatDelta, subLatDelta) + 1;
             int lonRange = Angle.Divide(ret.LonDelta, subLonDelta) + 1;
 
@@ -52,7 +51,7 @@ namespace MountainView
                         continue;
                     }
 
-                    workers.Add(ImageWorker2.GetColors(
+                    workers.Add(GetColors(
                         Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
                         Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), zoomLevel + 2));
                 }
@@ -65,25 +64,8 @@ namespace MountainView
             }
 
             ChunkHolder<SKColor>.RenderChunksInto(chunks, ret);
-
-            //for (int i = 0; i <= smallBatch; i++)
-            //{
-            //    for (int j = 0; j <= smallBatch; j++)
-            //    {
-            //        if (ret2[i][j] != null)
-            //        {
-            //            byte r = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Red);
-            //            byte g = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Green);
-            //            byte b = (byte)ret2[i][j].Where(p => p.Alpha == 255).Average(p => p.Blue);
-            //            ret.Data[i][j] = new SKColor(r, g, b);
-            //        }
-            //    }
-            //}
-
             return ret;
         }
-
-
 
         public static async Task<ChunkHolder<SKColor>> GetColors(Angle lat, Angle lon, int zoomLevel)
         {
