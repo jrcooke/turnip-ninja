@@ -26,7 +26,7 @@ namespace MountainView
                     var yyy = Heights.GenerateData(homeLat, homeLon, 10);
                     Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.png"), a => Utils.GetColorForHeight(a));
 
-//                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
+                    //                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
                     //// Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
                     //ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
                     //    Angle.FromMinutes(2), Angle.FromMinutes(2),
@@ -75,15 +75,18 @@ namespace MountainView
 
                 if (true)
                 {
+                    c.Lat = Angle.FromDecimalDegrees(47.6867797);
+                    c.Lon = Angle.FromDecimalDegrees(-122.2907541);
+
                     for (int zoomLevel = 10; zoomLevel <= 14; zoomLevel++)
                     {
-                        var pixels2 = Heights.GetChunk(c.Lat, c.Lon, zoomLevel);
+                        var pixels2 = Heights.GenerateData(c.Lat, c.Lon, zoomLevel);
                         Utils.WriteImageFile(
                             pixels2,
                             Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),
                             a => Utils.GetColorForHeight(a));
 
-                        var pixels = Images.GetChunk(c.Lat, c.Lon, zoomLevel);
+                        var pixels = ImageWorker2.GenerateData(c.Lat, c.Lon, zoomLevel).Result;
                         Utils.WriteImageFile(
                             pixels,
                             Path.Combine(outputFolder, "ChunkC" + zoomLevel + ".png"),

@@ -36,7 +36,7 @@ namespace MountainView
             double latDec = lat.DecimalDegree;
             double lonDec = lon.DecimalDegree;
             int zoomLevel = GetZoomLevel(latDec, lonDec, cosLat, metersPerElement);
-            ChunkHolder<T> chunk = GetValuesFromCache(lat, lon, zoomLevel);
+            ChunkHolder<T> chunk = null; //  GetValuesFromCache(lat, lon, zoomLevel);
             var size = GetSize(zoomLevel);
 
             int minLatTotMin = Math.Min(
@@ -85,76 +85,76 @@ namespace MountainView
             return zoomLevel;
         }
 
-        public ChunkHolder<T> GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
-        {
-            if (zoomLevel > 14 || zoomLevel < 4)
-            {
-                throw new ArgumentOutOfRangeException("zoomLevel");
-            }
+        //public ChunkHolder<T> GetValuesFromCache(Angle lat, Angle lon, int zoomLevel)
+        //{
+        //    if (zoomLevel > 14 || zoomLevel < 4)
+        //    {
+        //        throw new ArgumentOutOfRangeException("zoomLevel");
+        //    }
 
-            // The size of the chunk in 1/60 seconds.
-            int size = GetSize(zoomLevel);
+        //    // The size of the chunk in 1/60 seconds.
+        //    int size = GetSize(zoomLevel);
 
-            Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / size, 1) * size);
-            Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / size, 1) * size);
+        //    Angle lat1 = Angle.FromSeconds(Utils.AddAwayFromZero(lat.TotalSeconds / size, 1) * size);
+        //    Angle lon1 = Angle.FromSeconds(Utils.AddAwayFromZero(lon.TotalSeconds / size, 1) * size);
 
-            Angle lat2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lat.TotalSeconds / size) * size);
-            Angle lon2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lon.TotalSeconds / size) * size);
+        //    Angle lat2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lat.TotalSeconds / size) * size);
+        //    Angle lon2 = Angle.FromSeconds(Utils.TruncateTowardsZero(lon.TotalSeconds / size) * size);
 
-            Angle minLat = Angle.Min(lat1, lat2);
-            Angle minLon = Angle.Min(lon1, lon2);
+        //    Angle minLat = Angle.Min(lat1, lat2);
+        //    Angle minLon = Angle.Min(lon1, lon2);
 
-            long key = Utils.GetKey(zoomLevel, lat1, lon1);
+        //    long key = Utils.GetKey(zoomLevel, lat1, lon1);
 
-            ChunkHolder<T> ret;
-            while (!chunkCache.TryGetValue(key, out ret) || ret == null)
-            {
-                string filename = Utils.GetFileName(key);
-                string fullName = string.Format(cachedFileTemplate, filename);
-                lock (locker)
-                {
-                    if (!File.Exists(fullName))
-                    {
-                        Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
-                        Console.WriteLine("Starting generation...");
-                        ret = generateData(zoomLevel, size, lat1, lon1, lat2, lon2, minLat, minLon);
+        //    ChunkHolder<T> ret;
+        //    while (!chunkCache.TryGetValue(key, out ret) || ret == null)
+        //    {
+        //        string filename = Utils.GetFileName(key);
+        //        string fullName = string.Format(cachedFileTemplate, filename);
+        //        lock (locker)
+        //        {
+        //            if (!File.Exists(fullName))
+        //            {
+        //                Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
+        //                Console.WriteLine("Starting generation...");
+        //                ret = generateData(zoomLevel, size, lat1, lon1, lat2, lon2, minLat, minLon);
 
-                        WriteChunk(ret, fullName);
-                        Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
-                    }
+        //                WriteChunk(ret, fullName);
+        //                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
+        //            }
 
-                    while (!chunkCache.TryGetValue(key, out ret) || ret == null)
-                    {
-                        Console.WriteLine("Reading " + description + " chunk file '" + filename + "'to cache...");
-                        ret = ReadChunk(fullName);
-                        chunkCache.Add(key, ret);
-                        Console.WriteLine("Read " + description + " chunk file '" + filename + "'to cache.");
-                    }
-                }
-            }
+        //            while (!chunkCache.TryGetValue(key, out ret) || ret == null)
+        //            {
+        //                Console.WriteLine("Reading " + description + " chunk file '" + filename + "'to cache...");
+        //                ret = ReadChunk(fullName);
+        //                chunkCache.Add(key, ret);
+        //                Console.WriteLine("Read " + description + " chunk file '" + filename + "'to cache.");
+        //            }
+        //        }
+        //    }
 
-            return ret;
-        }
+        //    return ret;
+        //}
 
-        private void WriteChunk(ChunkHolder<T> ret, string fullName)
-        {
-            using (FileStream stream = File.OpenWrite(fullName))
-            {
-                stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.LatLo.TotalSeconds), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.LonLo.TotalSeconds), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.LatHi.TotalSeconds), 0, 4);
-                stream.Write(BitConverter.GetBytes(ret.LonHi.TotalSeconds), 0, 4);
-                for (int i = 0; i < ret.LatSteps; i++)
-                {
-                    for (int j = 0; j < ret.LonSteps; j++)
-                    {
-                        writeElement(ret.Data[i][j], stream);
-                    }
-                }
-            }
-        }
+        //private void WriteChunk(ChunkHolder<T> ret, string fullName)
+        //{
+        //    using (FileStream stream = File.OpenWrite(fullName))
+        //    {
+        //        stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
+        //        stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
+        //        stream.Write(BitConverter.GetBytes(ret.LatLo.TotalSeconds), 0, 4);
+        //        stream.Write(BitConverter.GetBytes(ret.LonLo.TotalSeconds), 0, 4);
+        //        stream.Write(BitConverter.GetBytes(ret.LatHi.TotalSeconds), 0, 4);
+        //        stream.Write(BitConverter.GetBytes(ret.LonHi.TotalSeconds), 0, 4);
+        //        for (int i = 0; i < ret.LatSteps; i++)
+        //        {
+        //            for (int j = 0; j < ret.LonSteps; j++)
+        //            {
+        //                writeElement(ret.Data[i][j], stream);
+        //            }
+        //        }
+        //    }
+        //}
         private ChunkHolder<T> ReadChunk(string fullName)
         {
             ChunkHolder<T> ret = null;

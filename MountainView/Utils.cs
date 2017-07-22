@@ -106,10 +106,10 @@ namespace MountainView
 
         public static long GetKey(int zoomLevel, Angle lat, Angle lon)
         {
-            var key =
-                (long)(lat.TotalSeconds + 180 * 60 * 60) * (long)0x100000000 +
-                (long)(lon.TotalSeconds + 180 * 60 * 60) * (long)0x10 +
-                zoomLevel;
+            long key = 0;
+            //                (long)(lat.TotalSeconds + 180 * 60 * 60) * (long)0x100000000 +
+            //              (long)(lon.TotalSeconds + 180 * 60 * 60) * (long)0x10 +
+            //B            zoomLevel;
             return key;
         }
 

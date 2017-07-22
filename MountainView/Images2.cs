@@ -28,13 +28,42 @@ namespace MountainView
 
             // Need to get the images that optimally fill this chunk.
             // Start by picking a chunk in the center at the same zoom level.
-
-            var tmp = await ImageWorker2.GetColors(
-                Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2)),
-                Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2)), zoomLevel + 2);
+            Angle midLat = Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2));
+            Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
 
             var chunks = new List<ChunkHolder<SKColor>>();
+            var tmp = await ImageWorker2.GetColors(midLat, midLon, zoomLevel + 2);
             chunks.Add(tmp);
+
+            // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
+            Angle subLatDelta = Angle.Divide(tmp.LatDelta, 1.2);
+            Angle subLonDelta = Angle.Divide(tmp.LonDelta, 1.2);
+
+            int latRange = Angle.Divide(ret.LatDelta, subLatDelta) + 1;
+            int lonRange = Angle.Divide(ret.LonDelta, subLonDelta) + 1;
+
+            List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
+            for (int i = -latRange; i <= latRange; i++)
+            {
+                for (int j = -lonRange; j <= lonRange; j++)
+                {
+                    if (i == 0 && j == 0)
+                    {
+                        continue;
+                    }
+
+                    workers.Add(ImageWorker2.GetColors(
+                        Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
+                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), zoomLevel + 2));
+                }
+            }
+
+            Task.WaitAll(workers.ToArray());
+            foreach(var worker in workers)
+            {
+                chunks.Add(worker.Result);
+            }
+
             ChunkHolder<SKColor>.RenderChunksInto(chunks, ret);
 
             //for (int i = 0; i <= smallBatch; i++)

@@ -18,7 +18,7 @@ namespace MountainView
 
         public static int GetZoomLevel(Angle chunkSize)
         {
-            return (int)(14.0 - Math.Log(chunkSize.TotalThirds / (3.0 * 60 * 15), 2));
+            return (int)(14.0 - Math.Log(chunkSize.DecimalDegree * 80, 2));
         }
 
         //public static int GetZoomLevel(double lat, double lon, double metersPerElement)
@@ -45,8 +45,8 @@ namespace MountainView
             }
 
             Angle size = GetChunkSize(zoomLevel);
-            Angle latLo = Angle.Multiply(size, Angle.Divide(lat, size));
-            Angle lonLo = Angle.Multiply(size, Angle.Divide(lon, size));
+            Angle latLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lat, Angle.Whole), size)), Angle.Whole);
+            Angle lonLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lon, Angle.Whole), size)), Angle.Whole);
             Angle latHi = Angle.Add(latLo, size);
             Angle lonHi = Angle.Add(lonLo, size);
 

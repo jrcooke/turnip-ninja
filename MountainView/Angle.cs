@@ -1,15 +1,17 @@
 ﻿using System;
-using System.Diagnostics;
 
 namespace MountainView
 {
     public struct Angle
     {
+        public readonly static Angle Whole = new Angle() { Degrees = 360 };
+
         public bool IsNegative;
         public int Degrees;
         public int Minutes;
         public int Seconds;
         public int Thirds;
+        public int Fourths;
 
         public double DecimalDegree
         {
@@ -19,7 +21,7 @@ namespace MountainView
             }
         }
 
-        public int TotalSeconds
+        private int TotalSeconds
         {
             get
             {
@@ -27,7 +29,7 @@ namespace MountainView
             }
         }
 
-        public int TotalThirds
+        private int TotalThirds
         {
             get
             {
@@ -82,7 +84,7 @@ namespace MountainView
         {
             var remainder = a.TotalThirds % b.TotalThirds;
             //        Debug.WriteLine(remainder);
-            return (a.IsNegative  == b.IsNegative ? 1 : -1) * a.TotalThirds / b.TotalThirds;
+            return a.TotalThirds / b.TotalThirds;
         }
 
         internal static Angle Divide(Angle a, int b)
@@ -90,6 +92,11 @@ namespace MountainView
             var remainder = a.TotalThirds % b;
             //      Debug.WriteLine(remainder);
             return Angle.FromThirds(a.TotalThirds / b);
+        }
+
+        internal static Angle Divide(Angle a, double b)
+        {
+            return Angle.FromThirds((int)(a.TotalThirds / b));
         }
 
         internal static Angle Subtract(Angle a, Angle b)

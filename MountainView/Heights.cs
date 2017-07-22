@@ -72,7 +72,7 @@ namespace MountainView
 
         public static ChunkHolder<float> GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
-            var raw = ch.GetValuesFromCache(lat, lon, zoomLevel);
+            ChunkHolder<float> raw = null; // ch.GetValuesFromCache(lat, lon, zoomLevel);
             return raw;
         }
 

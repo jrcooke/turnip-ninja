@@ -32,7 +32,7 @@ namespace MountainView
 
         public static ChunkHolder<SKColor> GetChunk(Angle lat, Angle lon, int zoomLevel)
         {
-            return ch.GetValuesFromCache(lat, lon, zoomLevel);
+            return null; //  ch.GetValuesFromCache(lat, lon, zoomLevel);
         }
 
         private static void WriteElement(SKColor item, FileStream stream)
