@@ -7,7 +7,7 @@
 using System;
 using System.IO;
 
-namespace MountainView
+namespace MountainView.Elevation
 {
     public class AdfReaderWorker
     {

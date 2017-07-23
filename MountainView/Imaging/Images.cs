@@ -6,9 +6,9 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace MountainView
+namespace MountainView.Imaging
 {
-    internal class ImageWorker2
+    internal class Images
     {
         private const string imageUrlTemplate = "https://dev.virtualearth.net/REST/v1/Imagery/Map/Aerial/{0},{1}/{2}?format=png&key={3}";
         private const string metadUrlTemplate = "https://dev.virtualearth.net/REST/v1/Imagery/Map/Aerial/{0},{1}/{2}?mapMetadata=1&key={3}";
@@ -18,9 +18,8 @@ namespace MountainView
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static async Task<ChunkHolder<SKColor>> GenerateData(Angle lat, Angle lon, int zoomLevel)
+        public static async Task<ChunkHolder<SKColor>> GenerateData(StandardChunkMetadata template)
         {
-            ChunkMetadata template = ChunkMetadata.GetStandardRangeContaingPoint(lat, lon, zoomLevel);
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
@@ -32,7 +31,7 @@ namespace MountainView
             Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
 
             var chunks = new List<ChunkHolder<SKColor>>();
-            var tmp = await GetColors(midLat, midLon, zoomLevel + 2);
+            var tmp = await GetColors(midLat, midLon, template.ZoomLevel + 2);
             chunks.Add(tmp);
 
             // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
@@ -53,12 +52,12 @@ namespace MountainView
 
                     workers.Add(GetColors(
                         Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
-                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), zoomLevel + 2));
+                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), template.ZoomLevel + 2));
                 }
             }
 
             Task.WaitAll(workers.ToArray());
-            foreach(var worker in workers)
+            foreach (var worker in workers)
             {
                 chunks.Add(worker.Result);
             }
