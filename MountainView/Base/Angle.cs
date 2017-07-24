@@ -13,6 +13,14 @@ namespace MountainView
         public int Thirds;
         public int Fourths;
 
+        public double SignedDegrees
+        {
+            get
+            {
+                return (IsNegative ? -1 : 1) * Degrees;
+            }
+        }
+
         public double DecimalDegree
         {
             get

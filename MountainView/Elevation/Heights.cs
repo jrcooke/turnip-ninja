@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MountainView.ChunkManagement;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -22,16 +23,10 @@ namespace MountainView.Elevation
 
         public static async Task<ChunkHolder<float>> GenerateData(ChunkMetadata template)
         {
-            ChunkHolder<float> ret = new ChunkHolder<float>(
-                template.LatSteps, template.LonSteps,
-                template.LatLo, template.LonLo,
-                template.LatHi, template.LonHi);
-
-            int latMin = (int)Math.Min(template.LatLo.Degrees, template.LatHi.Degrees);
-            int latMax = (int)Math.Max(template.LatLo.Degrees, template.LatHi.Degrees);
-            int lonMin = (int)Math.Min(template.LonLo.Degrees, template.LonHi.Degrees);
-            int lonMax = (int)Math.Max(template.LonLo.Degrees, template.LonHi.Degrees);
-
+            int latMin = (int)Math.Min(template.LatLo.SignedDegrees, template.LatHi.SignedDegrees);
+            int latMax = (int)Math.Max(template.LatLo.SignedDegrees, template.LatHi.SignedDegrees);
+            int lonMin = (int)Math.Min(template.LonLo.SignedDegrees, template.LonHi.SignedDegrees);
+            int lonMax = (int)Math.Max(template.LonLo.SignedDegrees, template.LonHi.SignedDegrees);
             List<ChunkHolder<float>> chunks = new List<ChunkHolder<float>>();
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {
@@ -41,6 +36,10 @@ namespace MountainView.Elevation
                 }
             }
 
+            ChunkHolder<float> ret = new ChunkHolder<float>(
+                template.LatSteps, template.LonSteps,
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi);
             ret.RenderChunksInto(chunks, Utils.WeightedFloatAverage);
             return ret;
         }

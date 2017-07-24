@@ -8,7 +8,7 @@ namespace Interpolation
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Mainx(string[] args)
         {
             var r = 1000;
             var known = new Dictionary<double, double>
