@@ -24,7 +24,10 @@ namespace MountainView.Imaging
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
-                template.LatHi, template.LonHi);
+                template.LatHi, template.LonHi,
+                null,
+                null,
+                null);
 
             // Need to get the images that optimally fill this chunk.
             // Start by picking a chunk in the center at the same zoom level.
@@ -100,7 +103,9 @@ namespace MountainView.Imaging
                 return new ChunkHolder<SKColor>(bm.Height - footerHeight, bm.Width,
                     adjustedlatLo, lonLo,
                     latHi, lonHi,
-                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - footerHeight - 1 - i));
+                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - footerHeight - 1 - i),
+                    null,
+                    null);
             }
         }
     }

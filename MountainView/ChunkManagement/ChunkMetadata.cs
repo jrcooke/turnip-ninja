@@ -23,8 +23,8 @@
             this.LonHi = lonHi;
             this.LatDelta = Angle.Subtract(LatHi, LatLo);
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
-            this.PixelSizeLat = Angle.Divide(LatDelta, LatSteps);
-            this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps);
+            this.PixelSizeLat = Angle.Divide(LatDelta, LatSteps - 1);
+            this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps - 1);
         }
 
         protected Angle GetLat(int i)
@@ -34,7 +34,7 @@
 
         protected Angle GetLon(int j)
         {
-            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, j), LonSteps));
+            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j), LonSteps));
         }
 
         protected int GetLatIndex(Angle lat)
@@ -46,7 +46,7 @@
         protected int GetLonIndex(Angle lon)
         {
             var curLonDelta = Angle.Subtract(lon, LonLo);
-            return Angle.Divide(curLonDelta, PixelSizeLon);
+            return LonSteps - 1 - Angle.Divide(curLonDelta, PixelSizeLon);
         }
     }
 }

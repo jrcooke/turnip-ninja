@@ -80,7 +80,7 @@ namespace MountainView
                 {
                     c.Lat = Angle.FromDecimalDegrees(47.6867797);
                     c.Lon = Angle.FromDecimalDegrees(-122.2907541);
-                    for (int zoomLevel = 10; zoomLevel <= 14; zoomLevel++)
+                    for (int zoomLevel = 15; zoomLevel <= 16; zoomLevel++)
                     {
                         StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 

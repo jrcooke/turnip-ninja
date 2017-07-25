@@ -63,11 +63,14 @@ namespace MountainView.Elevation
             ChunkHolder<float> output = null;
             using (FileStream fs = File.OpenRead(Path.Combine(folder, "w001001.adf")))
             {
-                output = new ChunkHolder<float>(nLines,nPixels,
+                output = new ChunkHolder<float>(nLines, nPixels,
                     Angle.FromDecimalDegrees(latLo),
                     Angle.FromDecimalDegrees(lonLo),
                     Angle.FromDecimalDegrees(latHi),
-                    Angle.FromDecimalDegrees(lonHi));
+                    Angle.FromDecimalDegrees(lonHi),
+                    null,
+                    p => p,
+                    p => (float)p);
 
                 float[] panRaster = new float[nBlockXSize * nBlockYSize];
                 byte[] panRasterBuffer = new byte[4 * nBlockXSize * nBlockYSize];

@@ -1,5 +1,6 @@
 ﻿using MountainView.ChunkManagement;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -19,12 +20,19 @@ namespace MountainView.Elevation
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
+        private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
         public static async Task<ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
                 (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString();
+
+            ChunkHolder<float> ret = null;
+            if (cache.TryGetValue(fileName, out ret))
+            {
+                return ret;
+            }
 
             bool missing = false;
             Console.WriteLine("Local " + description + " raw data does not exist: " + fileName);
@@ -81,7 +89,6 @@ namespace MountainView.Elevation
                 }
             }
 
-            ChunkHolder<float> ret = null;
             if (!missing)
             {
                 //cache[fileName] = ReadDataToChunks(inputFile);
@@ -93,6 +100,7 @@ namespace MountainView.Elevation
                 Console.WriteLine("Data not available.");
             }
 
+            cache.Add(fileName, ret);
             return ret;
         }
 

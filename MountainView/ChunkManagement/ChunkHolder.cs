@@ -4,15 +4,22 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    public class ChunkHolder<T> : ChunkMetadata
+    public class ChunkHolder<T> : ChunkMetadata, IChunkPointAccessor<T>
     {
         public T[][] Data { get; private set; }
+        private Func<T, double> toDouble;
+        private Func<double, T> fromDouble;
 
         public ChunkHolder(int latSteps, int lonSteps,
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
-            Func<int, int, T> pixelGetter = null) : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
+            Func<int, int, T> pixelGetter,
+            Func<T, double> toDouble,
+            Func<double, T> fromDouble)
+            : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
         {
+            this.toDouble = toDouble;
+            this.fromDouble = fromDouble;
             this.Data = new T[this.LatSteps][];
             for (int i = 0; i < this.LatSteps; i++)
             {
@@ -29,42 +36,106 @@ namespace MountainView.ChunkManagement
 
         internal void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate)
         {
-            int[][] countAccumulatedPoints = new int[this.LatSteps][];
+            int[][] counter = new int[this.LatSteps][];
             for (int i = 0; i < this.LatSteps; i++)
             {
-                countAccumulatedPoints[i] = new int[this.LonSteps];
+                counter[i] = new int[this.LonSteps];
             }
 
-            foreach (var chunk in chunks.Where(p => p != null))
+            foreach (var loopChunk in chunks.Where(p => p != null))
             {
-                if (chunk.PixelSizeLat.DecimalDegree > this.PixelSizeLat.DecimalDegree ||
-                    chunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
+                IChunkPointAccessor<T> chunk = loopChunk;
+                if (loopChunk.PixelSizeLat.DecimalDegree > this.PixelSizeLat.DecimalDegree ||
+                    loopChunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
                 {
-                    Console.WriteLine("Source pixel size:" + chunk.PixelSizeLat.ToLatString() + ", " + chunk.PixelSizeLon.ToLonString());
-                    Console.WriteLine("Dest   pixel size:" + this.PixelSizeLat.ToLatString() + ", " + this.PixelSizeLon.ToLonString());
-                    Console.WriteLine("Will need to interpolate");
+                    // Need to interpolate.
+                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi);
                 }
 
                 for (int i = 0; i < this.LatSteps; i++)
                 {
-                    int iPrime = chunk.GetLatIndex(this.GetLat(i));
-                    if (iPrime >= 0 && iPrime < chunk.LatSteps)
+                    Angle loopLat = this.GetLat(i);
+                    if (!chunk.HasDataAtLat(loopLat))
                     {
-                        for (int j = 0; j < this.LonSteps; j++)
+                        continue;
+                    }
+
+                    for (int j = 0; j < this.LonSteps; j++)
+                    {
+                        Angle loopLon = this.GetLon(j);
+                        if (chunk.TryGetDataAtPoint(loopLat, loopLon, out T data))
                         {
-                            int jPrime = chunk.LonSteps - 1 - chunk.GetLonIndex(this.GetLon(this.LonSteps - 1 - j));
-                            if (jPrime >= 0 && jPrime < chunk.LonSteps)
-                            {
-                                this.Data[i][j] = aggregate(
-                                    countAccumulatedPoints[i][j],
-                                    this.Data[i][j],
-                                    chunk.Data[iPrime][jPrime]);
-                                countAccumulatedPoints[i][j]++;
-                            }
+                            this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
+                            counter[i][j]++;
                         }
                     }
                 }
             }
+        }
+
+        private IChunkPointAccessor<T> ComputeInterpolation(Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
+        {
+            int iLo = GetLatIndex(latLo) - 2;
+            int iHi = GetLatIndex(latHi) + 2;
+            iLo = iLo < 0 ? 0 : iLo >= LatSteps ? LatSteps - 1 : iLo;
+            iHi = iHi < 0 ? 0 : iHi >= LatSteps ? LatSteps - 1 : iHi;
+            double areaLatLo = GetLat(iLo).DecimalDegree;
+            double areaLatHi = GetLat(iHi).DecimalDegree;
+
+            int jLo = GetLonIndex(lonHi) - 2;
+            int jHi = GetLonIndex(lonLo) + 2;
+            jLo = jLo < 0 ? 0 : jLo >= LonSteps ? LonSteps - 1 : jLo;
+            jHi = jHi < 0 ? 0 : jHi >= LonSteps ? LonSteps - 1 : jHi;
+            double areaLonLo = GetLon(jHi).DecimalDegree;
+            double areaLonHi = GetLon(jLo).DecimalDegree;
+
+            double[] lats = new double[iHi - iLo + 1];
+            for (int i = 0; i < lats.Length; i++)
+            {
+                lats[i] = areaLatLo + i * (areaLatHi - areaLatLo) / (iHi - iLo);
+            }
+
+            double[] lons = new double[jHi - jLo + 1];
+            for (int i = 0; i < lons.Length; i++)
+            {
+                lons[i] = areaLonHi + i * (areaLonLo - areaLonHi) / (jHi - jLo);
+            }
+
+            double[][] values = new double[lats.Length][];
+            for (int i = 0; i < lats.Length; i++)
+            {
+                values[i] = new double[lons.Length];
+                for (int j = 0; j < lons.Length; j++)
+                {
+                    values[i][j] = toDouble(Data[iLo + i][jLo + j]);
+                }
+            }
+
+            return new InterpolatingChunk<T>(lats, lons, values, fromDouble);
+        }
+
+        public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)
+        {
+            if (HasDataAtLat(lat) && HasDataAtLon(lon))
+            {
+                data = Data[GetLatIndex(lat)][GetLonIndex(lon)];
+                return true;
+            }
+
+            data = default(T);
+            return false;
+        }
+
+        public bool HasDataAtLat(Angle lat)
+        {
+            int i = GetLatIndex(lat);
+            return i >= 0 && i < LatSteps;
+        }
+
+        public bool HasDataAtLon(Angle lon)
+        {
+            int j = GetLonIndex(lon);
+            return j >= 0 && j < LonSteps;
         }
     }
 }

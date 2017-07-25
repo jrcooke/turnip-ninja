@@ -39,7 +39,10 @@ namespace MountainView.Elevation
             ChunkHolder<float> ret = new ChunkHolder<float>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
-                template.LatHi, template.LonHi);
+                template.LatHi, template.LonHi,
+                null,
+                p => p,
+                p => (float)p);
             ret.RenderChunksInto(chunks, Utils.WeightedFloatAverage);
             return ret;
         }

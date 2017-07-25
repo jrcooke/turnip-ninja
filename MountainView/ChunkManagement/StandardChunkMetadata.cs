@@ -5,7 +5,7 @@ namespace MountainView.ChunkManagement
     public class StandardChunkMetadata : ChunkMetadata
     {
         private const int smallBatch = 540;
-        private const int maxZoom = 14;
+        private const int maxZoom = 16;
 
         public int ZoomLevel { get; private set; }
 
@@ -24,7 +24,7 @@ namespace MountainView.ChunkManagement
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
 
-            var thirds = (int)(60 * 45 * Math.Pow(2, 14 - zoomLevel));
+            var thirds = (int)(15  * 45 * Math.Pow(2, 16 - zoomLevel));
             Angle size = Angle.FromThirds(thirds);
             Angle latLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lat, Angle.Whole), size)), Angle.Whole);
             Angle lonLo = Angle.Subtract(Angle.Multiply(size, Angle.Divide(Angle.Add(lon, Angle.Whole), size)), Angle.Whole);
