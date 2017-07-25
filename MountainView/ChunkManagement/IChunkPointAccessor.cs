@@ -1,4 +1,6 @@
-﻿namespace MountainView.ChunkManagement
+﻿using MountainView.Base;
+
+namespace MountainView.ChunkManagement
 {
     interface IChunkPointAccessor<T>
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MountainView
+namespace MountainView.Base
 {
     public struct Angle
     {

@@ -4,6 +4,7 @@
  * Original C Author:   Frank Warmerdam, warmerdam @pobox.com
  ****************************************************************************/
 
+using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
 using System.IO;
