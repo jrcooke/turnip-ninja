@@ -18,6 +18,21 @@ namespace MountainView
         {
             try
             {
+                //var lat = Angle.FromDecimalDegrees(47.6867797);
+                //var lon = Angle.FromDecimalDegrees(-122.2907541);
+
+                //Console.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+
+                //for (int zoomLevel = 0; zoomLevel <= 16; zoomLevel++)
+                //{
+                //    var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+                //    Console.Write(zoomLevel + "\t" + cc.LatDelta);
+                //    Console.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
+                //}
+
+
+
+
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
                 //if (true)
                 //{
@@ -81,18 +96,18 @@ namespace MountainView
                 {
                     c.Lat = Angle.FromDecimalDegrees(47.6867797);
                     c.Lon = Angle.FromDecimalDegrees(-122.2907541);
-                    for (int zoomLevel = 15; zoomLevel <= 16; zoomLevel++)
+                    for (int zoomLevel = 10; zoomLevel <= 16; zoomLevel++)
                     {
                         StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 
-                        var pixels2 = Heights.GenerateData(template).Result;
+                        var pixels2 = Heights.GenerateData(template);
                         Utils.WriteImageFile(pixels2,
-                            Path.Combine(outputFolder, "ChunkH" + zoomLevel + ".png"),
+                            Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
                             a => Utils.GetColorForHeight(a));
 
                         var pixels = Images.GenerateData(template).Result;
                         Utils.WriteImageFile(pixels,
-                            Path.Combine(outputFolder, "ChunkC" + zoomLevel + ".png"),
+                            Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
                             a => a);
                     }
                 }

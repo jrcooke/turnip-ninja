@@ -104,6 +104,18 @@ namespace MountainView.Base
             return Angle.FromTotal((int)(a.Total / b));
         }
 
+        public static int FloorDivide(Angle a, Angle b)
+        {
+            if (!a.IsNegative)
+            {
+                return (int)(a.Total / b.Total);
+            }
+            else
+            {
+                return -1 - (int)((-a.Total) / b.Total);
+            }
+        }
+
         internal static Angle Subtract(Angle a, Angle b)
         {
             return Angle.FromTotal(a.Total - b.Total);
