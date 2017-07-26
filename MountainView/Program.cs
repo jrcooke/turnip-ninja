@@ -100,12 +100,12 @@ namespace MountainView
                     {
                         StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 
-                        var pixels2 = Heights.GenerateData(template);
+                        var pixels2 = Heights.Current.GetData(template);
                         Utils.WriteImageFile(pixels2,
                             Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
                             a => Utils.GetColorForHeight(a));
 
-                        var pixels = Images.GenerateData(template).Result;
+                        var pixels = Images.Current.GetData(template);
                         Utils.WriteImageFile(pixels,
                             Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
                             a => a);

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace MountainView.Imaging
 {
-    internal class Images
+    internal class Images : CachingHelper<SKColor>
     {
         private const string imageUrlTemplate = "https://dev.virtualearth.net/REST/v1/Imagery/Map/Aerial/{0},{1}/{2}?format=png&key={3}";
         private const string metadUrlTemplate = "https://dev.virtualearth.net/REST/v1/Imagery/Map/Aerial/{0},{1}/{2}?mapMetadata=1&key={3}";
@@ -20,7 +20,23 @@ namespace MountainView.Imaging
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        public static async Task<ChunkHolder<SKColor>> GenerateData(StandardChunkMetadata template)
+        private const string cachedFileTemplate = "{0}.v2.idata";
+        private const string description = "Images";
+
+        private Images() : base(cachedFileTemplate, description, 4)
+        {
+        }
+
+        private static Lazy<Images> current = new Lazy<Images>(() => new Images());
+        public static Images Current
+        {
+            get
+            {
+                return current.Value;
+            }
+        }
+
+        protected override ChunkHolder<SKColor> GenerateData(StandardChunkMetadata template)
         {
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
@@ -36,7 +52,7 @@ namespace MountainView.Imaging
             Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
 
             var chunks = new List<ChunkHolder<SKColor>>();
-            var tmp = await GetColors(midLat, midLon, template.ZoomLevel + 2);
+            var tmp = GetColors(midLat, midLon, template.ZoomLevel + 2).Result;
             chunks.Add(tmp);
 
             // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
@@ -71,7 +87,7 @@ namespace MountainView.Imaging
             return ret;
         }
 
-        public static async Task<ChunkHolder<SKColor>> GetColors(Angle lat, Angle lon, int zoomLevel)
+        private static async Task<ChunkHolder<SKColor>> GetColors(Angle lat, Angle lon, int zoomLevel)
         {
             // Need to figure out which chunks to load.
             string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat.ToLatString(), lon.ToLonString(), zoomLevel));
@@ -108,6 +124,23 @@ namespace MountainView.Imaging
                     null,
                     null);
             }
+        }
+
+        protected override void WritePixel(FileStream stream, SKColor pixel)
+        {
+            stream.WriteByte(pixel.Red);
+            stream.WriteByte(pixel.Green);
+            stream.WriteByte(pixel.Blue);
+            stream.WriteByte(pixel.Alpha);
+        }
+
+        protected override SKColor ReadPixel(FileStream stream, byte[] buffer)
+        {
+            return new SKColor(
+                (byte)stream.ReadByte(),
+                (byte)stream.ReadByte(),
+                (byte)stream.ReadByte(),
+                (byte)stream.ReadByte());
         }
     }
 }

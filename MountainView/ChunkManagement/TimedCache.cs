@@ -4,13 +4,13 @@ using System.Linq;
 
 namespace MountainView
 {
-    public class Cache<T, U> where U : class
+    public class TimedCache<T, U> where U : class
     {
         private TimeSpan purgeAge;
         private Dictionary<T, LastAccessedHolder> chunkCache = new Dictionary<T, LastAccessedHolder>();
         private object locker = new object();
 
-        public Cache(TimeSpan purgeAge)
+        public TimedCache(TimeSpan purgeAge)
         {
             this.purgeAge = purgeAge;
         }
