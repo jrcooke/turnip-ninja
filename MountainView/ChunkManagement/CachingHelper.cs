@@ -3,6 +3,7 @@ using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainView
 {
@@ -25,7 +26,7 @@ namespace MountainView
             this.filenameCache = new Dictionary<long, string>();
         }
 
-        public ChunkHolder<T> GetData(StandardChunkMetadata template)
+        public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
         {
             ChunkHolder<T> ret;
             if (chunkCache.TryGetValue(template.Key, out ret))
@@ -53,15 +54,24 @@ namespace MountainView
             }
 
             // Need to generate the data
-            lock (filename)
+            // TODO: need to implement some sort of design where we know in advance that we don't have more than one filename at once.
+            //            lock (filename)
             {
                 Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
                 Console.WriteLine("Starting generation...");
 
-                ret = GenerateData(template);
-
-                WriteChunk(ret, fullName);
-                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
+                try
+                {
+                    ret = await GenerateData(template);
+                    WriteChunk(ret, fullName);
+                    chunkCache.Add(template.Key, ret);
+                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fullName);
+                    Console.WriteLine(ex.ToString());
+                }
             }
 
             return ret;
@@ -110,7 +120,7 @@ namespace MountainView
             return ret;
         }
 
-        protected abstract ChunkHolder<T> GenerateData(StandardChunkMetadata template);
+        protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template);
         protected abstract void WritePixel(FileStream stream, T pixel);
         protected abstract T ReadPixel(FileStream stream, byte[] buffer);
     }

@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MountainView
@@ -18,112 +19,13 @@ namespace MountainView
         {
             try
             {
-                //var lat = Angle.FromDecimalDegrees(47.6867797);
-                //var lon = Angle.FromDecimalDegrees(-122.2907541);
-
-                //Console.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
-
-                //for (int zoomLevel = 0; zoomLevel <= 16; zoomLevel++)
-                //{
-                //    var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-                //    Console.Write(zoomLevel + "\t" + cc.LatDelta);
-                //    Console.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
-                //}
-
-
-
-
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-                //if (true)
-                //{
-                //    var homeLat = Angle.FromDecimalDegrees(47.6867797);
-                //    var homeLon = Angle.FromDecimalDegrees(-122.2907541);
+                Config c = Config.Juaneta();
 
-                //    var xxx = ImageWorker2.GenerateData(homeLat, homeLon, 10).Result;
-                //    Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.png"), a => a);
-
-                //    var yyy = Heights.GenerateData(homeLat, homeLon, 10).Result;
-                //    Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.png"), a => Utils.GetColorForHeight(a));
-
-                //    //                    var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
-                //    //// Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
-                //    //ChunkHolder<float> ddd = newONe.RenderSubChunk(homeLat, homeLon,
-                //    //    Angle.FromMinutes(2), Angle.FromMinutes(2),
-                //    //    Angle.FromThirds(20), Angle.FromThirds(20),
-                //    //    Utils.WeightedFloatAverage);
-                //    //Utils.WriteImageFile(ddd, Path.Combine(outputFolder, "ddd.png"), a => Utils.GetColorForHeight(a));
-
-                //    var tttt = ImageWorker2.GetColors(homeLat, homeLon, 13).Result;
-                //    //ChunkHolder<SKColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
-                //    //    Angle.FromMinutes(2), Angle.FromMinutes(2),
-                //    //    Angle.FromThirds(20), Angle.FromThirds(20),
-                //    //    Utils.WeightedColorAverage);
-                //    Utils.WriteImageFile(tttt, Path.Combine(outputFolder, "tttt.png"), a => a);
-                //    //Utils.WriteImageFile(ddd2, Path.Combine(outputFolder, "ddd2.png"), a => a);
-                //}
-
-                // Near Juanteta
-                Config c = new Config();
-                c = new Config()
-                {
-                    Lat = Angle.FromDecimalDegrees(47.695736),
-                    Lon = Angle.FromDecimalDegrees(-122.232330),
-                    R = 20000, // 60000,
-                    DeltaR = 5,
-                    MinAngle = 85,
-                    MaxAngle = 95,
-                    ElevationViewMin = -10.0,
-                    ElevationViewMax = 10.0,
-                    AngularResolution = 0.01,
-                };
-
-                // owego
-                //c = new Config()
-                //{
-                //    Lat = 42.130303,
-                //    Lon = -76.243376,
-                //    R = 5000,
-                //    DeltaR = 1,
-                //    MinAngle = 180,
-                //    MaxAngle = 270,
-                //    ElevationViewMin = -25.0,
-                //    ElevationViewMax = 5.0,
-                //    AngularResolution = 0.05,
-                //};
-
-
-                if (true)
-                {
-                    c.Lat = Angle.FromDecimalDegrees(47.6867797);
-                    c.Lon = Angle.FromDecimalDegrees(-122.2907541);
-                    for (int zoomLevel = 10; zoomLevel <= 16; zoomLevel++)
-                    {
-                        StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
-
-                        var pixels2 = Heights.Current.GetData(template);
-                        Utils.WriteImageFile(pixels2,
-                            Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
-                            a => Utils.GetColorForHeight(a));
-
-                        var pixels = Images.Current.GetData(template);
-                        Utils.WriteImageFile(pixels,
-                            Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                            a => a);
-                    }
-                }
+                //var bothData =
+                Task.WaitAll(GetPolarData(c));
 
                 /*
-                var bothData = GetPolarData(
-                    c.Lat, c.Lon,
-                    c.R, c.DeltaR,
-                    c.MinAngle, c.MaxAngle, c.AngularResolution,
-                    (lat2, lon2, cosLat, metersPerElement) =>
-                    {
-                        var col = Images.GetColor(lat2, lon2, cosLat, metersPerElement);
-                        var h = Heights.GetHeight(lat2, lon2, cosLat, metersPerElement);
-                        return new Tuple<float, SKColor>(h, col);
-                    });
-
                 // Cache the function results.
                 bothData = bothData
                     .Select(p => p())
@@ -163,66 +65,91 @@ namespace MountainView
             }
         }
 
-        public static Func<T[]>[] GetPolarData<T>(
-            Angle lat, Angle lon,
-            double R, double deltaR,
-            double minTheta, double maxTheta, double deltaTheta,
-            Func<Angle, Angle, double, double, T> getValue)
+        public static async Task GetPolarData(Config config)
         {
-            double deltaThetaRad = deltaTheta * Math.PI / 180;
-            double cosLat = Math.Cos(lat.DecimalDegree * Math.PI / 180.0);
+            double cosLat = Math.Cos(config.Lat.DecimalDegree * Math.PI / 180.0);
 
-            List<Func<T[]>> actions = new List<Func<T[]>>();
-
-            int iThetaMin = (int)(minTheta / deltaTheta);
-            int iThetaMax = (int)(maxTheta / deltaTheta);
-
+            int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
+            int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
+            HashSet<long> chunkKeys = new HashSet<long>();
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
-                int i = iTheta;
-                actions.Add(() => ComputeAlongRadius(lat, lon, R, deltaR, getValue, deltaThetaRad, cosLat, i));
+                Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
+                double cosTheta = Math.Cos(theta.DecimalDegree);
+                double sinTheta = Math.Sin(theta.DecimalDegree);
+                for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
+                {
+                    double r = iR * config.DeltaR;
+                    var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
+                    double metersPerElement = config.DeltaR / 100.0;
+                    var len = Utils.LengthOfLatDegree * cosLat;
+                    var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / len, 2));
+                    zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
+
+                    long key = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
+                    chunkKeys.Add(key);
+                }
             }
 
-            return actions.ToArray();
-        }
-
-        public class Config
-        {
-            public Angle Lat { get; set; }
-            public Angle Lon { get; set; }
-            public double R { get; set; }
-            public double DeltaR { get; set; }
-            public double MinAngle { get; set; }
-            public double MaxAngle { get; set; }
-            public double ElevationViewMin { get; set; }
-            public double ElevationViewMax { get; set; }
-            public double AngularResolution { get; set; }
-        }
-
-        private static T[] ComputeAlongRadius<T>(Angle lat, Angle lon,
-            double R, double deltaR,
-            Func<Angle, Angle, double, double, T> getValue,
-            double deltaThetaRad,
-            double cosLat,
-            int iTheta)
-        {
-            var ret = new T[(int)(R / deltaR) - 1];
-            double cosTheta = Math.Cos(iTheta * deltaThetaRad);
-            double sinTheta = Math.Sin(iTheta * deltaThetaRad);
-
-            for (int iR = 1; iR < (int)(R / deltaR); iR++)
+            foreach (var chunkKey in chunkKeys)
             {
-                double r = iR * deltaR;
-                var point = Utils.APlusDeltaMeters(lat, lon, r * sinTheta, r * cosTheta, cosLat);
-                ret[iR - 1] = getValue(point.Item1, point.Item2, cosLat,
-                    //Math.Max(deltaR, r * deltaThetaRad)
-                    //r * deltaThetaRad
-                    deltaR / 100.0
-                    );
-            }
+                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
-            return ret;
+                // Now do that again, but do the rendering per chunk.
+                for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
+                {
+                    Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
+
+                    //    var ret = new T[(int)(R / deltaR) - 1];
+                    double cosTheta = Math.Cos(theta.DecimalDegree);
+                    double sinTheta = Math.Sin(theta.DecimalDegree);
+
+                    for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
+                    {
+                        double r = iR * config.DeltaR;
+                        var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
+                        double metersPerElement = config.DeltaR / 100.0;
+                        var len = Utils.LengthOfLatDegree * cosLat;
+                        var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / len, 2));
+                        zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
+
+                        long key = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
+                        chunkKeys.Add(key);
+                        //                Console.WriteLine(key + "\t" + point.Item1 + "\t" + point.Item2 + "\t" + deltaR / 100.0);
+                        //  ret[iR - 1] = getValue(point.Item1, point.Item2, cosLat,
+                        //Math.Max(deltaR, r * deltaThetaRad)
+                        //r * deltaThetaRad
+                        //    deltaR / 100.0
+                        //  );
+                    }
+                }
+
+                var pixels2 = await Heights.Current.GetData(chunk);
+                var pixels = await Images.Current.GetData(chunk);
+            };
         }
+
+        public static Task ForEachAsync<T>(IEnumerable<T> source, int concurrency, Func<T, Task> body)
+        {
+            return Task.WhenAll(
+                Partitioner.Create(source)
+                    .GetPartitions(concurrency)
+                    .Select(partition =>
+                        Task.Run(async delegate
+                        {
+                            using (partition)
+                            {
+                                while (partition.MoveNext())
+                                {
+                                    await body(partition.Current);
+                                }
+                            }
+                        })));
+        }
+
+
+
+
 
         private static IEnumerable<Tuple<double, SKColor>[]> CollapseToViewFromHere(
             Func<Tuple<float, SKColor>[]>[] thetaRad,

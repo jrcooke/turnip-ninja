@@ -23,7 +23,10 @@ namespace MountainView.Elevation
 
         private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
-        public static async Task<ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
+        private static object generalLock = new object();
+        private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
+
+        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -35,73 +38,93 @@ namespace MountainView.Elevation
                 return ret;
             }
 
-            bool missing = false;
-            Console.WriteLine("Local " + description + " raw data does not exist: " + fileName);
-            Console.WriteLine("Downloading locally...");
-
-            var shortWebFile =
-                (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
-                (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
-            string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, shortWebFile));
-            if (!File.Exists(inputFile))
+            object specificLock = null;
+            lock(generalLock)
             {
-                Console.WriteLine("Missing " + description + " data file: " + inputFile);
-                // Need to get fresh data:
-
-                var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
-                if (!File.Exists(target))
+                if (!specificLocks.TryGetValue(fileName, out specificLock))
                 {
-                    Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
-                    using (HttpClient client = new HttpClient())
+                    specificLock = new object();
+                    specificLocks.Add(fileName, specificLock);
+                }
+            }
+
+
+            lock (specificLock)
+            {
+                if (cache.TryGetValue(fileName, out ret))
+                {
+                    return ret;
+                }
+
+                bool missing = false;
+                Console.WriteLine("Local " + description + " raw data does not exist: " + fileName);
+                Console.WriteLine("Downloading locally...");
+
+                var shortWebFile =
+                    (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
+                    (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
+                string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, shortWebFile));
+                if (!File.Exists(inputFile))
+                {
+                    Console.WriteLine("Missing " + description + " data file: " + inputFile);
+                    // Need to get fresh data:
+
+                    var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
+                    if (!File.Exists(target))
                     {
-                        HttpResponseMessage message = await TryDownloadDifferentFormats(shortWebFile, client);
-                        if (message != null && message.StatusCode == HttpStatusCode.OK)
+                        Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
+                        using (HttpClient client = new HttpClient())
                         {
-                            var content = await message.Content.ReadAsByteArrayAsync();
-                            File.WriteAllBytes(target, content);
+                            HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client).Result;
+                            if (message != null && message.StatusCode == HttpStatusCode.OK)
+                            {
+                                var content = message.Content.ReadAsByteArrayAsync().Result;
+                                File.WriteAllBytes(target, content);
+                            }
+                            else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
+                            {
+                                missing = true;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                            }
                         }
-                        else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
+
+                        if (!missing)
                         {
-                            missing = true;
+                            Console.WriteLine("Downloaded " + description + " source zip to '" + target + "'");
                         }
                         else
                         {
-                            throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                            throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
+                            // Console.WriteLine("Source is missing.");
                         }
                     }
 
                     if (!missing)
                     {
-                        Console.WriteLine("Downloaded " + description + " source zip to '" + target + "'");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
-                        // Console.WriteLine("Source is missing.");
+                        Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
+                        ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, shortWebFile));
+                        Console.WriteLine("Extracted raw " + description + " data from zip file.");
+                        //                File.Delete(target);
                     }
                 }
 
                 if (!missing)
                 {
-                    Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
-                    ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, shortWebFile));
-                    Console.WriteLine("Extracted raw " + description + " data from zip file.");
-                    //                File.Delete(target);
+                    //cache[fileName] = ReadDataToChunks(inputFile);
+                    ret = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
+                    Console.WriteLine("Loaded raw " + description + " data: " + fileName);
                 }
+                else
+                {
+                    Console.WriteLine("Data not available.");
+                }
+
+                cache.Add(fileName, ret);
             }
 
-            if (!missing)
-            {
-                //cache[fileName] = ReadDataToChunks(inputFile);
-                ret = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
-                Console.WriteLine("Loaded raw " + description + " data: " + fileName);
-            }
-            else
-            {
-                Console.WriteLine("Data not available.");
-            }
-
-            cache.Add(fileName, ret);
             return ret;
         }
 

@@ -36,7 +36,7 @@ namespace MountainView.Imaging
             }
         }
 
-        protected override ChunkHolder<SKColor> GenerateData(StandardChunkMetadata template)
+        protected override async Task<ChunkHolder<SKColor>> GenerateData(StandardChunkMetadata template)
         {
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
@@ -46,13 +46,15 @@ namespace MountainView.Imaging
                 null,
                 null);
 
+          //  throw new NotImplementedException();
+
             // Need to get the images that optimally fill this chunk.
             // Start by picking a chunk in the center at the same zoom level.
             Angle midLat = Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2));
             Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
 
             var chunks = new List<ChunkHolder<SKColor>>();
-            var tmp = GetColors(midLat, midLon, template.ZoomLevel + 2).Result;
+            var tmp = await GetColors(midLat, midLon, template.ZoomLevel + 2);
             chunks.Add(tmp);
 
             // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
@@ -77,7 +79,7 @@ namespace MountainView.Imaging
                 }
             }
 
-            Task.WaitAll(workers.ToArray());
+            await Task.WhenAll(workers.ToArray());
             foreach (var worker in workers)
             {
                 chunks.Add(worker.Result);
@@ -105,6 +107,11 @@ namespace MountainView.Imaging
                     string rawMetadata = await client.GetStringAsync(metadUrl);
                     File.WriteAllText(metadFile, rawMetadata);
                 }
+            }
+            else
+            {
+                // In case this was from another thread;
+                await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
             JObject jObject = JObject.Parse(File.ReadAllText(metadFile));

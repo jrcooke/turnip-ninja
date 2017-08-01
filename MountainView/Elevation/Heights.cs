@@ -3,6 +3,7 @@ using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
@@ -24,7 +25,7 @@ namespace MountainView.Elevation
             }
         }
 
-        protected override ChunkHolder<float> GenerateData(StandardChunkMetadata template)
+        protected override Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template)
         {
             int latMin = (int)Math.Min(template.LatLo.SignedDegrees, template.LatHi.SignedDegrees);
             int latMax = (int)Math.Max(template.LatLo.SignedDegrees, template.LatHi.SignedDegrees);
@@ -35,7 +36,7 @@ namespace MountainView.Elevation
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
                 {
-                    chunks.Add(UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt).Result);
+                    chunks.Add(UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
                 }
             }
 
@@ -47,7 +48,7 @@ namespace MountainView.Elevation
                   p => p,
                   p => (float)p);
             ret.RenderChunksInto(chunks, Utils.WeightedFloatAverage);
-            return ret;
+            return Task.FromResult(ret);
         }
 
         protected override void WritePixel(FileStream stream, float pixel)

@@ -6,7 +6,7 @@ namespace MountainView.ChunkManagement
     public class StandardChunkMetadata : ChunkMetadata
     {
         private const int smallBatch = 540;
-        private const int maxZoom = 16;
+        public const int MaxZoomLevel = 16;
 
         public int ZoomLevel { get; private set; }
         public long Key { get; private set; }
@@ -20,9 +20,9 @@ namespace MountainView.ChunkManagement
             this.Key = key;
         }
 
-        public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
+        public static long GetKey(Angle lat, Angle lon, int zoomLevel)
         {
-            if (zoomLevel > maxZoom)
+            if (zoomLevel > MaxZoomLevel)
             {
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
@@ -37,9 +37,12 @@ namespace MountainView.ChunkManagement
             int encodedLat = 3 * numPossible / 2 + sizeMultiplierLat;
             int encodedLon = 3 * numPossible / 2 + sizeMultiplierLon;
             long key = encodedLat + encodedLon * 0x100000000;
-            StandardChunkMetadata ret = GetRangeFromKey(key);
+            return key;
+        }
 
-            return ret;
+        public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
+        {
+            return GetRangeFromKey(GetKey(lat, lon, zoomLevel));
         }
 
         public static StandardChunkMetadata GetRangeFromKey(long key)
@@ -67,6 +70,11 @@ namespace MountainView.ChunkManagement
                 zoomLevel, key);
 
             return ret;
+        }
+
+        public override string ToString()
+        {
+            return ZoomLevel + "Z_" + LatLo.ToLatString() + "," + LonLo.ToLonString() + "_" + LatHi.ToLatString() + "," + LonHi.ToLonString();
         }
     }
 }
