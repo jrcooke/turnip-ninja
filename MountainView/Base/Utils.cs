@@ -24,6 +24,16 @@ namespace MountainView.Base
                 Angle.Add(lon, deltaX / LengthOfLatDegree / cosLatVal));
         }
 
+        public static Angle DeltaMetersLat(Angle heading, double dist)
+        {
+            return Angle.FromDecimalDegrees(dist * Math.Cos(heading.DecimalDegree) / LengthOfLatDegree);
+        }
+
+        public static Angle DeltaMetersLon(Angle heading, double dist, double cosLat)
+        {
+            return Angle.FromDecimalDegrees(dist * Math.Sin(heading.DecimalDegree) / LengthOfLatDegree / cosLat);
+        }
+
         internal static SKColor GetColorForHeight(float a)
         {
             return new SKColor(

@@ -91,36 +91,32 @@ namespace MountainView
                 }
             }
 
+            // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
             foreach (var chunkKey in chunkKeys)
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+
+                var heightChunk = Heights.Current.GetData(chunk).Result;
+                var interpChunk = heightChunk.GetInterpolator();
 
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
                 {
                     Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
 
-                    //    var ret = new T[(int)(R / deltaR) - 1];
-                    double cosTheta = Math.Cos(theta.DecimalDegree);
-                    double sinTheta = Math.Sin(theta.DecimalDegree);
+                    // Use this angle to compute a heading.
+                    var endRLat = Utils.DeltaMetersLat(theta, config.R);
+                    var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
+                    interpChunk.GetInterpolatorForLine(config.Lat, config.Lon, endRLat, endRLon);
+
+                    List<Angle> lats = new List<Angle>();
+                    List<Angle> lons = new List<Angle>();
                     for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                     {
-                        double r = iR * config.DeltaR;
-                        var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
-                        double metersPerElement = config.DeltaR / 100.0;
-                        var len = Utils.LengthOfLatDegree * cosLat;
-                        var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / len, 2));
-                        zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
-
-                        long key = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
-                        chunkKeys.Add(key);
-                        //                Console.WriteLine(key + "\t" + point.Item1 + "\t" + point.Item2 + "\t" + deltaR / 100.0);
-                        //  ret[iR - 1] = getValue(point.Item1, point.Item2, cosLat,
-                        //Math.Max(deltaR, r * deltaThetaRad)
-                        //r * deltaThetaRad
-                        //    deltaR / 100.0
-                        //  );
+                        var mult = iR * config.DeltaR / config.R;
+                        lats.Add(Angle.Add(config.Lat, Angle.Multiply(endRLat, mult)));
+                        lons.Add(Angle.Add(config.Lon, Angle.Multiply(endRLon, mult)));
                     }
                 }
 

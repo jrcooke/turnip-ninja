@@ -89,6 +89,11 @@ namespace MountainView.Base
             return Angle.FromTotal(a.Total * b);
         }
 
+        public static Angle Multiply(Angle a, double b)
+        {
+            return Angle.FromTotal((int)(a.Total * b));
+        }
+
         public static int Divide(Angle a, Angle b)
         {
             return (int)(a.Total / b.Total);

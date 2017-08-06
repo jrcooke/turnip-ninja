@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-
     class InterpolatingChunk<T> : IChunkPointAccessor<T>
     {
         private double latLo;
@@ -45,6 +44,11 @@ namespace MountainView.ChunkManagement
 
             data = default(T);
             return false;
+        }
+
+        internal void GetInterpolatorForLine(Angle lat, Angle lon, Angle endRLat, Angle endRLon)
+        {
+            throw new NotImplementedException();
         }
     }
 }

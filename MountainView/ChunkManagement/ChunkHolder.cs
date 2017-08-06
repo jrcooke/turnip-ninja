@@ -74,7 +74,7 @@ namespace MountainView.ChunkManagement
             }
         }
 
-        private IChunkPointAccessor<T> ComputeInterpolation(Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
+        private InterpolatingChunk<T> ComputeInterpolation(Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
         {
             int iLo = GetLatIndex(latLo) - 2;
             int iHi = GetLatIndex(latHi) + 2;
@@ -113,6 +113,11 @@ namespace MountainView.ChunkManagement
             }
 
             return new InterpolatingChunk<T>(lats, lons, values, fromDouble);
+        }
+
+        internal InterpolatingChunk<T> GetInterpolator()
+        {
+            return ComputeInterpolation(LatLo, LonLo, LatHi,LonHi);
         }
 
         public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)
