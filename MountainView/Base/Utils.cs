@@ -18,7 +18,7 @@ namespace MountainView.Base
 
         public static Tuple<Angle, Angle> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
         {
-            double cosLatVal = cosLat ?? Math.Cos(lat.DecimalDegree * Math.PI / 180);
+            double cosLatVal = cosLat ?? Math.Cos(lat.Radians);
             return new Tuple<Angle, Angle>(
                 Angle.Add(lat, deltaY / LengthOfLatDegree),
                 Angle.Add(lon, deltaX / LengthOfLatDegree / cosLatVal));
@@ -26,12 +26,12 @@ namespace MountainView.Base
 
         public static Angle DeltaMetersLat(Angle heading, double dist)
         {
-            return Angle.FromDecimalDegrees(dist * Math.Cos(heading.DecimalDegree) / LengthOfLatDegree);
+            return Angle.FromDecimalDegrees(dist * Math.Cos(heading.Radians) / LengthOfLatDegree);
         }
 
         public static Angle DeltaMetersLon(Angle heading, double dist, double cosLat)
         {
-            return Angle.FromDecimalDegrees(dist * Math.Sin(heading.DecimalDegree) / LengthOfLatDegree / cosLat);
+            return Angle.FromDecimalDegrees(dist * Math.Sin(heading.Radians) / LengthOfLatDegree / cosLat);
         }
 
         internal static SKColor GetColorForHeight(float a)

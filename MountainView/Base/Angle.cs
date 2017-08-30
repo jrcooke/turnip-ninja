@@ -29,6 +29,14 @@ namespace MountainView.Base
             }
         }
 
+        public double Radians
+        {
+            get
+            {
+                return DecimalDegree * Math.PI / 180.0;
+            }
+        }
+
         public static Angle FromDecimalDegrees(double v)
         {
             double fourths = v * 60 * 60 * 60 * 60;

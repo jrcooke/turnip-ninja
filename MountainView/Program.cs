@@ -70,7 +70,7 @@ namespace MountainView
 
         public static async Task GetPolarData(Config config)
         {
-            double cosLat = Math.Cos(config.Lat.DecimalDegree * Math.PI / 180.0);
+            double cosLat = Math.Cos(config.Lat.Radians);
 
             int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
             int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
@@ -78,8 +78,8 @@ namespace MountainView
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
                 Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
-                double cosTheta = Math.Cos(theta.DecimalDegree);
-                double sinTheta = Math.Sin(theta.DecimalDegree);
+                double cosTheta = Math.Cos(theta.Radians);
+                double sinTheta = Math.Sin(theta.Radians);
                 for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                 {
                     double r = iR * config.DeltaR;
@@ -87,6 +87,7 @@ namespace MountainView
                     double metersPerElement = config.DeltaR / 100.0;
                     var len = Utils.LengthOfLatDegree * cosLat;
                     var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / len, 2));
+                    zoomLevel = 15;
                     zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
 
                     long key = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
@@ -132,25 +133,14 @@ namespace MountainView
 
                     var interp = interpChunk; // interpChunk.GetInterpolatorForLine(config.Lat, config.Lon, Angle.Add(config.Lat, endRLat), Angle.Add(config.Lon, endRLon));
 
-                    List<Angle> lats = new List<Angle>();
-                    List<Angle> lons = new List<Angle>();
                     for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                     {
                         var mult = iR * config.DeltaR / config.R;
                         var curLat = Angle.Add(config.Lat, Angle.Multiply(endRLat, mult));
                         var curLon = Angle.Add(config.Lon, Angle.Multiply(endRLon, mult));
-                        lats.Add(curLat);
-                        lons.Add(curLon);
-
-                        float data;
-                        if (interp.TryGetDataAtPoint(curLat, curLon, out data))
+                        if (interp.TryGetDataAtPoint(curLat, curLon, out float data))
                         {
                             ret[iTheta - iThetaMin][iR] = data;
-                          //  Console.WriteLine(curLat.ToLatString() + ", " + curLon.ToLonString() + " = " + data);
-                        }
-                        else
-                        {
-                            //             Console.WriteLine(curLat.ToLatString() + ", " + curLon.ToLonString() + " = N/A");
                         }
                     }
                 }
@@ -164,10 +154,6 @@ namespace MountainView
                         a => Utils.GetColorForHeight(a));
                     ShowOutput = false;
                 }
-
-
-                //   var pixels2 = await Heights.Current.GetData(chunk);
-                //   var pixels = await Images.Current.GetData(chunk);
             });
 
             Utils.WriteImageFile(ret, ret.Length, ret[0].Length,

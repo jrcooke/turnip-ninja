@@ -1,5 +1,5 @@
-// Based on code from Alex Musayev: https://gist.github.com/dreikanter/3526685
-// And from http://www.it.uom.gr/teaching/linearalgebra/NumericalRecipiesInC/c3-6.pdf
+// Based now only on Numerical Recipies code
+// http://www.it.uom.gr/teaching/linearalgebra/NumericalRecipiesInC/c3-6.pdf
 
 using System;
 using System.Collections.Generic;
@@ -76,126 +76,6 @@ namespace MountainView.Base
 
         //    //throw new NotImplementedException();
         //}
-
-        /// <summary>
-        /// Spline interpolation class.
-        /// </summary>
-        //private class SplineInterpolator
-        //{
-        //    private readonly double[] xs;
-        //    private readonly double[] values;
-        //    private readonly double[] h;
-        //    private readonly double[] a;
-
-        //    /// <param name="nodes">Collection of known points for further interpolation.
-        //    /// Should contain at least two items.</param>
-        //    public SplineInterpolator(double[] xs, double[] values)
-        //    {
-        //        var n = xs.Length;
-        //        if (n < 3)
-        //        {
-        //            throw new ArgumentException("At least three point required for interpolation.");
-        //        }
-
-        //        this.xs = xs;
-        //        this.values = values;
-        //        a = new double[n];
-        //        h = new double[n];
-
-        //        for (int i = 1; i < n; i++)
-        //        {
-        //            h[i] = xs[i] - xs[i - 1];
-        //        }
-
-        //        var sub = new double[n - 1];
-        //        var diag = new double[n - 1];
-        //        var sup = new double[n - 1];
-
-        //        for (int i = 1; i <= n - 2; i++)
-        //        {
-        //            diag[i] = (h[i + 0] + h[i + 1]) / 3;
-        //            sup[i] = h[i + 1] / 6;
-        //            sub[i] = h[i + 0] / 6;
-        //            a[i] =
-        //                (values[i + 1] - values[i + 0]) / h[i + 1] -
-        //                (values[i + 0] - values[i - 1]) / h[i + 0];
-        //        }
-
-        //        SolveTridiag(sub, diag, sup, a, n - 2);
-        //    }
-
-        //    /// <summary>
-        //    /// Gets interpolated value for specified argument.
-        //    /// </summary>
-        //    /// <param name="x">Argument value for interpolation. Must be within
-        //    /// the interval bounded by lowest and highest <see cref="xs"/> values.</param>
-        //    public double GetValue(double x)
-        //    {
-        //        int gap = 0;
-        //        var previous = double.MinValue;
-
-        //        // At the end of this iteration, "gap" will contain the index of the interval
-        //        // between two known values, which contains the unknown z, and "previous" will
-        //        // contain the biggest z value among the known samples, left of the unknown z
-        //        for (int i = 0; i < xs.Length; i++)
-        //        {
-        //            if (xs[i] < x && xs[i] > previous)
-        //            {
-        //                previous = xs[i];
-        //                gap = i + 1;
-        //            }
-        //        }
-
-        //        var x1 = x - previous;
-        //        var x2 = h[gap] - x1;
-
-        //        return (
-        //                (-a[gap - 1] / 6 * (x2 + h[gap]) * x1 + values[gap - 1]) * x2 +
-        //                (-a[gap - 0] / 6 * (x1 + h[gap]) * x2 + values[gap - 0]) * x1
-        //            ) / h[gap];
-        //    }
-
-        //    public static int LookupIndex(double[] xs, double x)
-        //    {
-        //        int iLo = 0;
-        //        int iHi = xs.Length - 1;
-        //        bool isNormal = xs[iLo] < xs[iHi];
-        //        while (iHi - iLo > 1)
-        //        {
-        //            int iMid = iLo + (iHi - iLo) / 2;
-        //            if (x < xs[iMid] == isNormal)
-        //            {
-        //                iHi = iMid;
-        //            }
-        //            else
-        //            {
-        //                iLo = iMid;
-        //            }
-        //        }
-
-        //        return iLo;
-        //    }
-
-        //    /// <summary>
-        //    /// Solve linear system with tridiagonal n*n matrix "a"
-        //    /// using Gaussian elimination without pivoting.
-        //    /// </summary>
-        //    private static void SolveTridiag(double[] sub, double[] diag, double[] sup, double[] b, int n)
-        //    {
-        //        for (int i = 2; i <= n; i++)
-        //        {
-        //            sub[i] = sub[i] / diag[i - 1];
-        //            diag[i] = diag[i] - sub[i] * sup[i - 1];
-        //            b[i] = b[i] - sub[i] * b[i - 1];
-        //        }
-
-        //        b[n] = b[n] / diag[n];
-        //        for (int i = n - 1; i >= 1; i--)
-        //        {
-        //            b[i] = (b[i] - sup[i] * b[i + 1]) / diag[i];
-        //        }
-        //    }
-        //}
     }
 
 
@@ -205,6 +85,8 @@ namespace MountainView.Base
         private double[] xa;
         private double[] ya;
         private double[] y2a;
+        private int klo;
+        private int khi;
 
         /// <summary>
         /// Given arrays x[0..n-1] and y[0..n-1] containing a tabulated function, i.e., y[i] = f(x[i]), with
@@ -213,8 +95,6 @@ namespace MountainView.Base
         /// routine is signaled to set the corresponding boundary
         /// condition for a natural spline, with zero second derivative on that boundary.
         /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
         public NRCubicSplineInterpolator(double[] x, double[] y)
         {
             if (x[0] < x[x.Length - 1])
@@ -230,6 +110,9 @@ namespace MountainView.Base
 
             n = xa.Length;
             y2a = new double[n];
+
+            klo = 0;
+            khi = n - 1;
 
             // The boundary conditions are set to be “natural”
             y2a[1] = 0.0;
@@ -262,8 +145,6 @@ namespace MountainView.Base
         /// and given the array y2a[1..n], which is the output from spline above, and given a value of
         /// x, this routine returns a cubic-spline interpolated value y.
         /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
         public bool TryGetValue(double x, out double y)
         {
             if (x < xa[0] || x > xa[n - 1])
@@ -278,24 +159,27 @@ namespace MountainView.Base
 
         private double GetValue(double x)
         {
-            // We will find the right place in the table by means of
-            // bisection.This is optimal if sequential calls to this
-            // routine are at random values of x.If sequential calls
-            // are in order, and closely spaced, one would do better
-            // to store previous values of klo and khi and test if
-            // they remain appropriate on the next call.
-            int klo = 0;
-            int khi = n - 1;
-            while (khi - klo > 1)
+            if (xa[klo] > x || x > xa[khi] || (khi - 1) != klo)
             {
-                int k = (khi + klo) / 2;
-                if (xa[k] > x)
+                // We will find the right place in the table by means of
+                // bisection.This is optimal if sequential calls to this
+                // routine are at random values of x.If sequential calls
+                // are in order, and closely spaced, one would do better
+                // to store previous values of klo and khi and test if
+                // they remain appropriate on the next call.
+                klo = 0;
+                khi = n - 1;
+                while (khi - klo > 1)
                 {
-                    khi = k;
-                }
-                else
-                {
-                    klo = k;
+                    int k = (khi + klo) / 2;
+                    if (xa[k] > x)
+                    {
+                        khi = k;
+                    }
+                    else
+                    {
+                        klo = k;
+                    }
                 }
             }
 

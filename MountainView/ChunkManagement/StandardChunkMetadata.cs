@@ -59,12 +59,13 @@ namespace MountainView.ChunkManagement
             var thirds = (int)(15 * 45 * Math.Pow(2, 16 - zoomLevel));
             Angle size = Angle.FromThirds(thirds);
 
-            Angle latLo = Angle.Multiply(size, sizeMultiplierLat);
-            Angle lonLo = Angle.Multiply(size, sizeMultiplierLon);
-            Angle latHi = Angle.Multiply(size, sizeMultiplierLat + 1);
-            Angle lonHi = Angle.Multiply(size, sizeMultiplierLon + 1);
+            var twoPixelSize = Angle.Divide(size, smallBatch / 2);
+            Angle latLo = Angle.Subtract(Angle.Multiply(size, sizeMultiplierLat), twoPixelSize);
+            Angle lonLo = Angle.Subtract(Angle.Multiply(size, sizeMultiplierLon), twoPixelSize);
+            Angle latHi = Angle.Add(Angle.Multiply(size, sizeMultiplierLat + 1), twoPixelSize);
+            Angle lonHi = Angle.Add(Angle.Multiply(size, sizeMultiplierLon + 1), twoPixelSize);
             StandardChunkMetadata ret = new StandardChunkMetadata(
-                smallBatch + 1, smallBatch + 1,
+                smallBatch + 5, smallBatch + 5,
                 latLo, lonLo,
                 latHi, lonHi,
                 zoomLevel, key);
