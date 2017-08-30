@@ -1,6 +1,7 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ namespace MountainView
         private readonly string rootMapFolder;
         private readonly int pixelDataSize;
         private readonly TimedCache<long, ChunkHolder<T>> chunkCache;
-        private readonly Dictionary<long, string> filenameCache;
+        private readonly ConcurrentDictionary<long, string> filenameCache;
 
         public CachingHelper(string cachedFileTemplate, string description, int pixelDataSize)
         {
@@ -23,7 +24,7 @@ namespace MountainView
             this.pixelDataSize = pixelDataSize;
             this.rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
             this.chunkCache = new TimedCache<long, ChunkHolder<T>>(TimeSpan.FromSeconds(15));
-            this.filenameCache = new Dictionary<long, string>();
+            this.filenameCache = new ConcurrentDictionary<long, string>();
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
@@ -40,7 +41,7 @@ namespace MountainView
                 filename = string.Format("{0}{1}{2:D2}",
                     template.LatLo.ToLatString(),
                     template.LonLo.ToLonString(), template.ZoomLevel);
-                filenameCache.Add(template.Key, filename);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
             string fullName = Path.Combine(rootMapFolder, string.Format(cachedFileTemplate, filename));
@@ -105,7 +106,7 @@ namespace MountainView
                 int height = BitConverter.ToInt32(buffer, 0);
 
                 ret = new ChunkHolder<T>(width, height,
-                    template.LonLo, template.LonLo,
+                    template.LatLo, template.LonLo,
                     template.LatHi, template.LonHi,
                     null, null, null);
                 for (int i = 0; i < width; i++)

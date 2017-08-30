@@ -71,6 +71,13 @@ namespace MountainView.Base
             return ret;
         }
 
+        internal static void Swap(ref Angle a, ref Angle b)
+        {
+            var tmp = a;
+            a = b;
+            b = tmp;
+        }
+
         private long Total
         {
             get

@@ -38,17 +38,53 @@ namespace MountainView.ChunkManagement
         {
             if (HasDataAtLat(lat) && HasDataAtLon(lon))
             {
-                data = fromDouble(interp.GetValue(lat.DecimalDegree, lon.DecimalDegree));
-                return true;
+                double z;
+                if (interp.TryGetValue(lat.DecimalDegree, lon.DecimalDegree, out z))
+                {
+                    data = fromDouble(z);
+                    return true;
+                }
             }
 
             data = default(T);
             return false;
         }
 
-        internal void GetInterpolatorForLine(Angle lat, Angle lon, Angle endRLat, Angle endRLon)
+        internal InterpolatingChunk<T> GetInterpolatorForLine(Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
         {
-            throw new NotImplementedException();
+            if (latLo.DecimalDegree > latHi.DecimalDegree)
+            {
+                Angle.Swap(ref latLo, ref latHi);
+            }
+
+            if (lonLo.DecimalDegree > lonHi.DecimalDegree)
+            {
+                Angle.Swap(ref lonLo, ref lonHi);
+            }
+
+            var laL = Angle.FromDecimalDegrees(this.latLo);
+            var loL = Angle.FromDecimalDegrees(this.lonLo);
+            var laH = Angle.FromDecimalDegrees(this.latHi);
+            var loH = Angle.FromDecimalDegrees(this.lonHi);
+
+            if (this.latLo > latHi.DecimalDegree || this.latHi < latLo.DecimalDegree ||
+                this.lonLo > lonHi.DecimalDegree || this.lonHi < lonLo.DecimalDegree)
+            {
+                return null;
+            }
+            else
+            {
+                var overlapLatLo = Math.Min(this.latLo, latLo.DecimalDegree);
+                var overlapLonLo = Math.Min(this.lonLo, lonLo.DecimalDegree);
+                var overlapLatHi = Math.Min(this.latHi, latHi.DecimalDegree);
+                var overlapLonHi = Math.Min(this.lonHi, lonHi.DecimalDegree);
+                return this;
+                //return interp.GetInterpolatorForLine(
+                //    Math.Min(this.latLo, latLo.DecimalDegree),
+                //    Math.Min(this.lonLo, lonLo.DecimalDegree),
+                //    Math.Min(this.latHi, latHi.DecimalDegree),
+                //    Math.Min(this.lonHi, lonHi.DecimalDegree));
+            }
         }
     }
 }

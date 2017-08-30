@@ -50,7 +50,7 @@ namespace MountainView.ChunkManagement
                     loopChunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
                 {
                     // Need to interpolate.
-                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi);
+                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble);
                 }
 
                 for (int i = 0; i < this.LatSteps; i++)
@@ -74,7 +74,11 @@ namespace MountainView.ChunkManagement
             }
         }
 
-        private InterpolatingChunk<T> ComputeInterpolation(Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
+        private InterpolatingChunk<T> ComputeInterpolation(
+            Angle latLo, Angle lonLo,
+            Angle latHi, Angle lonHi,
+            Func<T, double> toDouble,
+            Func<double, T> fromDouble)
         {
             int iLo = GetLatIndex(latLo) - 2;
             int iHi = GetLatIndex(latHi) + 2;
@@ -115,9 +119,9 @@ namespace MountainView.ChunkManagement
             return new InterpolatingChunk<T>(lats, lons, values, fromDouble);
         }
 
-        internal InterpolatingChunk<T> GetInterpolator()
+        internal InterpolatingChunk<T> GetInterpolator(Func<T, double> toDouble, Func<double, T> fromDouble)
         {
-            return ComputeInterpolation(LatLo, LonLo, LatHi,LonHi);
+            return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble);
         }
 
         public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)

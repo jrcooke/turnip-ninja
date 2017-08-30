@@ -15,8 +15,11 @@ namespace MountainView
 {
     class Program
     {
+        public static bool ShowOutput;
+
         static void Main(string[] args)
         {
+            NRCubicSplineInterpolator.Test();
             try
             {
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
@@ -91,13 +94,32 @@ namespace MountainView
                 }
             }
 
+            int nTheta = iThetaMax - iThetaMin;
+            int nR = (int)(config.R / config.DeltaR);
+
+            float[][] ret = new float[nTheta][];
+            for (int i = 0; i < ret.Length; i++)
+            {
+                ret[i] = new float[nR];
+            }
+
+            int counter = 0;
+
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
-            foreach (var chunkKey in chunkKeys)
+
+            Parallel.ForEach(chunkKeys, (chunkKey) =>
+//            foreach (var chunkKey in chunkKeys)
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
                 var heightChunk = Heights.Current.GetData(chunk).Result;
-                var interpChunk = heightChunk.GetInterpolator();
+                if (heightChunk.LonSteps == 0)
+                {
+                    // TODO: Get right fix
+                    return;
+                }
+
+                var interpChunk = heightChunk.GetInterpolator(p => p, p => (float)p);
 
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
@@ -108,21 +130,50 @@ namespace MountainView
                     var endRLat = Utils.DeltaMetersLat(theta, config.R);
                     var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
-                    interpChunk.GetInterpolatorForLine(config.Lat, config.Lon, endRLat, endRLon);
+                    var interp = interpChunk; // interpChunk.GetInterpolatorForLine(config.Lat, config.Lon, Angle.Add(config.Lat, endRLat), Angle.Add(config.Lon, endRLon));
 
                     List<Angle> lats = new List<Angle>();
                     List<Angle> lons = new List<Angle>();
                     for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                     {
                         var mult = iR * config.DeltaR / config.R;
-                        lats.Add(Angle.Add(config.Lat, Angle.Multiply(endRLat, mult)));
-                        lons.Add(Angle.Add(config.Lon, Angle.Multiply(endRLon, mult)));
+                        var curLat = Angle.Add(config.Lat, Angle.Multiply(endRLat, mult));
+                        var curLon = Angle.Add(config.Lon, Angle.Multiply(endRLon, mult));
+                        lats.Add(curLat);
+                        lons.Add(curLon);
+
+                        float data;
+                        if (interp.TryGetDataAtPoint(curLat, curLon, out data))
+                        {
+                            ret[iTheta - iThetaMin][iR] = data;
+                          //  Console.WriteLine(curLat.ToLatString() + ", " + curLon.ToLonString() + " = " + data);
+                        }
+                        else
+                        {
+                            //             Console.WriteLine(curLat.ToLatString() + ", " + curLon.ToLonString() + " = N/A");
+                        }
                     }
                 }
 
-                var pixels2 = await Heights.Current.GetData(chunk);
-                var pixels = await Images.Current.GetData(chunk);
-            };
+                counter++;
+                Console.WriteLine(counter);
+                if (counter % 50 == 0)
+                {
+                    Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                        @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                        a => Utils.GetColorForHeight(a));
+                    ShowOutput = false;
+                }
+
+
+                //   var pixels2 = await Heights.Current.GetData(chunk);
+                //   var pixels = await Images.Current.GetData(chunk);
+            });
+
+            Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                a => Utils.GetColorForHeight(a));
+
         }
 
         public static Task ForEachAsync<T>(IEnumerable<T> source, int concurrency, Func<T, Task> body)
