@@ -30,19 +30,16 @@ namespace MountainView.Base
             NRCubicSplineInterpolator inter = null;
             if (!cachedValues.TryGetValue(y, out inter))
             {
+                if (!this.values[0].GetKLoHi(y, out int klo, out int khi))
+                {
+                    z = 0;
+                    return false;
+                }
+
                 double[] interpValues = new double[xs.Length];
                 for (int j = 0; j < xs.Length; j++)
                 {
-                    double tmp;
-                    if (this.values[j].TryGetValue(y, out tmp))
-                    {
-                        interpValues[j] = tmp;
-                    }
-                    else
-                    {
-                        z = 0;
-                        return false;
-                    }
+                    interpValues[j] = this.values[j].GetValue(y, klo, khi);
                 }
 
                 inter = new NRCubicSplineInterpolator(xs, interpValues);
@@ -85,8 +82,6 @@ namespace MountainView.Base
         private double[] xa;
         private double[] ya;
         private double[] y2a;
-        private int klo;
-        private int khi;
 
         /// <summary>
         /// Given arrays x[0..n-1] and y[0..n-1] containing a tabulated function, i.e., y[i] = f(x[i]), with
@@ -110,9 +105,6 @@ namespace MountainView.Base
 
             n = xa.Length;
             y2a = new double[n];
-
-            klo = 0;
-            khi = n - 1;
 
             // The boundary conditions are set to be “natural”
             y2a[1] = 0.0;
@@ -147,42 +139,51 @@ namespace MountainView.Base
         /// </summary>
         public bool TryGetValue(double x, out double y)
         {
+            if (GetKLoHi(x, out int klo, out int khi))
+            {
+                y = GetValue(x, klo, khi);
+                return true;
+            }
+
+            y = 0;
+            return false;
+        }
+
+        public bool GetKLoHi(double x, out int klo, out int khi)
+        {
             if (x < xa[0] || x > xa[n - 1])
             {
-                y = 0;
+                klo = 0;
+                khi = 0;
                 return false;
             }
 
-            y = GetValue(x);
-            return true;
-        }
-
-        private double GetValue(double x)
-        {
-            if (xa[klo] > x || x > xa[khi] || (khi - 1) != klo)
+            // We will find the right place in the table by means of
+            // bisection.This is optimal if sequential calls to this
+            // routine are at random values of x.If sequential calls
+            // are in order, and closely spaced, one would do better
+            // to store previous values of klo and khi and test if
+            // they remain appropriate on the next call.
+            klo = 0;
+            khi = n - 1;
+            while (khi - klo > 1)
             {
-                // We will find the right place in the table by means of
-                // bisection.This is optimal if sequential calls to this
-                // routine are at random values of x.If sequential calls
-                // are in order, and closely spaced, one would do better
-                // to store previous values of klo and khi and test if
-                // they remain appropriate on the next call.
-                klo = 0;
-                khi = n - 1;
-                while (khi - klo > 1)
+                int k = (khi + klo) / 2;
+                if (xa[k] > x)
                 {
-                    int k = (khi + klo) / 2;
-                    if (xa[k] > x)
-                    {
-                        khi = k;
-                    }
-                    else
-                    {
-                        klo = k;
-                    }
+                    khi = k;
+                }
+                else
+                {
+                    klo = k;
                 }
             }
 
+            return true;
+        }
+
+        public double GetValue(double x, int klo, int khi)
+        {
             // klo and khi now bracket the input value of x.
             var h = xa[khi] - xa[klo];
             if (h == 0.0)
@@ -209,10 +210,7 @@ namespace MountainView.Base
             }
 
             var t1 = new NRCubicSplineInterpolator(xs, ys);
-
-            var y = t1.GetValue(n / 2.0);
-            if (Math.Abs(y - y0) > 1.0e-10) throw new InvalidOperationException();
-
+            double y;
             bool success = t1.TryGetValue(n / 2.0 + 0.5, out y);
             if (!success) throw new InvalidOperationException();
             if (Math.Abs(y - y0) > 1.0e-10) throw new InvalidOperationException();
@@ -243,11 +241,7 @@ namespace MountainView.Base
 
             t1 = new NRCubicSplineInterpolator(xs, ys);
 
-            double x = n / 2.0;
-            y = t1.GetValue(x);
-            if (Math.Abs(y - cubic(x)) > 1.0e-10) throw new InvalidOperationException();
-
-            x = n / 2.0 + 0.5;
+            double x = n / 2.0 + 0.5;
             y0 = cubic(x);
             success = t1.TryGetValue(x, out y);
             if (!success) throw new InvalidOperationException();
