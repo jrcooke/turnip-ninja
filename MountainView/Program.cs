@@ -20,6 +20,7 @@ namespace MountainView
         static void Main(string[] args)
         {
             NRCubicSplineInterpolator.Test();
+            SimpleInterpolator.Test();
             try
             {
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");

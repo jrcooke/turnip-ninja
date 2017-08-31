@@ -11,7 +11,7 @@ namespace MountainView.ChunkManagement
         private double latHi;
         private double lonHi;
         private Func<double, T> fromDouble;
-        private TwoDInterpolator interp;
+        private TwoDInterpolatorLinear interp;
 
         public InterpolatingChunk(double[] lats, double[] lons, double[][] values,
             Func<double, T> fromDouble)
@@ -21,7 +21,7 @@ namespace MountainView.ChunkManagement
             this.latHi = lats.Max();
             this.lonHi = lons.Max();
             this.fromDouble = fromDouble;
-            this.interp = new TwoDInterpolator(lats, lons, values);
+            this.interp = new TwoDInterpolatorLinear(lats, lons, values);
         }
 
         public bool HasDataAtLat(Angle lat)

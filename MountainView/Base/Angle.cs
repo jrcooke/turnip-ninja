@@ -4,20 +4,16 @@ namespace MountainView.Base
 {
     public struct Angle
     {
-        public readonly static Angle Whole = new Angle() { Degrees = 360 };
+        public readonly static Angle Whole = new Angle() { abs = 360L * 60 * 60 * 60 * 60 };
 
-        public bool IsNegative;
-        public int Degrees;
-        public int Minutes;
-        public int Seconds;
-        public int Thirds;
-        public int Fourths;
+        private bool IsNegative;
+        private long abs;
 
         public double SignedDegrees
         {
             get
             {
-                return (IsNegative ? -1 : 1) * Degrees;
+                return (IsNegative ? -1 : 1) * DecimalDegree;
             }
         }
 
@@ -40,43 +36,22 @@ namespace MountainView.Base
         public static Angle FromDecimalDegrees(double v)
         {
             double fourths = v * 60 * 60 * 60 * 60;
-            return FromFourths((int)Math.Round(fourths));
-        }
-
-        public static Angle FromFourths(long totalFourths)
-        {
-            return FromTotal(totalFourths);
+            return FromTotal((int)Math.Round(fourths));
         }
 
         public static Angle FromThirds(long totalThirds)
         {
-            return FromFourths(totalThirds * 60);
-        }
-
-        public static Angle FromSeconds(long totalSeconds)
-        {
-            return FromThirds(totalSeconds * 60);
-        }
-
-        public static Angle FromMinutes(long totalMinutes)
-        {
-            return FromSeconds(totalMinutes * 60);
+            return FromTotal(totalThirds * 60);
         }
 
         private static Angle FromTotal(long totalFourths)
         {
             bool isNeg = totalFourths < 0;
-            long abs = isNeg ? -totalFourths : totalFourths;
-            var ret = new Angle()
+            return new Angle()
             {
                 IsNegative = isNeg,
-                Fourths = (int)(abs % 60),
-                Thirds = (int)((abs / (60)) % 60),
-                Seconds = (int)((abs / (60 * 60)) % 60),
-                Minutes = (int)((abs / (60 * 60 * 60) % 60)),
-                Degrees = (int)((abs / (60 * 60 * 60 * 60))),
+                abs = isNeg ? -totalFourths : totalFourths,
             };
-            return ret;
         }
 
         internal static void Swap(ref Angle a, ref Angle b)
@@ -90,7 +65,7 @@ namespace MountainView.Base
         {
             get
             {
-                return (IsNegative ? -1 : 1) * ((((Degrees * 60L + Minutes) * 60 + Seconds) * 60 + Thirds) * 60 + Fourths);
+                return (IsNegative ? -1 : 1) * abs;
             }
         }
 
@@ -168,25 +143,31 @@ namespace MountainView.Base
 
         private string ToXString()
         {
-            if (this.Fourths > 0)
+            int fourths = (int)(abs % 60);
+            int thirds = (int)((abs / (60)) % 60);
+            int seconds = (int)((abs / (60 * 60)) % 60);
+            int minutes = (int)((abs / (60 * 60 * 60) % 60));
+            int degrees = (int)((abs / (60 * 60 * 60 * 60)));
+
+            if (fourths > 0)
             {
-                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T{4:D2}F", this.Degrees, this.Minutes, this.Seconds, this.Thirds, this.Fourths);
+                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T{4:D2}F", degrees, minutes, seconds, thirds, fourths);
             }
-            if (this.Thirds > 0)
+            if (thirds > 0)
             {
-                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T", this.Degrees, this.Minutes, this.Seconds, this.Thirds);
+                return string.Format("{0:D3}D{1:D2}M{2:D2}S{3:D2}T", degrees, minutes, seconds, thirds);
             }
-            if (this.Seconds > 0)
+            if (seconds > 0)
             {
-                return string.Format("{0:D3}D{1:D2}M{2:D2}S", this.Degrees, this.Minutes, this.Seconds);
+                return string.Format("{0:D3}D{1:D2}M{2:D2}S", degrees, minutes, seconds);
             }
-            if (this.Minutes > 0)
+            if (minutes > 0)
             {
-                return string.Format("{0:D3}D{1:D2}M", this.Degrees, this.Minutes);
+                return string.Format("{0:D3}D{1:D2}M", degrees, minutes);
             }
             else
             {
-                return string.Format("{0:D3}D", this.Degrees);
+                return string.Format("{0:D3}D", degrees);
             }
         }
     }

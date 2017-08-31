@@ -1,5 +1,5 @@
-using System;
 #if !JDESKTOP
+using System;
 using Microsoft.Extensions.Configuration;
 #endif
 
@@ -20,14 +20,12 @@ namespace MountainView.Base
             get { return configuration.Value; }
         }
 #else
-        public static IConfiguration AppSettings
+        public static System.Collections.Specialized.NameValueCollection AppSettings
         {
-            get { return null; }
-        }
-
-        public interface IConfiguration
-        {
-            string this[string key] { get; set; }
+            get
+            {
+                return System.Configuration.ConfigurationManager.AppSettings;
+            }
         }
 #endif
     }

@@ -62,39 +62,6 @@ namespace MountainView.Base
             return prevAveraged == 0 ? toAdd : (prevAverage * prevAveraged + toAdd) / (prevAveraged + 1);
         }
 
-        public static long GetKey(int zoomLevel, Angle lat, Angle lon)
-        {
-            throw new NotImplementedException();
-            //long key = 0;
-            //                (long)(lat. + 180 * 60 * 60) * (long)0x100000000 +
-            //              (long)(lon.TotalSeconds + 180 * 60 * 60) * (long)0x10 +
-            //            zoomLevel;
-            //return key;
-        }
-
-        public static string GetFileName(long key)
-        {
-            string filename;
-            while (!filenameCache.TryGetValue(key, out filename))
-            {
-                lock (filenameCache)
-                {
-                    if (!filenameCache.TryGetValue(key, out filename))
-                    {
-                        int zoomLevel = (int)(key % 0x10);
-                        int lonTotSec = (int)(key % (long)(0x100000000)) / 0x10 - 180 * 60 * 60;
-                        int latTotSec = (int)(key / (long)(0x100000000)) - 180 * 60 * 60;
-                        Angle lat = Angle.FromSeconds(latTotSec);
-                        Angle lon = Angle.FromSeconds(lonTotSec);
-                        filename = string.Format("{0}{1}{2:D2}", lat.ToLatString(), lon.ToLonString(), zoomLevel);
-                        filenameCache.Add(key, filename);
-                    }
-                }
-            }
-
-            return filename;
-        }
-
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
