@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{475507E8-C7BE-4B07-A098-615BF92C4176}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>MountainViewDesktop</RootNamespace>
+    <AssemblyName>MountainViewDesktop</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin_desktop\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;JDESKTOP</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="SkiaSharp, Version=1.59.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
+      <HintPath>packages\SkiaSharp.1.59.1\lib\net45\SkiaSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\System.IO.Compression.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\MountainView\Base\Angle.cs">
+      <Link>Base\Angle.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Base\Config.cs">
+      <Link>Base\Config.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Base\ConfigurationManager.cs">
+      <Link>Base\ConfigurationManager.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Base\TwoDInterpolator.cs">
+      <Link>Base\TwoDInterpolator.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Base\Utils.cs">
+      <Link>Base\Utils.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\CachingHelper.cs">
+      <Link>ChunkManagement\CachingHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\ChunkHolder.cs">
+      <Link>ChunkManagement\ChunkHolder.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\ChunkMetadata.cs">
+      <Link>ChunkManagement\ChunkMetadata.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\IChunkPointAccessor.cs">
+      <Link>ChunkManagement\IChunkPointAccessor.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\InterpolatingChunk.cs">
+      <Link>ChunkManagement\InterpolatingChunk.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\StandardChunkMetadata.cs">
+      <Link>ChunkManagement\StandardChunkMetadata.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\ChunkManagement\TimedCache.cs">
+      <Link>ChunkManagement\TimedCache.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Elevation\AdfReaderWorker.cs">
+      <Link>Elevation\AdfReaderWorker.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Elevation\Heights.cs">
+      <Link>Elevation\Heights.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Elevation\UsgsRawChunks.cs">
+      <Link>Elevation\UsgsRawChunks.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\GlobalSuppressions.cs">
+      <Link>GlobalSuppressions.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Imaging\Images.cs">
+      <Link>Imaging\Images.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Program.cs">
+      <Link>Program.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Tests.cs">
+      <Link>Tests.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets" Condition="Exists('packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets'))" />
+  </Target>
+</Project>
