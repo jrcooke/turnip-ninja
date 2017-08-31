@@ -29,14 +29,12 @@ namespace MountainView
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
         {
-            ChunkHolder<T> ret;
-            if (chunkCache.TryGetValue(template.Key, out ret))
+            if (chunkCache.TryGetValue(template.Key, out ChunkHolder<T>  ret))
             {
                 return ret;
             }
 
-            string filename;
-            if (!filenameCache.TryGetValue(template.Key, out filename))
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
                 filename = string.Format("{0}{1}{2:D2}",
                     template.LatLo.ToLatString(),

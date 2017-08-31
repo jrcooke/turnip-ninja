@@ -32,8 +32,7 @@ namespace MountainView.Elevation
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
                 (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString();
 
-            ChunkHolder<float> ret = null;
-            if (cache.TryGetValue(fileName, out ret))
+            if (cache.TryGetValue(fileName, out ChunkHolder<float> ret))
             {
                 return ret;
             }
