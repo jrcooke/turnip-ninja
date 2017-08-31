@@ -8,12 +8,18 @@ namespace MountainView.Base
 
         private bool IsNegative;
         private long abs;
+        private double decimalDegree;
 
         public double DecimalDegree
         {
             get
             {
-                return Total / (60.0 * 60.0 * 60.0 * 60.0);
+                if (decimalDegree == 0)
+                {
+                    decimalDegree = Total / (60.0 * 60.0 * 60.0 * 60.0);
+                }
+
+                return decimalDegree;
             }
         }
 

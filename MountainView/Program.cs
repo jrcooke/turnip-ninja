@@ -136,9 +136,9 @@ namespace MountainView
                     for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                     {
                         var mult = iR * config.DeltaR / config.R;
-                        var curLat = Angle.Add(config.Lat, Angle.Multiply(endRLat, mult));
-                        var curLon = Angle.Add(config.Lon, Angle.Multiply(endRLon, mult));
-                        if (interp.TryGetDataAtPoint(curLat, curLon, out float data))
+                        var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                        var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                        if (interp.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data))
                         {
                             ret[iTheta - iThetaMin][iR] = data;
                         }

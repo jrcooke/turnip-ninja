@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    class InterpolatingChunk<T> : IChunkPointAccessor<T>
+    class InterpolatingChunk<T> // : IChunkPointAccessor<T>
     {
         private double latLo;
         private double lonLo;
@@ -29,21 +29,21 @@ namespace MountainView.ChunkManagement
             this.interp = new TwoDInterpolator(lats, lons, values, interpolatonType);
         }
 
-        public bool HasDataAtLat(Angle lat)
+        public bool HasDataAtLat(double latDegree)
         {
-            return this.latLo <= lat.DecimalDegree && lat.DecimalDegree <= this.latHi;
+            return this.latLo <= latDegree && latDegree <= this.latHi;
         }
 
-        public bool HasDataAtLon(Angle lon)
+        public bool HasDataAtLon(double lonDegree)
         {
-            return this.lonLo <= lon.DecimalDegree && lon.DecimalDegree <= this.lonHi;
+            return this.lonLo <= lonDegree && lonDegree <= this.lonHi;
         }
 
-        public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)
+        public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
         {
-            if (HasDataAtLat(lat) && HasDataAtLon(lon))
+            if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
             {
-                if (interp.TryGetValue(lat.DecimalDegree, lon.DecimalDegree, out double z))
+                if (interp.TryGetValue(latDegree, lonDegree, out double z))
                 {
                     data = fromDouble(z);
                     return true;

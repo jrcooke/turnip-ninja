@@ -101,15 +101,21 @@
     <Compile Include="..\MountainView\Imaging\Images.cs">
       <Link>Imaging\Images.cs</Link>
     </Compile>
+    <Compile Include="..\MountainView\Interpolation\InterpolatonType.cs">
+      <Link>Interpolation\InterpolatonType.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Interpolation\OneDInterpolator.cs">
+      <Link>Interpolation\OneDInterpolator.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainView\Interpolation\TwoDInterpolator.cs">
+      <Link>Interpolation\TwoDInterpolator.cs</Link>
+    </Compile>
     <Compile Include="..\MountainView\Program.cs">
       <Link>Program.cs</Link>
     </Compile>
     <Compile Include="..\MountainView\Tests.cs">
       <Link>Tests.cs</Link>
     </Compile>
-    <Compile Include="Interpolation\InterpolatonType.cs" />
-    <Compile Include="Interpolation\OneDInterpolator.cs" />
-    <Compile Include="Interpolation\TwoDInterpolator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

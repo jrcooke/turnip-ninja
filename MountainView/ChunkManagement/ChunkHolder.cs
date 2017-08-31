@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    public class ChunkHolder<T> : ChunkMetadata, IChunkPointAccessor<T>
+    public class ChunkHolder<T> : ChunkMetadata //, IChunkPointAccessor<T>
     {
         public T[][] Data { get; private set; }
         private Func<T, double> toDouble;
@@ -46,29 +46,50 @@ namespace MountainView.ChunkManagement
 
             foreach (var loopChunk in chunks.Where(p => p != null))
             {
-                IChunkPointAccessor<T> chunk = loopChunk;
+                InterpolatingChunk<T> chunk2 = null;
                 if (loopChunk.PixelSizeLat.DecimalDegree > this.PixelSizeLat.DecimalDegree ||
                     loopChunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
                 {
                     // Need to interpolate.
-                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble, InterpolatonType.Cubic);
+                    chunk2 = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble, InterpolatonType.Cubic);
                 }
 
                 for (int i = 0; i < this.LatSteps; i++)
                 {
                     Angle loopLat = this.GetLat(i);
-                    if (!chunk.HasDataAtLat(loopLat))
+                    if (chunk2 == null)
                     {
-                        continue;
+                        if (!loopChunk.HasDataAtLat(loopLat))
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        if (!chunk2.HasDataAtLat(loopLat.DecimalDegree))
+                        {
+                            continue;
+                        }
                     }
 
                     for (int j = 0; j < this.LonSteps; j++)
                     {
                         Angle loopLon = this.GetLon(j);
-                        if (chunk.TryGetDataAtPoint(loopLat, loopLon, out T data))
+                        if (chunk2 == null)
                         {
-                            this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
-                            counter[i][j]++;
+                            if (loopChunk.TryGetDataAtPoint(loopLat, loopLon, out T data))
+                            {
+                                this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
+                                counter[i][j]++;
+                            }
+                        }
+                        else
+                        {
+                            if (chunk2.TryGetDataAtPoint(loopLat.DecimalDegree, loopLon.DecimalDegree, out T data))
+                            {
+                                this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
+                                counter[i][j]++;
+                            }
                         }
                     }
                 }
