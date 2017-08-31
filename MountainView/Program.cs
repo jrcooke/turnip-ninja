@@ -83,12 +83,10 @@ namespace MountainView
                 {
                     double r = iR * config.DeltaR;
                     var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
-                    double metersPerElement = config.DeltaR / 100.0;
+                    double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
                     var len = Utils.LengthOfLatDegree * cosLat;
                     var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / len, 2));
-                    zoomLevel = 15;
                     zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
-
                     long key = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
                     chunkKeys.Add(key);
                 }
@@ -107,9 +105,11 @@ namespace MountainView
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
 
-            Parallel.ForEach(chunkKeys, (chunkKey) =>
-//            foreach (var chunkKey in chunkKeys)
+            await ForEachAsync(chunkKeys, 3, async (chunkKey) =>
+            //Parallel.ForEach(chunkKeys, (chunkKey) =>
+            //            foreach (var chunkKey in chunkKeys)
             {
+                await Task.Delay(0);
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
                 var heightChunk = Heights.Current.GetData(chunk).Result;

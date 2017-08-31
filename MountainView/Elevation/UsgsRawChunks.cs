@@ -38,7 +38,7 @@ namespace MountainView.Elevation
             }
 
             object specificLock = null;
-            lock(generalLock)
+            lock (generalLock)
             {
                 if (!specificLocks.TryGetValue(fileName, out specificLock))
                 {
@@ -74,6 +74,7 @@ namespace MountainView.Elevation
                         Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
                         using (HttpClient client = new HttpClient())
                         {
+                            client.Timeout = TimeSpan.FromMinutes(5);
                             HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client).Result;
                             if (message != null && message.StatusCode == HttpStatusCode.OK)
                             {
@@ -86,7 +87,7 @@ namespace MountainView.Elevation
                             }
                             else
                             {
-                                throw new InvalidOperationException("Bad response: " + message.StatusCode.ToString());
+                                throw new InvalidOperationException("Bad response: " + (message?.StatusCode.ToString() ?? "No response") + " when trying to get " + shortWebFile);
                             }
                         }
 
@@ -132,12 +133,14 @@ namespace MountainView.Elevation
             HttpResponseMessage message = null;
             for (int i = 0; i < sourceUrlTemplates.Length; i++)
             {
+                Uri uri = new Uri(string.Format(sourceUrlTemplates[i], shortWebFile));
                 try
                 {
-                    message = await client.GetAsync(new Uri(string.Format(sourceUrlTemplates[i], shortWebFile)));
+                    message = await client.GetAsync(uri);
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine("Problem downloading " + uri.ToString());
                     Console.WriteLine(ex.ToString());
                 }
 
