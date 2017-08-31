@@ -1,4 +1,5 @@
 ﻿using MountainView.Base;
+using MountainViewDesktop.Interpolation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,7 +51,7 @@ namespace MountainView.ChunkManagement
                     loopChunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
                 {
                     // Need to interpolate.
-                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble);
+                    chunk = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble, InterpolatonType.Cubic);
                 }
 
                 for (int i = 0; i < this.LatSteps; i++)
@@ -78,7 +79,8 @@ namespace MountainView.ChunkManagement
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
             Func<T, double> toDouble,
-            Func<double, T> fromDouble)
+            Func<double, T> fromDouble,
+            InterpolatonType interpolatonType)
         {
             int iLo = GetLatIndex(latLo) - 2;
             int iHi = GetLatIndex(latHi) + 2;
@@ -116,12 +118,12 @@ namespace MountainView.ChunkManagement
                 }
             }
 
-            return new InterpolatingChunk<T>(lats, lons, values, fromDouble);
+            return new InterpolatingChunk<T>(lats, lons, values, fromDouble, interpolatonType);
         }
 
-        internal InterpolatingChunk<T> GetInterpolator(Func<T, double> toDouble, Func<double, T> fromDouble)
+        internal InterpolatingChunk<T> GetInterpolator(Func<T, double> toDouble, Func<double, T> fromDouble, InterpolatonType interpolatonType)
         {
-            return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble);
+            return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble, interpolatonType);
         }
 
         public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)

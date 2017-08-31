@@ -9,14 +9,6 @@ namespace MountainView.Base
         private bool IsNegative;
         private long abs;
 
-        public double SignedDegrees
-        {
-            get
-            {
-                return (IsNegative ? -1 : 1) * DecimalDegree;
-            }
-        }
-
         public double DecimalDegree
         {
             get

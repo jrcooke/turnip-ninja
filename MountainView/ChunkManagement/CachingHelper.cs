@@ -2,7 +2,6 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -14,7 +13,7 @@ namespace MountainView
         private readonly string description;
         private readonly string rootMapFolder;
         private readonly int pixelDataSize;
-        private readonly TimedCache<long, ChunkHolder<T>> chunkCache;
+        //        private readonly TimedCache<long, ChunkHolder<T>> chunkCache;
         private readonly ConcurrentDictionary<long, string> filenameCache;
 
         public CachingHelper(string cachedFileTemplate, string description, int pixelDataSize)
@@ -23,16 +22,17 @@ namespace MountainView
             this.description = description;
             this.pixelDataSize = pixelDataSize;
             this.rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
-            this.chunkCache = new TimedCache<long, ChunkHolder<T>>(TimeSpan.FromSeconds(15));
+            //            this.chunkCache = new TimedCache<long, ChunkHolder<T>>(TimeSpan.FromSeconds(15));
             this.filenameCache = new ConcurrentDictionary<long, string>();
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
         {
-            if (chunkCache.TryGetValue(template.Key, out ChunkHolder<T>  ret))
-            {
-                return ret;
-            }
+            ChunkHolder<T> ret = null;
+            //    if (chunkCache.TryGetValue(template.Key, out ChunkHolder<T>  ret))
+            //    {
+            //        return ret;
+            //    }
 
             if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
@@ -45,10 +45,10 @@ namespace MountainView
             string fullName = Path.Combine(rootMapFolder, string.Format(cachedFileTemplate, filename));
             if (File.Exists(fullName))
             {
-                Console.WriteLine("Reading " + description + " chunk file '" + filename + "'to cache...");
+                Console.WriteLine("Reading " + description + " chunk file '" + filename);// + "'to cache...");
                 ret = ReadChunk(fullName, template);
-                chunkCache.Add(template.Key, ret);
-                Console.WriteLine("Read " + description + " chunk file '" + filename + "'to cache.");
+                //chunkCache.Add(template.Key, ret);
+                Console.WriteLine("Read " + description + " chunk file '" + filename);// + "'to cache.");
                 return ret;
             }
 
@@ -63,7 +63,7 @@ namespace MountainView
                 {
                     ret = await GenerateData(template);
                     WriteChunk(ret, fullName);
-                    chunkCache.Add(template.Key, ret);
+                    // chunkCache.Add(template.Key, ret);
                     Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
                 }
                 catch (Exception ex)

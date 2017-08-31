@@ -1,14 +1,13 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
-using MountainView.Imaging;
+using MountainViewDesktop.Interpolation;
 using SkiaSharp;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace MountainView
@@ -19,8 +18,7 @@ namespace MountainView
 
         static void Main(string[] args)
         {
-            NRCubicSplineInterpolator.Test();
-            SimpleInterpolator.Test();
+            OneDInterpolator.Test();
             try
             {
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
@@ -117,11 +115,12 @@ namespace MountainView
                 var heightChunk = Heights.Current.GetData(chunk).Result;
                 if (heightChunk.LonSteps == 0)
                 {
+                    Console.WriteLine("Error with chunk " + chunk.ToString());
                     // TODO: Get right fix
                     return;
                 }
 
-                var interpChunk = heightChunk.GetInterpolator(p => p, p => (float)p);
+                var interpChunk = heightChunk.GetInterpolator(p => p, p => (float)p, InterpolatonType.Nearest);
 
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)

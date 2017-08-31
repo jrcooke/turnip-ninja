@@ -62,12 +62,6 @@
     <Compile Include="..\MountainView\Base\ConfigurationManager.cs">
       <Link>Base\ConfigurationManager.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\TwoDInterpolator.cs">
-      <Link>Base\TwoDInterpolator.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainView\Base\TwoDInterpolatorSimple.cs">
-      <Link>Base\TwoDInterpolatorSimple.cs</Link>
-    </Compile>
     <Compile Include="..\MountainView\Base\Utils.cs">
       <Link>Base\Utils.cs</Link>
     </Compile>
@@ -113,6 +107,9 @@
     <Compile Include="..\MountainView\Tests.cs">
       <Link>Tests.cs</Link>
     </Compile>
+    <Compile Include="Interpolation\InterpolatonType.cs" />
+    <Compile Include="Interpolation\OneDInterpolator.cs" />
+    <Compile Include="Interpolation\TwoDInterpolator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
