@@ -1,9 +1,12 @@
 ﻿using MountainView.ChunkManagement;
 using SkiaSharp;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace MountainView.Base
 {
@@ -40,6 +43,24 @@ namespace MountainView.Base
                 (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
                 (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
                 (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
+        }
+
+        public static Task ForEachAsync<T>(IEnumerable<T> source, int concurrency, Func<T, Task> body)
+        {
+            return Task.WhenAll(
+                Partitioner.Create(source)
+                    .GetPartitions(concurrency)
+                    .Select(partition =>
+                        Task.Run(async delegate
+                        {
+                            using (partition)
+                            {
+                                while (partition.MoveNext())
+                                {
+                                    await body(partition.Current);
+                                }
+                            }
+                        })));
         }
 
         public static SKColor WeightedColorAverage(int prevAveraged, SKColor prevAverage, SKColor toAdd)

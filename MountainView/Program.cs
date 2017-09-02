@@ -94,25 +94,20 @@ namespace MountainView
             int nTheta = iThetaMax - iThetaMin;
             int nR = (int)(config.R / config.DeltaR);
 
-            float[][] ret = new float[nTheta][];
+            ColorHeight[][] ret = new ColorHeight[nTheta][];
             for (int i = 0; i < ret.Length; i++)
             {
-                ret[i] = new float[nR];
-            }
-
-            SKColor[][] ret2 = new SKColor[nTheta][];
-            for (int i = 0; i < ret2.Length; i++)
-            {
-                ret2[i] = new SKColor[nR];
+                ret[i] = new ColorHeight[nR];
+                for (int j = 0; j < nR; j++)
+                {
+                    ret[i][j] = new ColorHeight();
+                }
             }
 
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
-
-            await ForEachAsync(chunkKeys, 10, async (chunkKey) =>
-            //Parallel.ForEach(chunkKeys, (chunkKey) =>
-            //            foreach (var chunkKey in chunkKeys)
+            await Utils.ForEachAsync(chunkKeys, 3, async (chunkKey) =>
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
@@ -153,8 +148,6 @@ namespace MountainView
                         var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
                         if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data))
                         {
-                            ret[iTheta - iThetaMin][iR] = data;
-
                             byte r = 0;
                             byte g = 0;
                             byte b = 0;
@@ -162,7 +155,8 @@ namespace MountainView
                             if (interpChunkG.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) g = color.Green;
                             if (interpChunkB.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) b = color.Blue;
 
-                            ret2[iTheta - iThetaMin][iR] = new SKColor(r, g, b);
+                            ret[iTheta - iThetaMin][iR].Height = data;
+                            ret[iTheta - iThetaMin][iR].Color = new SKColor(r, g, b);
                         }
                     }
                 }
@@ -173,89 +167,60 @@ namespace MountainView
                 {
                     Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
                         @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
-                        a => Utils.GetColorForHeight(a));
-                    Utils.WriteImageFile(ret2, ret2.Length, ret2[0].Length,
-                        @"C:\Users\jrcoo\Desktop\tmp2" + counter + ".png",
-                        a => a);
+                        a => Utils.GetColorForHeight(a.Height));
+                    Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                        @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                        a => a.Color);
                 }
             });
 
             Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
                 @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
-                a => Utils.GetColorForHeight(a));
-            Utils.WriteImageFile(ret2, ret2.Length, ret2[0].Length,
-                @"C:\Users\jrcoo\Desktop\tmp2" + counter + ".png",
-                a => a);
+                a => Utils.GetColorForHeight(a.Height));
+            Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                a => a.Color);
 
+            var xxx = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, numParts: 100);
         }
 
-        public static Task ForEachAsync<T>(IEnumerable<T> source, int concurrency, Func<T, Task> body)
+        public class ColorHeight
         {
-            return Task.WhenAll(
-                Partitioner.Create(source)
-                    .GetPartitions(concurrency)
-                    .Select(partition =>
-                        Task.Run(async delegate
-                        {
-                            using (partition)
-                            {
-                                while (partition.MoveNext())
-                                {
-                                    await body(partition.Current);
-                                }
-                            }
-                        })));
+            public SKColor Color { get; set; }
+            public float Height { get; set; }
         }
 
+        public class ColorDistance
+        {
+            public SKColor Color { get; set; }
+            public double Distance { get; set; }
+        }
 
-
-
-
-        private static IEnumerable<Tuple<double, SKColor>[]> CollapseToViewFromHere(
-            Func<Tuple<float, SKColor>[]>[] thetaRad,
+        private static ColorDistance[][] CollapseToViewFromHere(
+            ColorHeight[][] thetaRad,
             double deltaR,
-            double elevationViewMin, double elevationViewMax,
+            Angle elevationViewMin, Angle elevationViewMax,
             int numParts)
         {
-            int w = thetaRad.Length;
-
-            double minViewAngle = elevationViewMin * Math.PI / 180.0;
-            double maxViewAngle = elevationViewMax * Math.PI / 180.0;
-            double deltaTheta = (maxViewAngle - minViewAngle) / numParts;
-
-            int batchSize = 50;
-            for (int outerThetaLoop = 0; outerThetaLoop < w; outerThetaLoop += batchSize)
+            ColorDistance[][] ret = new ColorDistance[thetaRad.Length][];
+            for (int i = 0; i < ret.Length; i++)
             {
-                ConcurrentQueue<Tuple<double, SKColor>[]> ret = new ConcurrentQueue<Tuple<double, SKColor>[]>();
-
-                var workers = thetaRad.Skip(outerThetaLoop).Take(batchSize);
-                Parallel.ForEach(workers, (a) =>
-                {
-                    var itemResult = a();
-                    Tuple<float, SKColor>[] heightsAtAngle = itemResult;
-                    var item = CollapseToViewAlongRay(heightsAtAngle, deltaR, minViewAngle, deltaTheta, numParts);
-                    ret.Enqueue(item);
-                });
-
-                foreach (var i2 in ret)
-                {
-                    yield return i2;
-                }
-
-                Console.WriteLine((w - outerThetaLoop) * 100.0 / w);
+                ret[i] = CollapseToViewAlongRay(thetaRad[i], deltaR, elevationViewMin, elevationViewMax, numParts);
             }
+
+            return ret;
         }
 
-        private static Tuple<double, SKColor>[] CollapseToViewAlongRay(
-            Tuple<float, SKColor>[] heightsAtAngle,
+        private static ColorDistance[] CollapseToViewAlongRay(
+            ColorHeight[] heightsAtAngle,
             double deltaR,
-            double minViewAngle,
-            double deltaTheta,
+            Angle minViewAngle,
+            Angle deltaTheta,
             int numParts)
         {
-            Tuple<double, SKColor>[] ret = new Tuple<double, SKColor>[numParts];
+            ColorDistance[] ret = new ColorDistance[numParts];
             float eyeHeight = 10;
-            float heightOffset = heightsAtAngle[0].Item1 + eyeHeight;
+            float heightOffset = heightsAtAngle[0].Height + eyeHeight;
 
             int i = 0;
             for (int r = 1; r < heightsAtAngle.Length; r++)
@@ -263,7 +228,7 @@ namespace MountainView
                 var value = heightsAtAngle[r];
                 double dist = deltaR * r;
 
-                SKColor col = value.Item2;
+                SKColor col = value.Color;
                 // Haze adds bluish overlay to colors. Say (195, 240, 247)
                 double clearWeight = 0.2 + 0.8 / (1.0 + dist * dist * 1.0e-8);
                 col = new SKColor(
@@ -271,17 +236,17 @@ namespace MountainView
                     (byte)(int)(col.Green * clearWeight + 240 * (1 - clearWeight)),
                     (byte)(int)(col.Blue * clearWeight + 247 * (1 - clearWeight)));
 
-                double curTheta = Math.Atan2(value.Item1 - heightOffset, dist);
+                double curTheta = Math.Atan2(value.Height - heightOffset, dist);
                 while ((minViewAngle + i * deltaTheta) < curTheta && i < numParts)
                 {
-                    ret[i++] = new Tuple<double, SKColor>(dist, col);
+                    ret[i++] = new ColorDistance { Distance =dist, Color = col };
                 }
             }
 
             // Fill in the rest of the sky.
             while (i < numParts)
             {
-                ret[i++] = new Tuple<double, SKColor>(1.0e10, new SKColor(195, 240, 247));
+                ret[i++] = new ColorDistance { Distance = 1.0e10, Color = new SKColor(195, 240, 247) };
             }
 
             return ret;

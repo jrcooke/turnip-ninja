@@ -63,7 +63,7 @@ namespace MountainView.Imaging
             int latRange = Angle.Divide(ret.LatDelta, subLatDelta) + 1;
             int lonRange = Angle.Divide(ret.LonDelta, subLonDelta) + 1;
 
-            //  List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
+            List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
             for (int i = -latRange; i <= latRange; i++)
             {
                 for (int j = -lonRange; j <= lonRange; j++)
@@ -73,18 +73,17 @@ namespace MountainView.Imaging
                         continue;
                     }
 
-                    //workers.Add(
-                    chunks.Add(await GetColors(
-                              Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
-                              Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), template.ZoomLevel + 2));
+                    workers.Add(GetColors(
+                        Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
+                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), template.ZoomLevel + 2));
                 }
             }
 
-            //await Task.WhenAll(workers.ToArray());
-            //foreach (var worker in workers)
-            //{
-            //    chunks.Add(worker.Result);
-            //}
+            await Utils.ForEachAsync(workers, 10, (worker) => worker);
+            foreach (var worker in workers)
+            {
+                chunks.Add(worker.Result);
+            }
 
             ret.RenderChunksInto(chunks, Utils.WeightedColorAverage);
             return ret;
