@@ -102,7 +102,16 @@ namespace MountainView.Imaging
                     client.Timeout = TimeSpan.FromMinutes(5);
                     Uri inputUrl = new Uri(string.Format(imageUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
                     Uri metadUrl = new Uri(string.Format(metadUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
-                    HttpResponseMessage message = await client.GetAsync(inputUrl);
+                    HttpResponseMessage message = null;
+                    try
+                    {
+                        message = await client.GetAsync(inputUrl);
+                    }
+                    catch
+                    {
+                        message = await client.GetAsync(inputUrl);
+                    }
+
                     var content = await message.Content.ReadAsByteArrayAsync();
                     File.WriteAllBytes(inputFile, content);
 

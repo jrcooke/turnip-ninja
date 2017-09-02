@@ -4,10 +4,10 @@ namespace MountainView.Base
 {
     public struct Angle
     {
-        public readonly static Angle Whole = new Angle() { abs = 360L * 60 * 60 * 60 * 60, DecimalDegree = 360 };
+        public readonly static Angle Whole = new Angle() { Abs = 360L * 60 * 60 * 60 * 60, DecimalDegree = 360 };
 
-        private bool IsNegative;
-        private long abs;
+        public bool IsNegative;
+        public long Abs;
         public double DecimalDegree;
 
         public double Radians
@@ -35,7 +35,7 @@ namespace MountainView.Base
             return new Angle()
             {
                 IsNegative = isNeg,
-                abs = isNeg ? -totalFourths : totalFourths,
+                Abs = isNeg ? -totalFourths : totalFourths,
                 DecimalDegree = totalFourths / (60.0 * 60.0 * 60.0 * 60.0),
             };
         }
@@ -47,11 +47,11 @@ namespace MountainView.Base
             b = tmp;
         }
 
-        private long Total
+        public long Total
         {
             get
             {
-                return (IsNegative ? -1 : 1) * abs;
+                return (IsNegative ? -1 : 1) * Abs;
             }
         }
 
@@ -97,6 +97,18 @@ namespace MountainView.Base
             }
         }
 
+        public static int FloorDivide(Angle a, long total)
+        {
+            if (!a.IsNegative)
+            {
+                return (int)(a.Total / total);
+            }
+            else
+            {
+                return -1 - (int)((-a.Total) / total);
+            }
+        }
+
         internal static Angle Subtract(Angle a, Angle b)
         {
             return Angle.FromTotal(a.Total - b.Total);
@@ -129,11 +141,11 @@ namespace MountainView.Base
 
         private string ToXString()
         {
-            int fourths = (int)(abs % 60);
-            int thirds = (int)((abs / (60)) % 60);
-            int seconds = (int)((abs / (60 * 60)) % 60);
-            int minutes = (int)((abs / (60 * 60 * 60) % 60));
-            int degrees = (int)((abs / (60 * 60 * 60 * 60)));
+            int fourths = (int)(Abs % 60);
+            int thirds = (int)((Abs / (60)) % 60);
+            int seconds = (int)((Abs / (60 * 60)) % 60);
+            int minutes = (int)((Abs / (60 * 60 * 60) % 60));
+            int degrees = (int)((Abs / (60 * 60 * 60 * 60)));
 
             if (fourths > 0)
             {

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MountainView.Base
+﻿namespace MountainView.Base
 {
     public class Config
     {
@@ -25,11 +21,11 @@ namespace MountainView.Base
                 Lon = Angle.FromDecimalDegrees(-122.232330),
                 R = 80000,
                 DeltaR = 5,
-                MinAngle = Angle.FromDecimalDegrees(85),
-                MaxAngle = Angle.FromDecimalDegrees(95),
-                ElevationViewMin = Angle.FromDecimalDegrees(-10.0),
-                ElevationViewMax = Angle.FromDecimalDegrees(10.0),
-                AngularResolution = Angle.FromDecimalDegrees(0.01),
+                MinAngle = Angle.FromDecimalDegrees(85.0),
+                MaxAngle = Angle.FromDecimalDegrees(95.0),
+                ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
+                ElevationViewMax = Angle.FromDecimalDegrees(2.0),
+                AngularResolution = Angle.FromDecimalDegrees(0.001),
             };
         }
 

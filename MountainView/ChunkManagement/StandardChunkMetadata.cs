@@ -20,19 +20,18 @@ namespace MountainView.ChunkManagement
             this.Key = key;
         }
 
-        public static long GetKey(Angle lat, Angle lon, int zoomLevel)
+        public static long GetKey(long latTotal, long lonTotal, int zoomLevel)
         {
             if (zoomLevel > MaxZoomLevel)
             {
                 throw new ArgumentOutOfRangeException("zoomLevel");
             }
 
-            var thirds = (int)(15 * 45 * Math.Pow(2, 16 - zoomLevel));
-            Angle size = Angle.FromThirds(thirds);
+            var sizeInFourths = 60L * 15 * 45 * (1 << (16 - zoomLevel)); //Math.Pow(2, 16 - zoomLevel));
 
-            int numPossible = (int)Math.Pow(2, 1 + zoomLevel);
-            int sizeMultiplierLat = Angle.FloorDivide(lat, size);
-            int sizeMultiplierLon = Angle.FloorDivide(lon, size);
+            int numPossible = 2 << zoomLevel; //Math.Pow(2, 1 + zoomLevel);
+            int sizeMultiplierLat = (latTotal >= 0 ? (int)(latTotal / sizeInFourths) : -1 - (int)((-latTotal) / sizeInFourths)); // Angle.FloorDivide(lat, sizeInFourths);
+            int sizeMultiplierLon = (lonTotal >= 0 ? (int)(lonTotal / sizeInFourths) : -1 - (int)((-lonTotal) / sizeInFourths));
 
             int encodedLat = 3 * numPossible / 2 + sizeMultiplierLat;
             int encodedLon = 3 * numPossible / 2 + sizeMultiplierLon;
@@ -42,7 +41,7 @@ namespace MountainView.ChunkManagement
 
         public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
         {
-            return GetRangeFromKey(GetKey(lat, lon, zoomLevel));
+            return GetRangeFromKey(GetKey(lat.Total, lon.Total, zoomLevel));
         }
 
         public static StandardChunkMetadata GetRangeFromKey(long key)

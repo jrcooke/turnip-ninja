@@ -19,12 +19,12 @@ namespace MountainView.Base
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;
 
-        public static Tuple<Angle, Angle> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
+        public static Tuple<long, long> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
         {
             double cosLatVal = cosLat ?? Math.Cos(lat.Radians);
-            return new Tuple<Angle, Angle>(
-                Angle.Add(lat, deltaY / LengthOfLatDegree),
-                Angle.Add(lon, deltaX / LengthOfLatDegree / cosLatVal));
+            return new Tuple<long, long>(
+                lat.Total + (long)(60 * 60 * 60 * 60 * deltaY / LengthOfLatDegree),
+                lon.Total + (long)(60 * 60 * 60 * 60 * deltaX / LengthOfLatDegree / cosLatVal));
         }
 
         public static Angle DeltaMetersLat(Angle heading, double dist)

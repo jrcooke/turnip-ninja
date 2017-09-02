@@ -165,11 +165,20 @@ namespace MountainView
                 Console.WriteLine(counter);
                 if (counter % 50 == 0)
                 {
-                    Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
-                        @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
-                        a => Utils.GetColorForHeight(a.Height));
-                    Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
-                        @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                    //Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                    //    @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                    //    a => Utils.GetColorForHeight(a.Height));
+                    //Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
+                    //    @"C:\Users\jrcoo\Desktop\tmi" + counter + ".png",
+                    //    a => a.Color);
+
+                    var xxx1 = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
+
+                    Utils.WriteImageFile(xxx1, xxx1.Length, xxx1[0].Length,
+                        @"C:\Users\jrcoo\Desktop\xxx" + counter + ".png",
+                        a => Utils.GetColorForHeight((float)a.Distance));
+                    Utils.WriteImageFile(xxx1, xxx1.Length, xxx1[0].Length,
+                        @"C:\Users\jrcoo\Desktop\xxi" + counter + ".png",
                         a => a.Color);
                 }
             });
@@ -178,10 +187,17 @@ namespace MountainView
                 @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
                 a => Utils.GetColorForHeight(a.Height));
             Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
-                @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
+                @"C:\Users\jrcoo\Desktop\tmi" + counter + ".png",
                 a => a.Color);
 
-            var xxx = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, numParts: 100);
+            var xxx = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
+
+            Utils.WriteImageFile(xxx, xxx.Length, xxx[0].Length,
+                @"C:\Users\jrcoo\Desktop\xxx" + counter + ".png",
+                a => Utils.GetColorForHeight((float)a.Distance));
+            Utils.WriteImageFile(xxx, xxx.Length, xxx[0].Length,
+                @"C:\Users\jrcoo\Desktop\xxi" + counter + ".png",
+                a => a.Color);
         }
 
         public class ColorHeight
@@ -200,12 +216,13 @@ namespace MountainView
             ColorHeight[][] thetaRad,
             double deltaR,
             Angle elevationViewMin, Angle elevationViewMax,
-            int numParts)
+            Angle angularRes)
         {
             ColorDistance[][] ret = new ColorDistance[thetaRad.Length][];
+            int numParts = (int)((elevationViewMax.Radians - elevationViewMin.Radians) / angularRes.Radians);
             for (int i = 0; i < ret.Length; i++)
             {
-                ret[i] = CollapseToViewAlongRay(thetaRad[i], deltaR, elevationViewMin, elevationViewMax, numParts);
+                ret[i] = CollapseToViewAlongRay(thetaRad[i], deltaR, elevationViewMin.Radians, angularRes.Radians, numParts);
             }
 
             return ret;
@@ -214,8 +231,8 @@ namespace MountainView
         private static ColorDistance[] CollapseToViewAlongRay(
             ColorHeight[] heightsAtAngle,
             double deltaR,
-            Angle minViewAngle,
-            Angle deltaTheta,
+            double minViewAngleRad,
+            double deltaThetaRad,
             int numParts)
         {
             ColorDistance[] ret = new ColorDistance[numParts];
@@ -237,9 +254,9 @@ namespace MountainView
                     (byte)(int)(col.Blue * clearWeight + 247 * (1 - clearWeight)));
 
                 double curTheta = Math.Atan2(value.Height - heightOffset, dist);
-                while ((minViewAngle + i * deltaTheta) < curTheta && i < numParts)
+                while ((minViewAngleRad + i * deltaThetaRad) < curTheta && i < numParts)
                 {
-                    ret[i++] = new ColorDistance { Distance =dist, Color = col };
+                    ret[i++] = new ColorDistance { Distance = dist, Color = col };
                 }
             }
 
