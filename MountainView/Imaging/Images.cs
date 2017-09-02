@@ -20,7 +20,7 @@ namespace MountainView.Imaging
         private static string bingMapsKey = ConfigurationManager.AppSettings["BingMapsKey"];
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private const string cachedFileTemplate = "{0}.v2.idata";
+        private const string cachedFileTemplate = "{0}.v3.idata";
         private const string description = "Images";
 
         private Images() : base(cachedFileTemplate, description, 4)
@@ -46,7 +46,7 @@ namespace MountainView.Imaging
                 null,
                 null);
 
-          //  throw new NotImplementedException();
+            //  throw new NotImplementedException();
 
             // Need to get the images that optimally fill this chunk.
             // Start by picking a chunk in the center at the same zoom level.
@@ -63,7 +63,7 @@ namespace MountainView.Imaging
             int latRange = Angle.Divide(ret.LatDelta, subLatDelta) + 1;
             int lonRange = Angle.Divide(ret.LonDelta, subLonDelta) + 1;
 
-            List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
+            //  List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
             for (int i = -latRange; i <= latRange; i++)
             {
                 for (int j = -lonRange; j <= lonRange; j++)
@@ -73,17 +73,18 @@ namespace MountainView.Imaging
                         continue;
                     }
 
-                    workers.Add(GetColors(
-                        Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
-                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), template.ZoomLevel + 2));
+                    //workers.Add(
+                    chunks.Add(await GetColors(
+                              Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
+                              Angle.Add(midLon, Angle.Multiply(subLonDelta, j)), template.ZoomLevel + 2));
                 }
             }
 
-            await Task.WhenAll(workers.ToArray());
-            foreach (var worker in workers)
-            {
-                chunks.Add(worker.Result);
-            }
+            //await Task.WhenAll(workers.ToArray());
+            //foreach (var worker in workers)
+            //{
+            //    chunks.Add(worker.Result);
+            //}
 
             ret.RenderChunksInto(chunks, Utils.WeightedColorAverage);
             return ret;
@@ -94,10 +95,12 @@ namespace MountainView.Imaging
             // Need to figure out which chunks to load.
             string inputFile = Path.Combine(rootMapFolder, string.Format(imageCacheTemplate, lat.ToLatString(), lon.ToLonString(), zoomLevel));
             string metadFile = Path.Combine(rootMapFolder, string.Format(metadCacheTemplate, lat.ToLatString(), lon.ToLonString(), zoomLevel));
+
             if (!File.Exists(metadFile))
             {
                 using (HttpClient client = new HttpClient())
                 {
+                    client.Timeout = TimeSpan.FromMinutes(5);
                     Uri inputUrl = new Uri(string.Format(imageUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
                     Uri metadUrl = new Uri(string.Format(metadUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
                     HttpResponseMessage message = await client.GetAsync(inputUrl);
@@ -114,7 +117,17 @@ namespace MountainView.Imaging
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
-            JObject jObject = JObject.Parse(File.ReadAllText(metadFile));
+            JObject jObject = null;
+            try
+            {
+                jObject = JObject.Parse(File.ReadAllText(metadFile));
+            }
+            catch (Newtonsoft.Json.JsonReaderException)
+            {
+                File.Delete(metadFile);
+                throw;
+            }
+
             double[] bbox = jObject["resourceSets"].First["resources"].First["bbox"].ToObject<double[]>();
             Angle latLo = Angle.FromDecimalDegrees(bbox[0]);
             Angle lonLo = Angle.FromDecimalDegrees(bbox[1]);

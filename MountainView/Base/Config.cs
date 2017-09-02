@@ -23,10 +23,10 @@ namespace MountainView.Base
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                R = 20000, // 60000,
+                R = 80000,
                 DeltaR = 5,
-                MinAngle = Angle.FromDecimalDegrees(85),
-                MaxAngle = Angle.FromDecimalDegrees(95),
+                MinAngle = Angle.FromDecimalDegrees(80),
+                MaxAngle = Angle.FromDecimalDegrees(100),
                 ElevationViewMin = Angle.FromDecimalDegrees(-10.0),
                 ElevationViewMax = Angle.FromDecimalDegrees(10.0),
                 AngularResolution = Angle.FromDecimalDegrees(0.01),

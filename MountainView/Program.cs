@@ -1,6 +1,7 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
+using MountainView.Imaging;
 using MountainViewDesktop.Interpolation;
 using SkiaSharp;
 using System;
@@ -14,8 +15,6 @@ namespace MountainView
 {
     class Program
     {
-        public static bool ShowOutput;
-
         static void Main(string[] args)
         {
             OneDInterpolator.Test();
@@ -101,26 +100,41 @@ namespace MountainView
                 ret[i] = new float[nR];
             }
 
+            SKColor[][] ret2 = new SKColor[nTheta][];
+            for (int i = 0; i < ret2.Length; i++)
+            {
+                ret2[i] = new SKColor[nR];
+            }
+
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
 
-            await ForEachAsync(chunkKeys, 3, async (chunkKey) =>
+            await ForEachAsync(chunkKeys, 10, async (chunkKey) =>
             //Parallel.ForEach(chunkKeys, (chunkKey) =>
             //            foreach (var chunkKey in chunkKeys)
             {
-                await Task.Delay(0);
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
-                var heightChunk = Heights.Current.GetData(chunk).Result;
-                if (heightChunk.LonSteps == 0)
-                {
-                    Console.WriteLine("Error with chunk " + chunk.ToString());
-                    // TODO: Get right fix
-                    return;
-                }
+                var heightChunk = await Heights.Current.GetData(chunk);
+                var imageChunk = await Images.Current.GetData(chunk);
 
-                var interpChunk = heightChunk.GetInterpolator(p => p, p => (float)p, InterpolatonType.Nearest);
+                var interpChunk = heightChunk.GetInterpolator(
+                    p => p,
+                    p => (float)p,
+                    InterpolatonType.Nearest);
+                var interpChunkR = imageChunk.GetInterpolator(
+                    p => p.Red,
+                    p => new SKColor((byte)(p < 0 ? 0 : p > 255 ? 255 : p), 0, 0),
+                    InterpolatonType.Nearest);
+                var interpChunkG = imageChunk.GetInterpolator(
+                    p => p.Green,
+                    p => new SKColor(0, (byte)(p < 0 ? 0 : p > 255 ? 255 : p), 0),
+                    InterpolatonType.Nearest);
+                var interpChunkB = imageChunk.GetInterpolator(
+                    p => p.Blue,
+                    p => new SKColor(0, 0, (byte)(p < 0 ? 0 : p > 255 ? 255 : p)),
+                    InterpolatonType.Nearest);
 
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
@@ -131,16 +145,24 @@ namespace MountainView
                     var endRLat = Utils.DeltaMetersLat(theta, config.R);
                     var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
-                    var interp = interpChunk; // interpChunk.GetInterpolatorForLine(config.Lat, config.Lon, Angle.Add(config.Lat, endRLat), Angle.Add(config.Lon, endRLon));
-
                     for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
                     {
                         var mult = iR * config.DeltaR / config.R;
+
                         var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
                         var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                        if (interp.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data))
+                        if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data))
                         {
                             ret[iTheta - iThetaMin][iR] = data;
+
+                            byte r = 0;
+                            byte g = 0;
+                            byte b = 0;
+                            if (interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, out SKColor color)) r = color.Red;
+                            if (interpChunkG.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) g = color.Green;
+                            if (interpChunkB.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) b = color.Blue;
+
+                            ret2[iTheta - iThetaMin][iR] = new SKColor(r, g, b);
                         }
                     }
                 }
@@ -152,13 +174,18 @@ namespace MountainView
                     Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
                         @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
                         a => Utils.GetColorForHeight(a));
-                    ShowOutput = false;
+                    Utils.WriteImageFile(ret2, ret2.Length, ret2[0].Length,
+                        @"C:\Users\jrcoo\Desktop\tmp2" + counter + ".png",
+                        a => a);
                 }
             });
 
             Utils.WriteImageFile(ret, ret.Length, ret[0].Length,
                 @"C:\Users\jrcoo\Desktop\tmp" + counter + ".png",
                 a => Utils.GetColorForHeight(a));
+            Utils.WriteImageFile(ret2, ret2.Length, ret2[0].Length,
+                @"C:\Users\jrcoo\Desktop\tmp2" + counter + ".png",
+                a => a);
 
         }
 

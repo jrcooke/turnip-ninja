@@ -4,24 +4,11 @@ namespace MountainView.Base
 {
     public struct Angle
     {
-        public readonly static Angle Whole = new Angle() { abs = 360L * 60 * 60 * 60 * 60 };
+        public readonly static Angle Whole = new Angle() { abs = 360L * 60 * 60 * 60 * 60, DecimalDegree = 360 };
 
         private bool IsNegative;
         private long abs;
-        private double decimalDegree;
-
-        public double DecimalDegree
-        {
-            get
-            {
-                if (decimalDegree == 0)
-                {
-                    decimalDegree = Total / (60.0 * 60.0 * 60.0 * 60.0);
-                }
-
-                return decimalDegree;
-            }
-        }
+        public double DecimalDegree;
 
         public double Radians
         {
@@ -49,6 +36,7 @@ namespace MountainView.Base
             {
                 IsNegative = isNeg,
                 abs = isNeg ? -totalFourths : totalFourths,
+                DecimalDegree = totalFourths / (60.0 * 60.0 * 60.0 * 60.0),
             };
         }
 
