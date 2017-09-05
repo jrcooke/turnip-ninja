@@ -23,8 +23,8 @@ namespace MountainView.Base
         {
             double cosLatVal = cosLat ?? Math.Cos(lat.Radians);
             return new Tuple<long, long>(
-                lat.Total + (long)(60 * 60 * 60 * 60 * deltaY / LengthOfLatDegree),
-                lon.Total + (long)(60 * 60 * 60 * 60 * deltaX / LengthOfLatDegree / cosLatVal));
+                lat.Fourths + (long)(60 * 60 * 60 * 60 * deltaY / LengthOfLatDegree),
+                lon.Fourths + (long)(60 * 60 * 60 * 60 * deltaX / LengthOfLatDegree / cosLatVal));
         }
 
         public static Angle DeltaMetersLat(Angle heading, double dist)

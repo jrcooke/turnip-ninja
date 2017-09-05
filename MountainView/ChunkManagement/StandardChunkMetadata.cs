@@ -41,7 +41,7 @@ namespace MountainView.ChunkManagement
 
         public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
         {
-            return GetRangeFromKey(GetKey(lat.Total, lon.Total, zoomLevel));
+            return GetRangeFromKey(GetKey(lat.Fourths, lon.Fourths, zoomLevel));
         }
 
         public static StandardChunkMetadata GetRangeFromKey(long key)

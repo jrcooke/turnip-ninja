@@ -9,10 +9,10 @@ namespace MountainView.Elevation
 {
     public class Heights : CachingHelper<float>
     {
-        private const string cachedFileTemplate = "{0}.v3.hdata";
+        private const string fileExt = ".hdata";
         private const string description = "Heights";
 
-        private Heights() : base(cachedFileTemplate, description, 4)
+        private Heights() : base(fileExt, description, 4)
         {
         }
 

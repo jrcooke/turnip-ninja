@@ -11,7 +11,7 @@ namespace MountainView
 {
     class Tests
     {
-        private static void Test1(string outputFolder)
+        public static void Test1(string outputFolder)
         {
             //var homeLat = Angle.FromDecimalDegrees(47.6867797);
             //var homeLon = Angle.FromDecimalDegrees(-122.2907541);
@@ -39,7 +39,7 @@ namespace MountainView
             ////Utils.WriteImageFile(ddd2, Path.Combine(outputFolder, "ddd2.png"), a => a);
         }
 
-        private static void Test12()
+        public static void Test12()
         {
             var lat = Angle.FromDecimalDegrees(47.6867797);
             var lon = Angle.FromDecimalDegrees(-122.2907541);
@@ -54,10 +54,8 @@ namespace MountainView
             }
         }
 
-        private static void Test3(string outputFolder, Config c)
+        public static void Test3(string outputFolder, Config c)
         {
-            c.Lat = Angle.FromDecimalDegrees(47.6867797);
-            c.Lon = Angle.FromDecimalDegrees(-122.2907541);
             for (int zoomLevel = 10; zoomLevel <= 16; zoomLevel++)
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
@@ -73,6 +71,5 @@ namespace MountainView
                     a => a);
             }
         }
-
     }
 }

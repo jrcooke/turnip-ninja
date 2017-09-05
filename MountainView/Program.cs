@@ -19,6 +19,10 @@ namespace MountainView
         {
             OneDInterpolator.Test();
 
+            string of = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
+
+            Tests.Test3(of, Config.Juaneta());
+
             string sourceDir = @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\";
             foreach (var f in new DirectoryInfo(sourceDir).GetFiles())
             {
@@ -32,11 +36,16 @@ namespace MountainView
                     acqTime = DateTime.Parse(shortName[5].Substring(0, 4) + "-" + shortName[5].Substring(4, 2) + "-" + shortName[5].Substring(6, 2))
                 };
 
+
                 var deltaLat = Angle.FromDecimalDegrees(tmp.lat + (15 - (2 * ((tmp.quadLoc - 1) / 8) + (tmp.quadInd[1] == 'W' ? 0 : 1))) / 16.0);
                 var deltaLon = Angle.FromDecimalDegrees(-1 * (tmp.lon + (15 - (2 * ((tmp.quadLoc - 1) % 8) + (tmp.quadInd[0] == 'S' ? 0 : 1))) / 16.0));
 
                 Angle a = Angle.FromDecimalDegrees(1.0 / 16.0);
                 FIBITMAP dib = FreeImage.LoadEx(f.FullName);
+
+
+                IntPtr bits = FreeImage.GetBits(dib);
+
                 FreeImage.SaveEx(dib, @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\test.jpg");
             }
 
