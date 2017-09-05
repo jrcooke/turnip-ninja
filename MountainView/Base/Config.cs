@@ -19,13 +19,13 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                R = 80000,
+                R = 160000,
                 DeltaR = 5,
                 MinAngle = Angle.FromDecimalDegrees(85.0),
                 MaxAngle = Angle.FromDecimalDegrees(95.0),
                 ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
                 ElevationViewMax = Angle.FromDecimalDegrees(2.0),
-                AngularResolution = Angle.FromDecimalDegrees(0.001),
+                AngularResolution = Angle.FromDecimalDegrees(0.01),
             };
         }
 
