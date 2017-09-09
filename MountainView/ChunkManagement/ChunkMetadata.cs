@@ -50,5 +50,19 @@ namespace MountainView.ChunkManagement
             var curLonDelta = Angle.Subtract(lon, LonLo);
             return LonSteps - 1 - Angle.Divide(curLonDelta, PixelSizeLon);
         }
+
+        public bool Disjoint(ChunkMetadata that)
+        {
+            return
+                (this.LatLo.DecimalDegree > that.LatHi.DecimalDegree) ||
+                (this.LatHi.DecimalDegree < that.LatLo.DecimalDegree) ||
+                (this.LonLo.DecimalDegree > that.LonHi.DecimalDegree) ||
+                (this.LonHi.DecimalDegree < that.LonLo.DecimalDegree);
+        }
+
+        public override string ToString()
+        {
+            return this.LatLo.ToLatString() + "," + this.LonLo.ToLonString() + " to " + this.LatHi.ToLatString() + "," + this.LonHi.ToLonString();
+        }
     }
 }

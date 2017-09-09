@@ -83,6 +83,26 @@ namespace MountainView.Base
             return prevAveraged == 0 ? toAdd : (prevAverage * prevAveraged + toAdd) / (prevAveraged + 1);
         }
 
+        public static bool Contains(Tuple<double, double>[] points, double lat, double lon)
+        {
+            bool result = false;
+            for (int i = 0; i < points.Length - 1; i++)
+            {
+                if (
+                    (
+                        ((points[i + 1].Item2 <= lon) && (lon < points[i].Item2)) ||
+                        ((points[i].Item2 <= lon) && (lon < points[i + 1].Item2))
+                    ) &&
+                    (lat < (points[i].Item1 - points[i + 1].Item1) * (lon - points[i + 1].Item2) /
+                           (points[i].Item2 - points[i + 1].Item2) + points[i + 1].Item1))
+                {
+                    result = !result;
+                }
+            }
+
+            return result;
+        }
+
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
@@ -122,6 +142,27 @@ namespace MountainView.Base
                     }
 
                     i++;
+                }
+
+                File.Delete(fileName);
+                bm.WriteFile(fileName);
+            }
+        }
+
+        public static void WriteImageFile(
+            int width,
+            int height,
+            string fileName,
+            Func<int, int, SKColor> transform)
+        {
+            using (DirectBitmap bm = new DirectBitmap(width, height))
+            {
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        bm.SetPixel(i, j, transform(i, j));
+                    }
                 }
 
                 File.Delete(fileName);

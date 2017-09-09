@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Linq;
+using FreeImageAPI;
 
 namespace MountainView.Imaging
 {
@@ -32,6 +34,7 @@ namespace MountainView.Imaging
 
         protected override async Task<ChunkHolder<SKColor>> GenerateData(StandardChunkMetadata template)
         {
+            await Task.Delay(0);
             ChunkHolder<SKColor> ret = new ChunkHolder<SKColor>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
@@ -40,127 +43,179 @@ namespace MountainView.Imaging
                 null,
                 null);
 
-            // Need to get the images that optimally fill this chunk.
-            // Start by picking a chunk in the center at the same zoom level.
-            Angle midLat = Angle.Add(template.LatLo, Angle.Divide(template.LatDelta, 2));
-            Angle midLon = Angle.Add(template.LonLo, Angle.Divide(template.LonDelta, 2));
-
-            var chunks = new List<ChunkHolder<SKColor>>();
-            var tmp = await GetColors(midLat, midLon);
-            chunks.Add(tmp);
-
-            // Compare the chunk we got with the area we need to fill, to determine how many more are needed.
-            Angle subLatDelta = Angle.Divide(tmp.LatDelta, 1.2);
-            Angle subLonDelta = Angle.Divide(tmp.LonDelta, 1.2);
-            int latRange = Angle.Divide(ret.LatDelta, subLatDelta) + 1;
-            int lonRange = Angle.Divide(ret.LonDelta, subLonDelta) + 1;
-
-            List<Task<ChunkHolder<SKColor>>> workers = new List<Task<ChunkHolder<SKColor>>>();
-            for (int i = -latRange; i <= latRange; i++)
-            {
-                for (int j = -lonRange; j <= lonRange; j++)
+            var targetChunks = GetChunkMetadata()
+                .Select(p => new
                 {
-                    if (i == 0 && j == 0)
-                    {
-                        continue;
-                    }
+                    p = p,
+                    Chunk = new ChunkMetadata(0, 0,
+                        Angle.FromDecimalDegrees(p.Points.Min(q => q.Item1)),
+                        Angle.FromDecimalDegrees(p.Points.Min(q => q.Item2)),
+                        Angle.FromDecimalDegrees(p.Points.Max(q => q.Item1)),
+                        Angle.FromDecimalDegrees(p.Points.Max(q => q.Item2)))
+                })
+                .Where(p => !ret.Disjoint(p.Chunk))
+                .ToArray();
 
-                    workers.Add(GetColors(
-                        Angle.Add(midLat, Angle.Multiply(subLatDelta, i)),
-                        Angle.Add(midLon, Angle.Multiply(subLonDelta, j))));
-                }
+            foreach (var x in targetChunks)
+            {
+                Console.WriteLine(x.Chunk);
             }
 
-            await Utils.ForEachAsync(workers, 10, (worker) => worker);
-            foreach (var worker in workers)
+            var chunks = new List<ChunkHolder<SKColor>>();
+            foreach (var tmp in targetChunks)
             {
-                chunks.Add(worker.Result);
+                var col = GetColors(
+                    Angle.Add(tmp.Chunk.LatLo, Angle.Multiply(tmp.Chunk.LatDelta, 0.5)),
+                    Angle.Add(tmp.Chunk.LonLo, Angle.Multiply(tmp.Chunk.LonDelta, 0.5)));
+
+                if (col != null)
+                {
+                    chunks.Add(col);
+                }
             }
 
             ret.RenderChunksInto(chunks, Utils.WeightedColorAverage);
             return ret;
         }
 
-        private static async Task<ChunkHolder<SKColor>> GetColors(Angle lat, Angle lon)
+        /*
+            1. Go to https://earthexplorer.usgs.gov/
+            2. Login
+            3. For search criteria,
+                a. can zoom into map and click "Use Map" in the middle section.
+                b. Can also enter map boundaries manually to get more specific map
+            4. On bottom, for the "Date Range", use the start date as 09/03/2014, to help limit to a single set.
+            5. On next tab "Data Sets", open "Ariel Imagery" and select "NAIP JPEG2000"
+            6. On next tab, "results", on "Click here to export results", use "Non-limited results" and CSV, Will show up in the email.
+            7. Then open the "Show results control", and click "Add all results from current page to bluk download".
+                a. Then click "Next ", and click "all to bulk again.
+                b. When done, click "View item basket"
+            8. Open the "Bulk Download Application"
+            9. Login, select the latest chunk of data.
+         */
+        private static ChunkHolder<SKColor> GetColors(Angle lat, Angle lon)
         {
-            Angle partitionSize = Angle.Divide(Angle.FromDecimalDegrees(1), 16);
-            var latPart = Angle.FloorDivide(lat, partitionSize) % 16;
-            var lonPart = Angle.FloorDivide(Angle.Multiply(lon, -1), partitionSize) % 16;
+            Console.WriteLine(lat.ToLatString() + " " + lon.ToLonString());
+            ImageFileMetadata fileInfo = GetChunkMetadata()
+                .Where(p => Utils.Contains(p.Points, lat.DecimalDegree, lon.DecimalDegree))
+                .FirstOrDefault();
 
-            //var tmp = new
-            //{
-            //    lat = int.Parse(shortName[1].Substring(0, 2)),
-            //    lon = int.Parse(shortName[1].Substring(2, 3)),
-            //    quadLoc = int.Parse(shortName[1].Substring(5, 2)),
-            //    quadInd = shortName[2].ToUpperInvariant(),
-            //    acqTime = DateTime.Parse(shortName[5].Substring(0, 4) + "-" + shortName[5].Substring(4, 2) + "-" + shortName[5].Substring(6, 2))
-            //};
+            if (fileInfo == null)
+            {
+                return null;
+            }
 
-            throw new NotImplementedException();
+            if (!File.Exists(fileInfo.FileName2))
+            {
+                if (!File.Exists(fileInfo.FileName))
+                {
+                    throw new InvalidOperationException("File should exist: '" + fileInfo.FileName + "'");
+                }
 
-            //var deltaLat = Angle.FromDecimalDegrees(tmp.lat + (15 - (2 * ((tmp.quadLoc - 1) / 8) + (tmp.quadInd[1] == 'W' ? 0 : 1))) / 16.0);
-            //var deltaLon = Angle.FromDecimalDegrees(-1 * (tmp.lon + (15 - (2 * ((tmp.quadLoc - 1) % 8) + (tmp.quadInd[0] == 'S' ? 0 : 1))) / 16.0));
+                FIBITMAP sdib = FreeImage.LoadEx(fileInfo.FileName);
 
-            //Angle a = Angle.FromDecimalDegrees(1.0 / 16.0);
+                var width = FreeImage.GetWidth(sdib);
+                var height = FreeImage.GetHeight(sdib);
+                Utils.WriteImageFile((int)width, (int)height, fileInfo.FileName2, (i, j) =>
+                {
+                    FreeImage.GetPixelColor(sdib, (uint)i, (uint)j, out RGBQUAD value);
+                    //Console.WriteLine(i + "\t" + j + "\t" + value.rgbRed + "\t" + value.rgbGreen + "\t" + value.rgbBlue);
+                    return new SKColor(value.rgbRed, value.rgbGreen, value.rgbBlue);
+                });
+                FreeImage.UnloadEx(ref sdib);
+            }
 
 
+            using (SKBitmap bm = SKBitmap.Decode(fileInfo.FileName2))
+            {
+                return new ChunkHolder<SKColor>(bm.Height, bm.Width,
+                    Angle.FromDecimalDegrees(fileInfo.Points.Min(p => p.Item1)),
+                    Angle.FromDecimalDegrees(fileInfo.Points.Min(p => p.Item2)),
+                    Angle.FromDecimalDegrees(fileInfo.Points.Max(p => p.Item1)),
+                    Angle.FromDecimalDegrees(fileInfo.Points.Max(p => p.Item2)),
+                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - 1 - i), //                     FreeImage.GetPixelColor(dib, (uint)(width - 1 - j), (uint)(i), out RGBQUAD pixel);
+                    null,
+                    null);
+            }
+        }
 
-            //if (!File.Exists(metadFile))
-            //{
-            //    using (HttpClient client = new HttpClient())
-            //    {
-            //        client.Timeout = TimeSpan.FromMinutes(5);
-            //        Uri inputUrl = new Uri(string.Format(imageUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
-            //        Uri metadUrl = new Uri(string.Format(metadUrlTemplate, lat.DecimalDegree, lon.DecimalDegree, zoomLevel, bingMapsKey));
-            //        HttpResponseMessage message = null;
-            //        try
-            //        {
-            //            message = await client.GetAsync(inputUrl);
-            //        }
-            //        catch
-            //        {
-            //            message = await client.GetAsync(inputUrl);
-            //        }
+        private static void ShowRange()
+        {
+            var data = GetChunkMetadata();
 
-            //        var content = await message.Content.ReadAsByteArrayAsync();
-            //        File.WriteAllBytes(inputFile, content);
+            var latSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item1));
+            var lonSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item2));
+            var latSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item1));
+            var lonSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item2));
 
-            //        string rawMetadata = await client.GetStringAsync(metadUrl);
-            //        File.WriteAllText(metadFile, rawMetadata);
-            //    }
-            //}
-            //else
-            //{
-            //    // In case this was from another thread;
-            //    await Task.Delay(TimeSpan.FromSeconds(1));
-            //}
+            var latTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
+            var lonTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
+            var latDelta = Angle.Subtract(latSetMax, latSetMin);
+            var lonDelta = Angle.Subtract(lonSetMax, lonSetMin);
 
-            //JObject jObject = null;
-            //try
-            //{
-            //    jObject = JObject.Parse(File.ReadAllText(metadFile));
-            //}
-            //catch (Newtonsoft.Json.JsonReaderException)
-            //{
-            //    File.Delete(metadFile);
-            //    throw;
-            //}
+            Console.WriteLine("Current");
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
 
-            //double[] bbox = jObject["resourceSets"].First["resources"].First["bbox"].ToObject<double[]>();
-            //Angle latLo = Angle.FromDecimalDegrees(bbox[0]);
-            //Angle lonLo = Angle.FromDecimalDegrees(bbox[1]);
-            //Angle latHi = Angle.FromDecimalDegrees(bbox[2]);
-            //Angle lonHi = Angle.FromDecimalDegrees(bbox[3]);
-            //using (SKBitmap bm = SKBitmap.Decode(inputFile))
-            //{
-            //    Angle adjustedlatLo = latLo;
-            //    return new ChunkHolder<SKColor>(bm.Height, bm.Width,
-            //        adjustedlatLo, lonLo,
-            //        latHi, lonHi,
-            //        (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - 1 - i),
-            //        null,
-            //        null);
-            //}
+            Console.WriteLine("Up");
+            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Add(latSetMin, latTileDelta)).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Subtract(latSetMax, latTileDelta)).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Subtract(latSetMax, latTileDelta)).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Add(latSetMin, latTileDelta)).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+
+            Console.WriteLine("Down");
+            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Add(latSetMin, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Subtract(latSetMax, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Subtract(latSetMax, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Add(latSetMin, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+
+            Console.WriteLine("Left");
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+
+            Console.WriteLine("Right");
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+        }
+
+        private class ImageFileMetadata
+        {
+            public string FileName;
+            public string FileName2;
+            public Tuple<double, double>[] Points;
+        }
+
+        private static IEnumerable<ImageFileMetadata> GetChunkMetadata()
+        {
+            string path = @"C:\Users\jrcoo\Documents\bda\Bulk Order 823133\NAIP JPG2000";
+            var di = new DirectoryInfo(path);
+            var metadata = di.GetFiles("*.csv").AsEnumerable().First();
+            string[] metadataLines = File.ReadAllLines(metadata.FullName);
+            string[] header = metadataLines.First().Split(',');
+            var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
+
+            var fileInfo = metadataLines
+                .Skip(1)
+                .Select(p => p.Split(','))
+                .Select(p =>
+                    new ImageFileMetadata
+                    {
+                        FileName = Path.Combine(path, p[nameToIndex["NAIP Entity ID"]] + ".jp2"),
+                        FileName2 = Path.Combine(path, p[nameToIndex["NAIP Entity ID"]] + ".gif"),
+                        Points = new Tuple<double, double>[] {
+                            new Tuple<double, double> (double.Parse(p[nameToIndex["NW Corner Lat dec"]]), double.Parse(p[nameToIndex["NW Corner Long dec"]])),
+                            new Tuple<double, double> (double.Parse(p[nameToIndex["NE Corner Lat dec"]]), double.Parse(p[nameToIndex["NE Corner Long dec"]])),
+                            new Tuple<double, double> (double.Parse(p[nameToIndex["SE Corner Lat dec"]]), double.Parse(p[nameToIndex["SE Corner Long dec"]])),
+                            new Tuple<double, double> (double.Parse(p[nameToIndex["SW Corner Lat dec"]]), double.Parse(p[nameToIndex["SW Corner Long dec"]]))
+                        }
+                    });
+            return fileInfo;
         }
 
         protected override void WritePixel(FileStream stream, SKColor pixel)

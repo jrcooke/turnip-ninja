@@ -168,5 +168,10 @@ namespace MountainView.Base
                 return string.Format("{0:D3}D", degrees);
             }
         }
+
+        internal Angle Truncate()
+        {
+            return Angle.FromThirds((this.Fourths / 60 / 60 / 60) * 60 * 60);
+        }
     }
 }
