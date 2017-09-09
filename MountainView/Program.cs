@@ -10,6 +10,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Linq;
+using MountainView.Imaging;
 
 namespace MountainView
 {
@@ -23,31 +24,31 @@ namespace MountainView
 
             Tests.Test3(of, Config.Juaneta());
 
-            string sourceDir = @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\";
-            foreach (var f in new DirectoryInfo(sourceDir).GetFiles())
-            {
-                var shortName = f.Name.Split('.')[0].Split('_');
-                var tmp = new
-                {
-                    lat = int.Parse(shortName[1].Substring(0, 2)),
-                    lon = int.Parse(shortName[1].Substring(2, 3)),
-                    quadLoc = int.Parse(shortName[1].Substring(5, 2)),
-                    quadInd = shortName[2].ToUpperInvariant(),
-                    acqTime = DateTime.Parse(shortName[5].Substring(0, 4) + "-" + shortName[5].Substring(4, 2) + "-" + shortName[5].Substring(6, 2))
-                };
+            //string sourceDir = @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\";
+            //foreach (var f in new DirectoryInfo(sourceDir).GetFiles())
+            //{
+            //    var shortName = f.Name.Split('.')[0].Split('_');
+            //    var tmp = new
+            //    {
+            //        lat = int.Parse(shortName[1].Substring(0, 2)),
+            //        lon = int.Parse(shortName[1].Substring(2, 3)),
+            //        quadLoc = int.Parse(shortName[1].Substring(5, 2)),
+            //        quadInd = shortName[2].ToUpperInvariant(),
+            //        acqTime = DateTime.Parse(shortName[5].Substring(0, 4) + "-" + shortName[5].Substring(4, 2) + "-" + shortName[5].Substring(6, 2))
+            //    };
 
 
-                var deltaLat = Angle.FromDecimalDegrees(tmp.lat + (15 - (2 * ((tmp.quadLoc - 1) / 8) + (tmp.quadInd[1] == 'W' ? 0 : 1))) / 16.0);
-                var deltaLon = Angle.FromDecimalDegrees(-1 * (tmp.lon + (15 - (2 * ((tmp.quadLoc - 1) % 8) + (tmp.quadInd[0] == 'S' ? 0 : 1))) / 16.0));
+            //    var deltaLat = Angle.FromDecimalDegrees(tmp.lat + (15 - (2 * ((tmp.quadLoc - 1) / 8) + (tmp.quadInd[1] == 'W' ? 0 : 1))) / 16.0);
+            //    var deltaLon = Angle.FromDecimalDegrees(-1 * (tmp.lon + (15 - (2 * ((tmp.quadLoc - 1) % 8) + (tmp.quadInd[0] == 'S' ? 0 : 1))) / 16.0));
 
-                Angle a = Angle.FromDecimalDegrees(1.0 / 16.0);
-                FIBITMAP dib = FreeImage.LoadEx(f.FullName);
+            //    Angle a = Angle.FromDecimalDegrees(1.0 / 16.0);
+            //    FIBITMAP dib = FreeImage.LoadEx(f.FullName);
 
 
-                IntPtr bits = FreeImage.GetBits(dib);
+            //    IntPtr bits = FreeImage.GetBits(dib);
 
-                FreeImage.SaveEx(dib, @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\test.jpg");
-            }
+            //    FreeImage.SaveEx(dib, @"C:\Users\jrcoo\Documents\bda\Bulk Order 823059\NAIP JPG2000\test.jpg");
+            //}
 
 
             try
@@ -141,18 +142,24 @@ namespace MountainView
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
             await Utils.ForEachAsync(chunkKeys, 3, async (chunkKey) =>
             {
+                double[] buffer = new double[1];
+                double[] bufferR = new double[3];
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
                 var heightChunk = await Heights.Current.GetData(chunk);
-                //var imageChunk = await Images.Current.GetData(chunk);
+                var imageChunk = await Images.Current.GetData(chunk);
 
                 var interpChunk = heightChunk.GetInterpolator(
-                    p => p,
-                    p => (float)p,
+                    new Func<float, double>[] { p => p },
+                    p => (float)p[0],
                     InterpolatonType.Nearest);
-                //var interpChunkR = imageChunk.GetInterpolator(p => p.Red, p => new SKColor((byte)(p < 0 ? 0 : p > 255 ? 255 : p), 0, 0), InterpolatonType.Nearest);
-                //var interpChunkG = imageChunk.GetInterpolator(p => p.Green, p => new SKColor(0, (byte)(p < 0 ? 0 : p > 255 ? 255 : p), 0), InterpolatonType.Nearest);
-                //var interpChunkB = imageChunk.GetInterpolator(p => p.Blue, p => new SKColor(0, 0, (byte)(p < 0 ? 0 : p > 255 ? 255 : p)), InterpolatonType.Nearest);
+                var interpChunkR = imageChunk.GetInterpolator(
+                    new Func<SKColor, double>[] { p => p.Red, p => p.Green, p => p.Blue },
+                    p => new SKColor(
+                        (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
+                        (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
+                        (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2])),
+                    InterpolatonType.Nearest);
 
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
@@ -169,17 +176,13 @@ namespace MountainView
 
                         var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
                         var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                        if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data))
+                        if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, buffer, out float data))
                         {
-                            byte r = 0;
-                            byte g = 0;
-                            byte b = 0;
-                            //if (interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, out SKColor color)) r = color.Red;
-                            //if (interpChunkG.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) g = color.Green;
-                            //if (interpChunkB.TryGetDataAtPoint(curLatDegree, curLonDegree, out color)) b = color.Blue;
-
-                            ret[iTheta - iThetaMin][iR].Height = data;
-                            ret[iTheta - iThetaMin][iR].Color = new SKColor(r, g, b);
+                            if (interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferR, out SKColor color))
+                            {
+                                ret[iTheta - iThetaMin][iR].Height = data;
+                                ret[iTheta - iThetaMin][iR].Color = color;
+                            }
                         }
                     }
                 }

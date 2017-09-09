@@ -45,8 +45,8 @@ namespace MountainView.Elevation
                   template.LatLo, template.LonLo,
                   template.LatHi, template.LonHi,
                   null,
-                  p => p,
-                  p => (float)p);
+                  new Func<float, double>[] { p => p },
+                  p => (float)p[0]);
             ret.RenderChunksInto(chunks, Utils.WeightedFloatAverage);
             return Task.FromResult(ret);
         }

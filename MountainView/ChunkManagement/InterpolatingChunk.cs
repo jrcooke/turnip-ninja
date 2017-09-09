@@ -11,14 +11,14 @@ namespace MountainView.ChunkManagement
         private double lonLo;
         private double latHi;
         private double lonHi;
-        private Func<double, T> fromDouble;
-        private TwoDInterpolator interp;
+        private Func<double[], T> fromDouble;
+        private TwoDInterpolator[] interp;
 
         public InterpolatingChunk(
             double[] lats,
             double[] lons,
-            double[][] values,
-            Func<double, T> fromDouble,
+            double[][][] values,
+            Func<double[], T> fromDouble,
             InterpolatonType interpolatonType)
         {
             this.latLo = lats.Min();
@@ -26,7 +26,11 @@ namespace MountainView.ChunkManagement
             this.latHi = lats.Max();
             this.lonHi = lons.Max();
             this.fromDouble = fromDouble;
-            this.interp = new TwoDInterpolator(lats, lons, values, interpolatonType);
+            this.interp = new TwoDInterpolator[values.Length];
+            for (int i = 0; i < values.Length; i++)
+            {
+                this.interp[i] = new TwoDInterpolator(lats, lons, values[i], interpolatonType);
+            }
         }
 
         public bool HasDataAtLat(double latDegree)
@@ -39,15 +43,23 @@ namespace MountainView.ChunkManagement
             return this.lonLo <= lonDegree && lonDegree <= this.lonHi;
         }
 
-        public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
+        public bool TryGetDataAtPoint(double latDegree, double lonDegree, double[] buffer, out T data)
         {
             if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
             {
-                if (interp.TryGetValue(latDegree, lonDegree, out double z))
+                for (int i = 0; i < interp.Length; i++)
                 {
-                    data = fromDouble(z);
-                    return true;
+                    if (!interp[i].TryGetValue(latDegree, lonDegree, out double z))
+                    {
+                        data = default(T);
+                        return false;
+                    }
+
+                    buffer[i] = z; // fromDouble(z);
                 }
+
+                data = fromDouble(buffer);
+                return true;
             }
 
             data = default(T);

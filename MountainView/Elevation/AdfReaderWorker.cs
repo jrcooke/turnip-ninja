@@ -70,8 +70,8 @@ namespace MountainView.Elevation
                     Angle.FromDecimalDegrees(latHi),
                     Angle.FromDecimalDegrees(lonHi),
                     null,
-                    p => p,
-                    p => (float)p);
+                    new Func<float, double>[] { p => p },
+                    p => (float)p[0]);
 
                 float[] panRaster = new float[nBlockXSize * nBlockYSize];
                 byte[] panRasterBuffer = new byte[4 * nBlockXSize * nBlockYSize];

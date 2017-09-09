@@ -9,15 +9,15 @@ namespace MountainView.ChunkManagement
     public class ChunkHolder<T> : ChunkMetadata //, IChunkPointAccessor<T>
     {
         public T[][] Data { get; private set; }
-        private Func<T, double> toDouble;
-        private Func<double, T> fromDouble;
+        private Func<T, double>[] toDouble;
+        private Func<double[], T> fromDouble;
 
         public ChunkHolder(int latSteps, int lonSteps,
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
             Func<int, int, T> pixelGetter,
-            Func<T, double> toDouble,
-            Func<double, T> fromDouble)
+            Func<T, double>[] toDouble,
+            Func<double[], T> fromDouble)
             : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
         {
             this.toDouble = toDouble;
@@ -38,6 +38,7 @@ namespace MountainView.ChunkManagement
 
         internal void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate)
         {
+            double[] buffer = new double[toDouble.Length];
             int[][] counter = new int[this.LatSteps][];
             for (int i = 0; i < this.LatSteps; i++)
             {
@@ -47,8 +48,8 @@ namespace MountainView.ChunkManagement
             foreach (var loopChunk in chunks.Where(p => p != null))
             {
                 InterpolatingChunk<T> chunk2 = null;
-                if (loopChunk.PixelSizeLat.DecimalDegree > this.PixelSizeLat.DecimalDegree ||
-                    loopChunk.PixelSizeLon.DecimalDegree > this.PixelSizeLon.DecimalDegree)
+                if (loopChunk.PixelSizeLatDeg > this.PixelSizeLatDeg ||
+                    loopChunk.PixelSizeLonDeg > this.PixelSizeLonDeg)
                 {
                     // Need to interpolate.
                     chunk2 = loopChunk.ComputeInterpolation(this.LatLo, this.LonLo, this.LatHi, this.LonHi, this.toDouble, this.fromDouble, InterpolatonType.Cubic);
@@ -85,7 +86,7 @@ namespace MountainView.ChunkManagement
                         }
                         else
                         {
-                            if (chunk2.TryGetDataAtPoint(loopLat.DecimalDegree, loopLon.DecimalDegree, out T data))
+                            if (chunk2.TryGetDataAtPoint(loopLat.DecimalDegree, loopLon.DecimalDegree, buffer, out T data))
                             {
                                 this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
                                 counter[i][j]++;
@@ -99,8 +100,8 @@ namespace MountainView.ChunkManagement
         private InterpolatingChunk<T> ComputeInterpolation(
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
-            Func<T, double> toDouble,
-            Func<double, T> fromDouble,
+            Func<T, double>[] toDouble,
+            Func<double[], T> fromDouble,
             InterpolatonType interpolatonType)
         {
             int iLo = GetLatIndex(latLo) - 2;
@@ -129,20 +130,24 @@ namespace MountainView.ChunkManagement
                 lons[i] = areaLonHi + i * (areaLonLo - areaLonHi) / (jHi - jLo);
             }
 
-            double[][] values = new double[lats.Length][];
-            for (int i = 0; i < lats.Length; i++)
+            double[][][] values = new double[toDouble.Length][][];
+            for (int k = 0; k < toDouble.Length; k++)
             {
-                values[i] = new double[lons.Length];
-                for (int j = 0; j < lons.Length; j++)
+                values[k] = new double[lats.Length][];
+                for (int i = 0; i < lats.Length; i++)
                 {
-                    values[i][j] = toDouble(Data[iLo + i][jLo + j]);
+                    values[k][i] = new double[lons.Length];
+                    for (int j = 0; j < lons.Length; j++)
+                    {
+                        values[k][i][j] = toDouble[k](Data[iLo + i][jLo + j]);
+                    }
                 }
             }
 
             return new InterpolatingChunk<T>(lats, lons, values, fromDouble, interpolatonType);
         }
 
-        internal InterpolatingChunk<T> GetInterpolator(Func<T, double> toDouble, Func<double, T> fromDouble, InterpolatonType interpolatonType)
+        internal InterpolatingChunk<T> GetInterpolator(Func<T, double>[] toDouble, Func<double[], T> fromDouble, InterpolatonType interpolatonType)
         {
             return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble, interpolatonType);
         }

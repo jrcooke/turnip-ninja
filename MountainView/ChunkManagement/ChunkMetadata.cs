@@ -12,8 +12,8 @@ namespace MountainView.ChunkManagement
         public Angle LonHi { get; private set; }
         public Angle LonDelta { get; private set; }
         public Angle LatDelta { get; private set; }
-        public Angle PixelSizeLat { get; private set; }
-        public Angle PixelSizeLon { get; private set; }
+        public double PixelSizeLatDeg { get; private set; }
+        public double PixelSizeLonDeg { get; private set; }
 
         public ChunkMetadata(int latSteps, int lonSteps, Angle latLo, Angle lonLo, Angle latHi, Angle lonHi)
         {
@@ -25,8 +25,8 @@ namespace MountainView.ChunkManagement
             this.LonHi = lonHi;
             this.LatDelta = Angle.Subtract(LatHi, LatLo);
             this.LonDelta = Angle.Subtract(LonHi, LonLo);
-            this.PixelSizeLat = Angle.Divide(LatDelta, LatSteps - 1);
-            this.PixelSizeLon = Angle.Divide(LonDelta, LonSteps - 1);
+            this.PixelSizeLatDeg = LatDelta.DecimalDegree / (LatSteps - 1);
+            this.PixelSizeLonDeg = LonDelta.DecimalDegree / (LonSteps - 1);
         }
 
         protected Angle GetLat(int i)
@@ -42,13 +42,13 @@ namespace MountainView.ChunkManagement
         protected int GetLatIndex(Angle lat)
         {
             var curLatDelta = Angle.Subtract(lat, LatLo);
-            return Angle.Divide(curLatDelta, PixelSizeLat);
+            return (int)(curLatDelta.DecimalDegree / PixelSizeLatDeg);
         }
 
         protected int GetLonIndex(Angle lon)
         {
             var curLonDelta = Angle.Subtract(lon, LonLo);
-            return LonSteps - 1 - Angle.Divide(curLonDelta, PixelSizeLon);
+            return LonSteps - 1 - (int)(curLonDelta.DecimalDegree / PixelSizeLonDeg);
         }
 
         public bool Disjoint(ChunkMetadata that)

@@ -40,8 +40,11 @@ namespace MountainView.Imaging
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi,
                 null,
-                null,
-                null);
+                new Func<SKColor, double>[] { p => p.Red, p => p.Green, p => p.Blue },
+                p => new SKColor(
+                    (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
+                    (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
+                    (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2])));
 
             var targetChunks = GetChunkMetadata()
                 .Select(p => new
@@ -93,6 +96,7 @@ namespace MountainView.Imaging
             8. Open the "Bulk Download Application"
             9. Login, select the latest chunk of data.
          */
+        private static object colorLock = new object();
         private static ChunkHolder<SKColor> GetColors(Angle lat, Angle lon)
         {
             Console.WriteLine(lat.ToLatString() + " " + lon.ToLonString());
@@ -112,19 +116,24 @@ namespace MountainView.Imaging
                     throw new InvalidOperationException("File should exist: '" + fileInfo.FileName + "'");
                 }
 
-                FIBITMAP sdib = FreeImage.LoadEx(fileInfo.FileName);
-
-                var width = FreeImage.GetWidth(sdib);
-                var height = FreeImage.GetHeight(sdib);
-                Utils.WriteImageFile((int)width, (int)height, fileInfo.FileName2, (i, j) =>
+                lock (colorLock)
                 {
-                    FreeImage.GetPixelColor(sdib, (uint)i, (uint)j, out RGBQUAD value);
-                    //Console.WriteLine(i + "\t" + j + "\t" + value.rgbRed + "\t" + value.rgbGreen + "\t" + value.rgbBlue);
-                    return new SKColor(value.rgbRed, value.rgbGreen, value.rgbBlue);
-                });
-                FreeImage.UnloadEx(ref sdib);
-            }
+                    if (!File.Exists(fileInfo.FileName2))
+                    {
+                        FIBITMAP sdib = FreeImage.LoadEx(fileInfo.FileName);
 
+                        var width = FreeImage.GetWidth(sdib);
+                        var height = FreeImage.GetHeight(sdib);
+                        Utils.WriteImageFile((int)width, (int)height, fileInfo.FileName2, (i, j) =>
+                        {
+                            FreeImage.GetPixelColor(sdib, (uint)i, (uint)j, out RGBQUAD value);
+                        //Console.WriteLine(i + "\t" + j + "\t" + value.rgbRed + "\t" + value.rgbGreen + "\t" + value.rgbBlue);
+                        return new SKColor(value.rgbRed, value.rgbGreen, value.rgbBlue);
+                        });
+                        FreeImage.UnloadEx(ref sdib);
+                    }
+                }
+            }
 
             using (SKBitmap bm = SKBitmap.Decode(fileInfo.FileName2))
             {
