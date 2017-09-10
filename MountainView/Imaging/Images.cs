@@ -68,8 +68,8 @@ namespace MountainView.Imaging
             foreach (var tmp in targetChunks)
             {
                 var col = GetColors(
-                    Angle.Add(tmp.Chunk.LatLo, Angle.Multiply(tmp.Chunk.LatDelta, 0.5)),
-                    Angle.Add(tmp.Chunk.LonLo, Angle.Multiply(tmp.Chunk.LonDelta, 0.5)));
+                    Angle.Add(tmp.Chunk.LatLo, Angle.Divide(tmp.Chunk.LatDelta, 2)),
+                    Angle.Add(tmp.Chunk.LonLo, Angle.Divide(tmp.Chunk.LonDelta, 2)));
 
                 if (col != null)
                 {

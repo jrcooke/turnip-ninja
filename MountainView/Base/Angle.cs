@@ -21,15 +21,15 @@ namespace MountainView.Base
         public static Angle FromDecimalDegrees(double v)
         {
             double fourths = v * 60 * 60 * 60 * 60;
-            return FromTotal((int)Math.Round(fourths));
+            return FromFourths((int)Math.Round(fourths));
         }
 
         public static Angle FromThirds(long totalThirds)
         {
-            return FromTotal(totalThirds * 60);
+            return FromFourths(totalThirds * 60);
         }
 
-        private static Angle FromTotal(long totalFourths)
+        private static Angle FromFourths(long totalFourths)
         {
             bool isNeg = totalFourths < 0;
             return new Angle()
@@ -40,13 +40,6 @@ namespace MountainView.Base
             };
         }
 
-        internal static void Swap(ref Angle a, ref Angle b)
-        {
-            var tmp = a;
-            a = b;
-            b = tmp;
-        }
-
         public long Fourths
         {
             get
@@ -55,34 +48,14 @@ namespace MountainView.Base
             }
         }
 
-        public static Angle Min(Angle a, Angle b)
-        {
-            return (a.Fourths < b.Fourths) ? a : b;
-        }
-
         public static Angle Multiply(Angle a, int b)
         {
-            return Angle.FromTotal(a.Fourths * b);
-        }
-
-        public static Angle Multiply(Angle a, double b)
-        {
-            return Angle.FromTotal((int)(a.Fourths * b));
-        }
-
-        public static int Divide(Angle a, Angle b)
-        {
-            return (int)(a.Fourths / b.Fourths);
+            return Angle.FromFourths(a.Fourths * b);
         }
 
         public static Angle Divide(Angle a, int b)
         {
-            return Angle.FromTotal(a.Fourths / b);
-        }
-
-        public static Angle Divide(Angle a, double b)
-        {
-            return Angle.FromTotal((int)(a.Fourths / b));
+            return Angle.FromFourths(a.Fourths / b);
         }
 
         public static int FloorDivide(Angle a, Angle b)
@@ -97,31 +70,14 @@ namespace MountainView.Base
             }
         }
 
-        public static int FloorDivide(Angle a, long total)
-        {
-            if (!a.IsNegative)
-            {
-                return (int)(a.Fourths / total);
-            }
-            else
-            {
-                return -1 - (int)((-a.Fourths) / total);
-            }
-        }
-
         internal static Angle Subtract(Angle a, Angle b)
         {
-            return Angle.FromTotal(a.Fourths - b.Fourths);
-        }
-
-        public static Angle Add(Angle a, double b)
-        {
-            return Angle.FromTotal(a.Fourths + FromDecimalDegrees(b).Fourths);
+            return Angle.FromFourths(a.Fourths - b.Fourths);
         }
 
         public static Angle Add(Angle a, Angle b)
         {
-            return Angle.FromTotal(a.Fourths + b.Fourths);
+            return Angle.FromFourths(a.Fourths + b.Fourths);
         }
 
         public string ToLatString()

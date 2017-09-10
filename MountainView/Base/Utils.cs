@@ -12,8 +12,6 @@ namespace MountainView.Base
 {
     public static class Utils
     {
-        private static Dictionary<long, string> filenameCache = new Dictionary<long, string>();
-
         private const double AlphaMeters = 6378000.0;
 
         // Alpha is radius.
