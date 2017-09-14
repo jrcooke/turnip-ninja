@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    public class ChunkHolder<T> : ChunkMetadata //, IChunkPointAccessor<T>
+    public class ChunkHolder<T> : ChunkMetadata
     {
         public T[][] Data { get; private set; }
         private Func<T, double>[] toDouble;

@@ -101,7 +101,6 @@ namespace MountainView.Imaging
             if (fileInfo == null)
             {
                 throw new InvalidOperationException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
-                //                return null;
             }
 
             if (!File.Exists(fileInfo.FileName2))
@@ -144,59 +143,6 @@ namespace MountainView.Imaging
             }
         }
 
-        public static void ShowRange()
-        {
-            var allData = GetChunkMetadata();
-            foreach (var data in allData.GroupBy(p => new FileInfo(p.FileName).Directory.Name))
-            {
-                var latSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item1));
-                var lonSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item2));
-                var latSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item1));
-                var lonSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item2));
-
-                var latTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
-                var lonTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
-                var latDelta = Angle.Subtract(latSetMax, latSetMin);
-                var lonDelta = Angle.Subtract(lonSetMax, lonSetMin);
-
-                Console.WriteLine("Current");
-                NewMethod(latSetMin, lonSetMin, latSetMax, lonSetMax, latTileDelta, lonTileDelta);
-
-                //Console.WriteLine("Up");
-                //NewMethod(Angle.Add(latSetMin, latDelta), lonSetMin, Angle.Add(latSetMax, latDelta), lonSetMax, latTileDelta, lonTileDelta);
-
-                //Console.WriteLine("Down");
-                //NewMethod(Angle.Subtract(latSetMin, latDelta), lonSetMin, Angle.Subtract(latSetMax, latDelta), lonSetMax, latTileDelta, lonTileDelta);
-
-                Console.WriteLine("Left");
-                NewMethod(latSetMin, Angle.Add(lonSetMin, lonDelta), latSetMax, Angle.Add(lonSetMax, lonDelta), latTileDelta, lonTileDelta);
-
-                Console.WriteLine("Right");
-                NewMethod(latSetMin, Angle.Subtract(lonSetMin, lonDelta), latSetMax, Angle.Subtract(lonSetMax, lonDelta), latTileDelta, lonTileDelta);
-            }
-        }
-
-        private static void NewMethod(Angle latSetMin, Angle lonSetMin, Angle latSetMax, Angle lonSetMax, Angle latTileDelta, Angle lonTileDelta)
-        {
-            var latLo = Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString();
-            var lonLo = Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString();
-            var latHi = Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString();
-            var lonHi = Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString();
-
-            Console.WriteLine("{0}{1}{2}{3}", latLo, lonLo, latHi, lonHi);
-            Console.WriteLine("{0} {1}", latHi, lonHi);
-            Console.WriteLine("{0} {1}", latLo, lonHi);
-            Console.WriteLine("{0} {1}", latLo, lonLo);
-            Console.WriteLine("{0} {1}", latHi, lonLo);
-        }
-
-        private class ImageFileMetadata
-        {
-            public string FileName;
-            public string FileName2;
-            public Tuple<double, double>[] Points;
-        }
-
         private static IEnumerable<ImageFileMetadata> GetChunkMetadata()
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
@@ -218,10 +164,10 @@ namespace MountainView.Imaging
                             FileName = Path.Combine(metadata.Directory.FullName, p[nameToIndex["NAIP Entity ID"]] + ".jp2"),
                             FileName2 = Path.Combine(metadata.Directory.FullName, p[nameToIndex["NAIP Entity ID"]] + ".gif"),
                             Points = new Tuple<double, double>[] {
-                            new Tuple<double, double> (double.Parse(p[nameToIndex["NW Corner Lat dec"]]), double.Parse(p[nameToIndex["NW Corner Long dec"]])),
-                            new Tuple<double, double> (double.Parse(p[nameToIndex["NE Corner Lat dec"]]), double.Parse(p[nameToIndex["NE Corner Long dec"]])),
-                            new Tuple<double, double> (double.Parse(p[nameToIndex["SE Corner Lat dec"]]), double.Parse(p[nameToIndex["SE Corner Long dec"]])),
-                            new Tuple<double, double> (double.Parse(p[nameToIndex["SW Corner Lat dec"]]), double.Parse(p[nameToIndex["SW Corner Long dec"]]))
+                                new Tuple<double, double> (double.Parse(p[nameToIndex["NW Corner Lat dec"]]), double.Parse(p[nameToIndex["NW Corner Long dec"]])),
+                                new Tuple<double, double> (double.Parse(p[nameToIndex["NE Corner Lat dec"]]), double.Parse(p[nameToIndex["NE Corner Long dec"]])),
+                                new Tuple<double, double> (double.Parse(p[nameToIndex["SE Corner Lat dec"]]), double.Parse(p[nameToIndex["SE Corner Long dec"]])),
+                                new Tuple<double, double> (double.Parse(p[nameToIndex["SW Corner Lat dec"]]), double.Parse(p[nameToIndex["SW Corner Long dec"]]))
                             }
                         });
                 ret.AddRange(fileInfo);
@@ -244,6 +190,13 @@ namespace MountainView.Imaging
                 (byte)stream.ReadByte(),
                 (byte)stream.ReadByte(),
                 255);
+        }
+
+        private class ImageFileMetadata
+        {
+            public string FileName;
+            public string FileName2;
+            public Tuple<double, double>[] Points;
         }
     }
 }

@@ -15,33 +15,6 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
-            //foreach (var x in Images.Current.ScanAll())
-            //{
-            //    Console.WriteLine(x.Item1);
-            //    bool keepGoing = true;
-            //    foreach (var y in x.Item2.Data)
-            //    {
-            //        foreach (var z in y)
-            //        {
-            //            if (z.Red == 0 && z.Green == 0 && z.Blue == 0)
-            //            {
-            //                Console.WriteLine("Bad chunk!");
-            //                File.Delete(x.Item1);
-            //                keepGoing = false;
-            //                break;
-            //            }
-            //        }
-
-            //        if (!keepGoing) break;
-            //    }
-            //}
-
-            //Images.ShowRange();
-            OneDInterpolator.Test();
-
-            string of = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-            Tests.Test3(of, Config.Juaneta());
-
             try
             {
                 string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
@@ -57,6 +30,7 @@ namespace MountainView
         public static async Task GetPolarData(Config config)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
+            int numR = (int)(config.R / config.DeltaR);
 
             int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
             int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
@@ -66,7 +40,7 @@ namespace MountainView
                 Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
                 double cosTheta = Math.Cos(theta.Radians);
                 double sinTheta = Math.Sin(theta.Radians);
-                for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
+                for (int iR = 1; iR < numR; iR++)
                 {
                     double r = iR * config.DeltaR;
                     var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
@@ -80,7 +54,7 @@ namespace MountainView
             ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
             for (int i = 0; i < ret.Length; i++)
             {
-                ret[i] = new ColorHeight[(int)(config.R / config.DeltaR)];
+                ret[i] = new ColorHeight[numR];
             }
 
             int counter = 0;
@@ -106,7 +80,7 @@ namespace MountainView
                     var endRLat = Utils.DeltaMetersLat(theta, config.R);
                     var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
-                    for (int iR = 1; iR < (int)(config.R / config.DeltaR); iR++)
+                    for (int iR = 1; iR < numR; iR++)
                     {
                         var mult = iR * config.DeltaR / config.R;
 

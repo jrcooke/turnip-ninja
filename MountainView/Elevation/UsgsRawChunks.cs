@@ -98,7 +98,6 @@ namespace MountainView.Elevation
                         else
                         {
                             throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
-                            // Console.WriteLine("Source is missing.");
                         }
                     }
 
@@ -107,13 +106,11 @@ namespace MountainView.Elevation
                         Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
                         ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, shortWebFile));
                         Console.WriteLine("Extracted raw " + description + " data from zip file.");
-                        //                File.Delete(target);
                     }
                 }
 
                 if (!missing)
                 {
-                    //cache[fileName] = ReadDataToChunks(inputFile);
                     ret = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
                     Console.WriteLine("Loaded raw " + description + " data: " + fileName);
                 }

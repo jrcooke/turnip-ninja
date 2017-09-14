@@ -3,9 +3,7 @@ using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace MountainView
 {

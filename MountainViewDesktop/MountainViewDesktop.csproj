@@ -79,17 +79,11 @@
     <Compile Include="..\MountainView\ChunkManagement\ChunkMetadata.cs">
       <Link>ChunkManagement\ChunkMetadata.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\IChunkPointAccessor.cs">
-      <Link>ChunkManagement\IChunkPointAccessor.cs</Link>
-    </Compile>
     <Compile Include="..\MountainView\ChunkManagement\InterpolatingChunk.cs">
       <Link>ChunkManagement\InterpolatingChunk.cs</Link>
     </Compile>
     <Compile Include="..\MountainView\ChunkManagement\StandardChunkMetadata.cs">
       <Link>ChunkManagement\StandardChunkMetadata.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\TimedCache.cs">
-      <Link>ChunkManagement\TimedCache.cs</Link>
     </Compile>
     <Compile Include="..\MountainView\Elevation\AdfReaderWorker.cs">
       <Link>Elevation\AdfReaderWorker.cs</Link>

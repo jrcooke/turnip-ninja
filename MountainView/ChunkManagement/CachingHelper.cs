@@ -37,46 +37,39 @@ namespace MountainView
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
         {
-            ChunkHolder<T> ret = null;
-
             if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
                 filename = string.Format("{0}{1}{2:D2}",
                     template.LatLo.ToLatString(),
-                    template.LonLo.ToLonString(), template.ZoomLevel);
+                    template.LonLo.ToLonString(),
+                    template.ZoomLevel);
                 filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
             string fullName = Path.Combine(rootMapFolder, string.Format(cachedFileTemplate, filename, fileExt));
             if (File.Exists(fullName))
             {
-                Console.WriteLine("Reading " + description + " chunk file '" + filename);
-                ret = ReadChunk(fullName, template);
-                Console.WriteLine("Read " + description + " chunk file '" + filename);
+                //Console.WriteLine("Reading " + description + " chunk file '" + filename);
+                return ReadChunk(fullName, template);
+                //Console.WriteLine("Read " + description + " chunk file '" + filename);
+            }
+
+            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
+            Console.WriteLine("Starting generation...");
+            try
+            {
+                var ret = await GenerateData(template);
+                WriteChunk(ret, fullName);
+                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
                 return ret;
             }
-
-            // Need to generate the data
-            // TODO: need to implement some sort of design where we know in advance that we don't have more than one filename at once.
-            //            lock (filename)
+            catch (Exception ex)
             {
-                Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
-                Console.WriteLine("Starting generation...");
-
-                try
-                {
-                    ret = await GenerateData(template);
-                    WriteChunk(ret, fullName);
-                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fullName);
-                    Console.WriteLine(ex.ToString());
-                }
+                Console.WriteLine("Problem generating " + description + " cached chunk file: " + fullName);
+                Console.WriteLine(ex.ToString());
             }
 
-            return ret;
+            return null;
         }
 
         protected void WriteChunk(ChunkHolder<T> ret, string fullName)
