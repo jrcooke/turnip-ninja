@@ -72,6 +72,11 @@ namespace MountainView.ChunkManagement
             return ret;
         }
 
+        public static StandardChunkMetadata GetEmpty()
+        {
+            return new StandardChunkMetadata(0, 0, Angle.FromThirds(0), Angle.FromThirds(0), Angle.FromThirds(0), Angle.FromThirds(0), 0, 0);
+        }
+
         public override string ToString()
         {
             return ZoomLevel + "Z_" + LatLo.ToLatString() + "," + LonLo.ToLonString() + "_" + LatHi.ToLatString() + "," + LonHi.ToLonString();

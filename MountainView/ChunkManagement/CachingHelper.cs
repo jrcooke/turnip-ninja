@@ -2,6 +2,7 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -23,6 +24,15 @@ namespace MountainView
             this.pixelDataSize = pixelDataSize;
             this.rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
             this.filenameCache = new ConcurrentDictionary<long, string>();
+        }
+
+        public IEnumerable<Tuple<string, ChunkHolder<T>>> ScanAll()
+        {
+            DirectoryInfo di = new DirectoryInfo(rootMapFolder);
+            foreach (var file in di.GetFiles(string.Format(cachedFileTemplate, "*", fileExt)))
+            {
+                yield return new Tuple<string, ChunkHolder<T>>(file.FullName, ReadChunk(file.FullName, StandardChunkMetadata.GetEmpty()));
+            }
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)

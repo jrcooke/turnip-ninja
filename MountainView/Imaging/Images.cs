@@ -16,10 +16,7 @@ namespace MountainView.Imaging
     {
         private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private const string fileExt = "idata";
-        private const string description = "Images";
-
-        private Images() : base(fileExt, description, 4)
+        private Images() : base("idata", "Images", 4)
         {
         }
 
@@ -40,11 +37,8 @@ namespace MountainView.Imaging
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi,
                 null,
-                new Func<SKColor, double>[] { p => p.Red, p => p.Green, p => p.Blue },
-                p => new SKColor(
-                    (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
-                    (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
-                    (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2])));
+                Utils.ColorToDoubleArray,
+                Utils.ColorFromDoubleArray);
 
             var targetChunks = GetChunkMetadata()
                 .Select(p => new
@@ -106,7 +100,8 @@ namespace MountainView.Imaging
 
             if (fileInfo == null)
             {
-                return null;
+                throw new InvalidOperationException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
+                //                return null;
             }
 
             if (!File.Exists(fileInfo.FileName2))
@@ -120,6 +115,7 @@ namespace MountainView.Imaging
                 {
                     if (!File.Exists(fileInfo.FileName2))
                     {
+                        Console.WriteLine("Generating " + fileInfo.FileName2);
                         FIBITMAP sdib = FreeImage.LoadEx(fileInfo.FileName);
 
                         var width = FreeImage.GetWidth(sdib);
@@ -127,8 +123,8 @@ namespace MountainView.Imaging
                         Utils.WriteImageFile((int)width, (int)height, fileInfo.FileName2, (i, j) =>
                         {
                             FreeImage.GetPixelColor(sdib, (uint)i, (uint)j, out RGBQUAD value);
-                        //Console.WriteLine(i + "\t" + j + "\t" + value.rgbRed + "\t" + value.rgbGreen + "\t" + value.rgbBlue);
-                        return new SKColor(value.rgbRed, value.rgbGreen, value.rgbBlue);
+                            //Console.WriteLine(i + "\t" + j + "\t" + value.rgbRed + "\t" + value.rgbGreen + "\t" + value.rgbBlue);
+                            return new SKColor(value.rgbRed, value.rgbGreen, value.rgbBlue);
                         });
                         FreeImage.UnloadEx(ref sdib);
                     }
@@ -142,55 +138,56 @@ namespace MountainView.Imaging
                     Angle.FromDecimalDegrees(fileInfo.Points.Min(p => p.Item2)),
                     Angle.FromDecimalDegrees(fileInfo.Points.Max(p => p.Item1)),
                     Angle.FromDecimalDegrees(fileInfo.Points.Max(p => p.Item2)),
-                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - 1 - i), //                     FreeImage.GetPixelColor(dib, (uint)(width - 1 - j), (uint)(i), out RGBQUAD pixel);
+                    (i, j) => bm.GetPixel(bm.Width - 1 - j, bm.Height - 1 - i),
                     null,
                     null);
             }
         }
 
-        private static void ShowRange()
+        public static void ShowRange()
         {
-            var data = GetChunkMetadata();
+            var allData = GetChunkMetadata();
+            foreach (var data in allData.GroupBy(p => new FileInfo(p.FileName).Directory.Name))
+            {
+                var latSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item1));
+                var lonSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item2));
+                var latSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item1));
+                var lonSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item2));
 
-            var latSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item1));
-            var lonSetMin = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Min(p => p.Item2));
-            var latSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item1));
-            var lonSetMax = Angle.FromDecimalDegrees(data.SelectMany(p => p.Points).Max(p => p.Item2));
+                var latTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
+                var lonTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
+                var latDelta = Angle.Subtract(latSetMax, latSetMin);
+                var lonDelta = Angle.Subtract(lonSetMax, lonSetMin);
 
-            var latTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
-            var lonTileDelta = Angle.FromDecimalDegrees(data.Average(p => (p.Points.Max(q => q.Item1) - p.Points.Min(q => q.Item1))) / 2);
-            var latDelta = Angle.Subtract(latSetMax, latSetMin);
-            var lonDelta = Angle.Subtract(lonSetMax, lonSetMin);
+                Console.WriteLine("Current");
+                NewMethod(latSetMin, lonSetMin, latSetMax, lonSetMax, latTileDelta, lonTileDelta);
 
-            Console.WriteLine("Current");
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+                //Console.WriteLine("Up");
+                //NewMethod(Angle.Add(latSetMin, latDelta), lonSetMin, Angle.Add(latSetMax, latDelta), lonSetMax, latTileDelta, lonTileDelta);
 
-            Console.WriteLine("Up");
-            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Add(latSetMin, latTileDelta)).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Subtract(latSetMax, latTileDelta)).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Subtract(latSetMax, latTileDelta)).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latDelta, Angle.Add(latSetMin, latTileDelta)).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+                //Console.WriteLine("Down");
+                //NewMethod(Angle.Subtract(latSetMin, latDelta), lonSetMin, Angle.Subtract(latSetMax, latDelta), lonSetMax, latTileDelta, lonTileDelta);
 
-            Console.WriteLine("Down");
-            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Add(latSetMin, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Subtract(latSetMax, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Subtract(latSetMax, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(Angle.Add(latSetMin, latTileDelta), latDelta).Truncate().ToLatString(), Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString());
+                Console.WriteLine("Left");
+                NewMethod(latSetMin, Angle.Add(lonSetMin, lonDelta), latSetMax, Angle.Add(lonSetMax, lonDelta), latTileDelta, lonTileDelta);
 
-            Console.WriteLine("Left");
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Add(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+                Console.WriteLine("Right");
+                NewMethod(latSetMin, Angle.Subtract(lonSetMin, lonDelta), latSetMax, Angle.Subtract(lonSetMax, lonDelta), latTileDelta, lonTileDelta);
+            }
+        }
 
-            Console.WriteLine("Right");
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Add(lonSetMin, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
-            Console.WriteLine("{0} {1}", Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString(), Angle.Subtract(Angle.Subtract(lonSetMax, lonTileDelta), lonDelta).Truncate().ToLonString());
+        private static void NewMethod(Angle latSetMin, Angle lonSetMin, Angle latSetMax, Angle lonSetMax, Angle latTileDelta, Angle lonTileDelta)
+        {
+            var latLo = Angle.Subtract(latSetMax, latTileDelta).Truncate().ToLatString();
+            var lonLo = Angle.Subtract(lonSetMax, lonTileDelta).Truncate().ToLonString();
+            var latHi = Angle.Add(latSetMin, latTileDelta).Truncate().ToLatString();
+            var lonHi = Angle.Add(lonSetMin, lonTileDelta).Truncate().ToLonString();
+
+            Console.WriteLine("{0}{1}{2}{3}", latLo, lonLo, latHi, lonHi);
+            Console.WriteLine("{0} {1}", latHi, lonHi);
+            Console.WriteLine("{0} {1}", latLo, lonHi);
+            Console.WriteLine("{0} {1}", latLo, lonLo);
+            Console.WriteLine("{0} {1}", latHi, lonLo);
         }
 
         private class ImageFileMetadata
@@ -202,29 +199,35 @@ namespace MountainView.Imaging
 
         private static IEnumerable<ImageFileMetadata> GetChunkMetadata()
         {
-            string path = @"C:\Users\jrcoo\Documents\bda\Bulk Order 823133\NAIP JPG2000";
-            var di = new DirectoryInfo(path);
-            var metadata = di.GetFiles("*.csv").AsEnumerable().First();
-            string[] metadataLines = File.ReadAllLines(metadata.FullName);
-            string[] header = metadataLines.First().Split(',');
-            var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
+            List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
+            string path = Path.Combine(rootMapFolder, "NAIP*");
+            DirectoryInfo root = new DirectoryInfo(rootMapFolder);
+            foreach (var di in root.GetDirectories("NAIP*"))
+            {
+                var metadata = di.GetFiles("*.csv").AsEnumerable().First();
+                string[] metadataLines = File.ReadAllLines(metadata.FullName);
+                string[] header = metadataLines.First().Split(',');
+                var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
 
-            var fileInfo = metadataLines
-                .Skip(1)
-                .Select(p => p.Split(','))
-                .Select(p =>
-                    new ImageFileMetadata
-                    {
-                        FileName = Path.Combine(path, p[nameToIndex["NAIP Entity ID"]] + ".jp2"),
-                        FileName2 = Path.Combine(path, p[nameToIndex["NAIP Entity ID"]] + ".gif"),
-                        Points = new Tuple<double, double>[] {
+                var fileInfo = metadataLines
+                    .Skip(1)
+                    .Select(p => p.Split(','))
+                    .Select(p =>
+                        new ImageFileMetadata
+                        {
+                            FileName = Path.Combine(metadata.Directory.FullName, p[nameToIndex["NAIP Entity ID"]] + ".jp2"),
+                            FileName2 = Path.Combine(metadata.Directory.FullName, p[nameToIndex["NAIP Entity ID"]] + ".gif"),
+                            Points = new Tuple<double, double>[] {
                             new Tuple<double, double> (double.Parse(p[nameToIndex["NW Corner Lat dec"]]), double.Parse(p[nameToIndex["NW Corner Long dec"]])),
                             new Tuple<double, double> (double.Parse(p[nameToIndex["NE Corner Lat dec"]]), double.Parse(p[nameToIndex["NE Corner Long dec"]])),
                             new Tuple<double, double> (double.Parse(p[nameToIndex["SE Corner Lat dec"]]), double.Parse(p[nameToIndex["SE Corner Long dec"]])),
                             new Tuple<double, double> (double.Parse(p[nameToIndex["SW Corner Lat dec"]]), double.Parse(p[nameToIndex["SW Corner Long dec"]]))
-                        }
-                    });
-            return fileInfo;
+                            }
+                        });
+                ret.AddRange(fileInfo);
+            }
+
+            return ret;
         }
 
         protected override void WritePixel(FileStream stream, SKColor pixel)

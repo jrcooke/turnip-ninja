@@ -19,7 +19,7 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                R = 160000,
+                R = 60000,
                 DeltaR = 5,
                 MinAngle = Angle.FromDecimalDegrees(85.0),
                 MaxAngle = Angle.FromDecimalDegrees(95.0),

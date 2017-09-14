@@ -101,6 +101,16 @@ namespace MountainView.Base
             return result;
         }
 
+        public static Func<SKColor, double>[] ColorToDoubleArray = new Func<SKColor, double>[] { p => p.Red, p => p.Green, p => p.Blue };
+
+        public static SKColor ColorFromDoubleArray(double[] p)
+        {
+            return new SKColor(
+                (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
+                (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
+                (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2]));
+        }
+
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
@@ -123,12 +133,12 @@ namespace MountainView.Base
         }
 
         public static void WriteImageFile<T>(
-            IEnumerable<T[]> colorBuff,
-            int width,
-            int height,
+            T[][] colorBuff,
             string fileName,
             Func<T, SKColor> transform)
         {
+            int width = colorBuff.Length;
+            int height = colorBuff[0].Length;
             using (DirectBitmap bm = new DirectBitmap(width, height))
             {
                 int i = 0;

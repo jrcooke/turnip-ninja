@@ -95,6 +95,17 @@ namespace MountainView.ChunkManagement
                     }
                 }
             }
+
+            for (int i = 0; i < counter.Length; i++)
+            {
+                for (int j = 0; j < counter[i].Length; j++)
+                {
+                    if (counter[i][j] == 0)
+                    {
+                        throw new InvalidOperationException("The chunks do not cover the area of this chunk: " + this.ToString());
+                    }
+                }
+            }
         }
 
         private InterpolatingChunk<T> ComputeInterpolation(
