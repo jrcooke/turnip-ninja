@@ -1,8 +1,9 @@
-﻿using MountainView.Base;
+﻿using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -13,7 +14,6 @@ namespace MountainView
         private const string cachedFileTemplate = "{0}.v5.{1}";
         private readonly string fileExt;
         private readonly string description;
-        private readonly string rootMapFolder;
         private readonly int pixelDataSize;
         private readonly ConcurrentDictionary<long, string> filenameCache;
 
@@ -22,17 +22,8 @@ namespace MountainView
             this.fileExt = fileExt;
             this.description = description;
             this.pixelDataSize = pixelDataSize;
-            this.rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
-            this.filenameCache = new ConcurrentDictionary<long, string>();
-        }
 
-        public IEnumerable<Tuple<string, ChunkHolder<T>>> ScanAll()
-        {
-            DirectoryInfo di = new DirectoryInfo(rootMapFolder);
-            foreach (var file in di.GetFiles(string.Format(cachedFileTemplate, "*", fileExt)))
-            {
-                yield return new Tuple<string, ChunkHolder<T>>(file.FullName, ReadChunk(file.FullName, StandardChunkMetadata.GetEmpty()));
-            }
+            this.filenameCache = new ConcurrentDictionary<long, string>();
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
@@ -46,36 +37,37 @@ namespace MountainView
                 filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
-            string fullName = Path.Combine(rootMapFolder, string.Format(cachedFileTemplate, filename, fileExt));
-            if (File.Exists(fullName))
+            CloudBlobContainer container = BlobHelper.Container;
+            CloudBlockBlob blockBlob = container.GetBlockBlobReference(string.Format(cachedFileTemplate, filename, fileExt));
+
+            if (TryReadChunk(blockBlob, template, out ChunkHolder<T> ret))
             {
-                //Console.WriteLine("Reading " + description + " chunk file '" + filename);
-                return ReadChunk(fullName, template);
-                //Console.WriteLine("Read " + description + " chunk file '" + filename);
+                return ret;
             }
 
-            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fullName);
+            Console.WriteLine("Cached " + description + " chunk file does not exist: " + blockBlob.Name);
             Console.WriteLine("Starting generation...");
             try
             {
                 var ret = await GenerateData(template);
-                WriteChunk(ret, fullName);
-                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fullName);
+                WriteChunk(ret, blockBlob);
+                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + blockBlob.Name);
                 return ret;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Problem generating " + description + " cached chunk file: " + fullName);
+                Console.WriteLine("Problem generating " + description + " cached chunk file: " + blockBlob.Name);
                 Console.WriteLine(ex.ToString());
             }
 
             return null;
         }
 
-        protected void WriteChunk(ChunkHolder<T> ret, string fullName)
+        private void WriteChunk(ChunkHolder<T> ret, CloudBlockBlob blockBlob)
         {
-            using (FileStream stream = File.OpenWrite(fullName))
+            using (MemoryStream stream = new MemoryStream())
             {
+                blockBlob.UploadFromStreamAsync(stream);
                 stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
                 for (int i = 0; i < ret.LatSteps; i++)
@@ -88,12 +80,21 @@ namespace MountainView
             }
         }
 
-        protected ChunkHolder<T> ReadChunk(string fullName, StandardChunkMetadata template)
+        private bool TryReadChunk(CloudBlockBlob blockBlob, StandardChunkMetadata template, out ChunkHolder<T> ret)
         {
-            ChunkHolder<T> ret = null;
-            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
-            using (var stream = File.OpenRead(fullName))
+            ret = null;
+            using (var stream = new MemoryStream())
             {
+                try
+                {
+                    Task.WaitAll(blockBlob.DownloadToStreamAsync(stream));
+                }
+                catch
+                {
+                    return false;
+                }
+
+                byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
                 stream.Read(buffer, 0, 4);
                 int width = BitConverter.ToInt32(buffer, 0);
                 stream.Read(buffer, 0, 4);
@@ -112,11 +113,11 @@ namespace MountainView
                 }
             }
 
-            return ret;
+            return true;
         }
 
         protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template);
-        protected abstract void WritePixel(FileStream stream, T pixel);
-        protected abstract T ReadPixel(FileStream stream, byte[] buffer);
+        protected abstract void WritePixel(MemoryStream stream, T pixel);
+        protected abstract T ReadPixel(MemoryStream stream, byte[] buffer);
     }
 }

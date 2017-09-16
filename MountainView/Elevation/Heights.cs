@@ -48,12 +48,12 @@ namespace MountainView.Elevation
             return Task.FromResult(ret);
         }
 
-        protected override void WritePixel(FileStream stream, float pixel)
+        protected override void WritePixel(MemoryStream stream, float pixel)
         {
             stream.Write(BitConverter.GetBytes(pixel), 0, 4);
         }
 
-        protected override float ReadPixel(FileStream stream, byte[] buffer)
+        protected override float ReadPixel(MemoryStream stream, byte[] buffer)
         {
             stream.Read(buffer, 0, 4);
             return BitConverter.ToSingle(buffer, 0);

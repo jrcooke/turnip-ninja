@@ -176,14 +176,14 @@ namespace MountainView.Imaging
             return ret;
         }
 
-        protected override void WritePixel(FileStream stream, SKColor pixel)
+        protected override void WritePixel(MemoryStream stream, SKColor pixel)
         {
             stream.WriteByte(pixel.Red);
             stream.WriteByte(pixel.Green);
             stream.WriteByte(pixel.Blue);
         }
 
-        protected override SKColor ReadPixel(FileStream stream, byte[] buffer)
+        protected override SKColor ReadPixel(MemoryStream stream, byte[] buffer)
         {
             return new SKColor(
                 (byte)stream.ReadByte(),
