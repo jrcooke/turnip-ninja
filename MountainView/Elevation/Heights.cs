@@ -9,7 +9,10 @@ namespace MountainView.Elevation
 {
     public class Heights : CachingHelper<float>
     {
-        private Heights() : base("hdata", "Heights", 4)
+        private Heights() : base("hdata", "Heights", 4, 7,
+            new Func<float, double>[] { p => p },
+            p => (float)p[0],
+            Utils.WeightedFloatAverage)
         {
         }
 

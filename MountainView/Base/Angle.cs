@@ -24,12 +24,22 @@ namespace MountainView.Base
             return FromFourths((int)Math.Round(fourths));
         }
 
+        public static Angle FromMinutes(long totalDegrees)
+        {
+            return FromSeconds(totalDegrees * 60);
+        }
+
+        public static Angle FromSeconds(long totalSeconds)
+        {
+            return FromThirds(totalSeconds * 60);
+        }
+
         public static Angle FromThirds(long totalThirds)
         {
             return FromFourths(totalThirds * 60);
         }
 
-        private static Angle FromFourths(long totalFourths)
+        public static Angle FromFourths(long totalFourths)
         {
             bool isNeg = totalFourths < 0;
             return new Angle()

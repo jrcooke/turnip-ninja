@@ -19,7 +19,7 @@ namespace MountainView.Elevation
             @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip",
         };
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
-        private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
+        private static string rootMapFolder = @"C:\Users\jrcoo\Desktop\Map";
 
         private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
@@ -71,7 +71,7 @@ namespace MountainView.Elevation
                     var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
                     if (!File.Exists(target))
                     {
-                        Console.WriteLine("Attemping to download " + description + " source zip to '" + target + "'...");
+                        Console.WriteLine("Attempting to download " + description + " source zip to '" + target + "'...");
                         using (HttpClient client = new HttpClient())
                         {
                             client.Timeout = TimeSpan.FromMinutes(5);

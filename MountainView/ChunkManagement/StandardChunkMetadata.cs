@@ -1,13 +1,10 @@
 ﻿using MountainView.Base;
-using System;
+using System.Collections.Generic;
 
 namespace MountainView.ChunkManagement
 {
     public class StandardChunkMetadata : ChunkMetadata
     {
-        private const int smallBatch = 540;
-        public const int MaxZoomLevel = 16;
-
         public int ZoomLevel { get; private set; }
         public long Key { get; private set; }
 
@@ -20,51 +17,80 @@ namespace MountainView.ChunkManagement
             this.Key = key;
         }
 
-        public static long GetKey(long latTotal, long lonTotal, int zoomLevel)
+        public const int MaxZoomLevel = 9;
+        private static readonly Angle[] pixelSizeForZoom = new Angle[] {
+            Angle.FromMinutes(1), Angle.FromSeconds(20), Angle.FromSeconds(4),
+            Angle.FromSeconds(1), Angle.FromThirds( 20), Angle.FromThirds( 4),
+            Angle.FromThirds( 1), Angle.FromFourths(20), Angle.FromFourths(4),
+            Angle.FromFourths(1),
+        };
+
+        private static readonly Angle[] frameSizeForZoom = new Angle[] {
+            Angle.FromDecimalDegrees(20), Angle.FromDecimalDegrees(4), Angle.FromDecimalDegrees(1),
+            Angle.FromMinutes(       20), Angle.FromMinutes(       4), Angle.FromMinutes(       1),
+            Angle.FromSeconds(       20), Angle.FromSeconds(       4), Angle.FromSeconds(       1),
+            Angle.FromThirds(        20),
+        };
+
+        private static readonly int[] numPixelsForZoom = new int[] {
+            1200, 720, 900,
+            1200, 720, 900,
+            1200, 720, 900,
+            1200,
+        };
+
+        // Continental unites states bounded by: 24N125W by 50N66W
+        // So 26 degrees lat, 59 degrees lon
+        private static readonly Angle usMinLat = Angle.FromDecimalDegrees(24.0);
+        private static readonly Angle usMinLon = Angle.FromDecimalDegrees(-125.0);
+        private static readonly Angle usDeltaLat = Angle.FromDecimalDegrees(26.0);
+        private static readonly Angle usDeltaLon = Angle.FromDecimalDegrees(59.0);
+
+        public static long GetKey(long latTotalIn, long lonTotalIn, int zoomLevel)
         {
-            if (zoomLevel > MaxZoomLevel)
-            {
-                throw new ArgumentOutOfRangeException("zoomLevel");
-            }
+            Angle pixelSize = pixelSizeForZoom[zoomLevel];
+            Angle frameSize = frameSizeForZoom[zoomLevel];
+            int numPixels = numPixelsForZoom[zoomLevel];
 
-            var sizeInFourths = 60L * 15 * 45 * (1 << (16 - zoomLevel)); //Math.Pow(2, 16 - zoomLevel));
+            var latTotal = latTotalIn - usMinLat.Fourths;
+            var lonTotal = lonTotalIn - usMinLon.Fourths;
 
-            int numPossible = 2 << zoomLevel; //Math.Pow(2, 1 + zoomLevel);
-            int sizeMultiplierLat = (latTotal >= 0 ? (int)(latTotal / sizeInFourths) : -1 - (int)((-latTotal) / sizeInFourths)); // Angle.FloorDivide(lat, sizeInFourths);
-            int sizeMultiplierLon = (lonTotal >= 0 ? (int)(lonTotal / sizeInFourths) : -1 - (int)((-lonTotal) / sizeInFourths));
+            int latNumPossible = (int)(usDeltaLat.Abs / frameSize.Abs);
+            int lonNumPossible = (int)(usDeltaLon.Abs / frameSize.Abs);
 
-            int encodedLat = 3 * numPossible / 2 + sizeMultiplierLat;
-            int encodedLon = 3 * numPossible / 2 + sizeMultiplierLon;
-            long key = encodedLat + encodedLon * 0x100000000;
+            int sizeMultiplierLat = (latTotal >= 0 ? (int)(latTotal / frameSize.Fourths) : -1 - (int)((-latTotal) / frameSize.Fourths));
+            int sizeMultiplierLon = (lonTotal >= 0 ? (int)(lonTotal / frameSize.Fourths) : -1 - (int)((-lonTotal) / frameSize.Fourths));
+
+            int encodedLat = 3 * latNumPossible + sizeMultiplierLat;
+            int encodedLon = 3 * lonNumPossible + sizeMultiplierLon;
+
+            long key = (encodedLat + encodedLon * 0x100000000) * (MaxZoomLevel + 1) + zoomLevel;
             return key;
-        }
-
-        public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
-        {
-            return GetRangeFromKey(GetKey(lat.Fourths, lon.Fourths, zoomLevel));
         }
 
         public static StandardChunkMetadata GetRangeFromKey(long key)
         {
-            int encodedLat = (int)(key % 0x100000000);
-            int encodedLon = (int)(key / 0x100000000);
+            int zoomLevel = (int)(key % (MaxZoomLevel + 1));
 
-            int zoomLevel = (int)Math.Log(encodedLat, 2) - 1;
-            int numPossible = (int)Math.Pow(2, 1 + zoomLevel);
+            Angle pixelSize = pixelSizeForZoom[zoomLevel];
+            Angle frameSize = frameSizeForZoom[zoomLevel];
+            int numPixels = numPixelsForZoom[zoomLevel];
 
-            int sizeMultiplierLat = encodedLat - numPossible * 3 / 2;
-            int sizeMultiplierLon = encodedLon - numPossible * 3 / 2;
+            int latNumPossible = (int)(usDeltaLat.Abs / frameSize.Abs);
+            int lonNumPossible = (int)(usDeltaLon.Abs / frameSize.Abs);
 
-            var thirds = (int)(15 * 45 * Math.Pow(2, 16 - zoomLevel));
-            Angle size = Angle.FromThirds(thirds);
+            int encodedLat = (int)(key / (MaxZoomLevel + 1) % 0x100000000);
+            int encodedLon = (int)(key / (MaxZoomLevel + 1) / 0x100000000);
 
-            var twoPixelSize = Angle.Divide(size, smallBatch / 2);
-            Angle latLo = Angle.Subtract(Angle.Multiply(size, sizeMultiplierLat), twoPixelSize);
-            Angle lonLo = Angle.Subtract(Angle.Multiply(size, sizeMultiplierLon), twoPixelSize);
-            Angle latHi = Angle.Add(Angle.Multiply(size, sizeMultiplierLat + 1), twoPixelSize);
-            Angle lonHi = Angle.Add(Angle.Multiply(size, sizeMultiplierLon + 1), twoPixelSize);
+            int sizeMultiplierLat = encodedLat - 3 * latNumPossible;
+            int sizeMultiplierLon = encodedLon - 3 * lonNumPossible;
+
+            Angle latLo = Angle.Add(Angle.Multiply(frameSize, sizeMultiplierLat), usMinLat);
+            Angle lonLo = Angle.Add(Angle.Multiply(frameSize, sizeMultiplierLon), usMinLon);
+            Angle latHi = Angle.Add(Angle.Multiply(frameSize, sizeMultiplierLat + 1), usMinLat);
+            Angle lonHi = Angle.Add(Angle.Multiply(frameSize, sizeMultiplierLon + 1), usMinLon);
             StandardChunkMetadata ret = new StandardChunkMetadata(
-                smallBatch + 5, smallBatch + 5,
+                numPixels + 1, numPixels + 1,
                 latLo, lonLo,
                 latHi, lonHi,
                 zoomLevel, key);
@@ -72,9 +98,29 @@ namespace MountainView.ChunkManagement
             return ret;
         }
 
-        public static StandardChunkMetadata GetEmpty()
+        public static StandardChunkMetadata GetRangeContaingPoint(Angle lat, Angle lon, int zoomLevel)
         {
-            return new StandardChunkMetadata(0, 0, Angle.FromThirds(0), Angle.FromThirds(0), Angle.FromThirds(0), Angle.FromThirds(0), 0, 0);
+            return GetRangeFromKey(GetKey(lat.Fourths, lon.Fourths, zoomLevel));
+        }
+
+        internal IEnumerable<StandardChunkMetadata> GetChildChunks()
+        {
+            var ratio = Angle.FloorDivide(frameSizeForZoom[this.ZoomLevel], frameSizeForZoom[this.ZoomLevel + 1]);
+            var latLoopLo = Angle.Add(this.LatLo, Angle.Divide(frameSizeForZoom[this.ZoomLevel + 1], 2));
+            var lonLoopLo = Angle.Add(this.LonLo, Angle.Divide(frameSizeForZoom[this.ZoomLevel + 1], 2));
+
+            List<StandardChunkMetadata> ret = new List<StandardChunkMetadata>();
+            for (int i = 0; i < ratio; i++)
+            {
+                var li = Angle.Add(latLoopLo, Angle.Multiply(frameSizeForZoom[this.ZoomLevel + 1], i));
+                for (int j = 0; j < ratio; j++)
+                {
+                    var lj = Angle.Add(lonLoopLo, Angle.Multiply(frameSizeForZoom[this.ZoomLevel + 1], j));
+                    ret.Add(GetRangeContaingPoint(li, lj, this.ZoomLevel + 1));
+                }
+            }
+
+            return ret;
         }
 
         public override string ToString()

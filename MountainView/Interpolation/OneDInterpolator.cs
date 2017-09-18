@@ -1,4 +1,4 @@
-﻿// Based now only on Numerical Recipies code
+﻿// Based now only on Numerical Recipes code
 // http://www.it.uom.gr/teaching/linearalgebra/NumericalRecipiesInC/c3-6.pdf
 
 using System;

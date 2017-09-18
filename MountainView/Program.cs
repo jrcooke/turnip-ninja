@@ -15,16 +15,33 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
+            for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
+            {
+                StandardChunkMetadata.GetKey(100, 100, i);
+            }
             try
             {
-                string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-                Config c = Config.Juaneta();
-                Task.WaitAll(GetPolarData(c));
+                Tests.Test12();
+                Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
+
+                // So lets have the resolutions be 60, 20, 4, 1
+                // Natural resolution for the elevations is 20T per pixel, images 4T per pixel.
+
+                //string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
+                //Config c = Config.Juaneta();
+                //Task.WaitAll(GetPolarData(c));
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }
+        }
+
+        private static void ProcessSources(int lat, int lon)
+        {
+            UsgsRawChunks.GetRawHeightsInMeters(lat, lon);
+
+            throw new NotImplementedException();
         }
 
         public static async Task GetPolarData(Config config)

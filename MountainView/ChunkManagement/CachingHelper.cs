@@ -1,9 +1,8 @@
-﻿using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using MountainView.Base;
+﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -11,17 +10,28 @@ namespace MountainView
 {
     public abstract class CachingHelper<T>
     {
-        private const string cachedFileTemplate = "{0}.v5.{1}";
+        private const string cachedFileTemplate = "{0}.v6.{1}";
         private readonly string fileExt;
         private readonly string description;
         private readonly int pixelDataSize;
+        private readonly int sourceDataZoom;
+        private readonly Func<T, double>[] toDouble;
+        private readonly Func<double[], T> fromDouble;
+        private readonly Func<int, T, T, T> aggregate;
         private readonly ConcurrentDictionary<long, string> filenameCache;
 
-        public CachingHelper(string fileExt, string description, int pixelDataSize)
+        public CachingHelper(string fileExt, string description, int pixelDataSize, int sourceDataZoom,
+            Func<T, double>[] toDouble,
+            Func<double[], T> fromDouble,
+            Func<int, T, T, T> aggregate)
         {
             this.fileExt = fileExt;
             this.description = description;
             this.pixelDataSize = pixelDataSize;
+            this.sourceDataZoom = sourceDataZoom;
+            this.toDouble = toDouble;
+            this.fromDouble = fromDouble;
+            this.aggregate = aggregate;
 
             this.filenameCache = new ConcurrentDictionary<long, string>();
         }
@@ -37,37 +47,94 @@ namespace MountainView
                 filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
-            CloudBlobContainer container = BlobHelper.Container;
-            CloudBlockBlob blockBlob = container.GetBlockBlobReference(string.Format(cachedFileTemplate, filename, fileExt));
-
-            if (TryReadChunk(blockBlob, template, out ChunkHolder<T> ret))
+            string fileName = string.Format(cachedFileTemplate, filename, fileExt);
+            using (var ms = await BlobHelper.TryGetStream(fileName))
             {
-                return ret;
+                if (ms != null)
+                {
+                    Console.WriteLine("Cached " + description + " chunk file exista: " + fileName);
+                    return ReadChunk(ms, template);
+                }
             }
 
-            Console.WriteLine("Cached " + description + " chunk file does not exist: " + blockBlob.Name);
-            Console.WriteLine("Starting generation...");
-            try
+            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            if (template.ZoomLevel == this.sourceDataZoom)
             {
-                var ret = await GenerateData(template);
-                WriteChunk(ret, blockBlob);
-                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + blockBlob.Name);
+                //throw new InvalidDataException
+                Console.WriteLine("Source data is missing for chunk " + template.ToString());
+
+                Console.WriteLine("Starting generation...");
+                try
+                {
+                    var ret = await GenerateData(template);
+                    await WriteChunk(ret, fileName);
+                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                    return ret;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
+                    Console.WriteLine(ex.ToString());
+                }
+
+            }
+            else if (template.ZoomLevel < this.sourceDataZoom)
+            {
+                Console.WriteLine("Need to aggregate up from higher zoom data");
+                var children = template.GetChildChunks();
+                List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
+                foreach (var child in children)
+                {
+                    Console.WriteLine(child);
+                    chunks.Add(await GetData(child));
+                }
+
+                var ret = new ChunkHolder<T>(
+                      template.LatSteps, template.LonSteps,
+                      template.LatLo, template.LonLo,
+                      template.LatHi, template.LonHi,
+                      null,
+                      toDouble,
+                      fromDouble);
+
+                ret.RenderChunksInto(chunks, aggregate);
+
+                await WriteChunk(ret, fileName);
+                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+
                 return ret;
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine("Problem generating " + description + " cached chunk file: " + blockBlob.Name);
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine("Need to interpolate from lower zoom data");
+                var lower = StandardChunkMetadata.GetRangeContaingPoint(
+                    Angle.Divide(Angle.Add(template.LatLo, template.LatHi), 2),
+                    Angle.Divide(Angle.Add(template.LonLo, template.LonHi), 2),
+                    template.ZoomLevel - 1);
+                Console.WriteLine("Lower data: " + lower);
+                Console.WriteLine("TODO!!!");
             }
+            //Console.WriteLine("Starting generation...");
+            //try
+            //{
+            //    var ret = await GenerateData(template);
+            //    await WriteChunk(ret, fileName);
+            //    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            //    return ret;
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
+            //    Console.WriteLine(ex.ToString());
+            //}
 
             return null;
         }
 
-        private void WriteChunk(ChunkHolder<T> ret, CloudBlockBlob blockBlob)
+        private async Task WriteChunk(ChunkHolder<T> ret, string fileName)
         {
             using (MemoryStream stream = new MemoryStream())
             {
-                blockBlob.UploadFromStreamAsync(stream);
                 stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
                 stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
                 for (int i = 0; i < ret.LatSteps; i++)
@@ -77,43 +144,33 @@ namespace MountainView
                         WritePixel(stream, ret.Data[i][j]);
                     }
                 }
+
+                stream.Position = 0;
+                await BlobHelper.WriteStream(fileName, stream);
             }
         }
 
-        private bool TryReadChunk(CloudBlockBlob blockBlob, StandardChunkMetadata template, out ChunkHolder<T> ret)
+        private ChunkHolder<T> ReadChunk(MemoryStream stream, StandardChunkMetadata template)
         {
-            ret = null;
-            using (var stream = new MemoryStream())
+            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
+            stream.Read(buffer, 0, 4);
+            int width = BitConverter.ToInt32(buffer, 0);
+            stream.Read(buffer, 0, 4);
+            int height = BitConverter.ToInt32(buffer, 0);
+
+            var ret = new ChunkHolder<T>(width, height,
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi,
+                null, null, null);
+            for (int i = 0; i < width; i++)
             {
-                try
+                for (int j = 0; j < height; j++)
                 {
-                    Task.WaitAll(blockBlob.DownloadToStreamAsync(stream));
-                }
-                catch
-                {
-                    return false;
-                }
-
-                byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
-                stream.Read(buffer, 0, 4);
-                int width = BitConverter.ToInt32(buffer, 0);
-                stream.Read(buffer, 0, 4);
-                int height = BitConverter.ToInt32(buffer, 0);
-
-                ret = new ChunkHolder<T>(width, height,
-                    template.LatLo, template.LonLo,
-                    template.LatHi, template.LonHi,
-                    null, null, null);
-                for (int i = 0; i < width; i++)
-                {
-                    for (int j = 0; j < height; j++)
-                    {
-                        ret.Data[i][j] = ReadPixel(stream, buffer);
-                    }
+                    ret.Data[i][j] = ReadPixel(stream, buffer);
                 }
             }
 
-            return true;
+            return ret;
         }
 
         protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template);

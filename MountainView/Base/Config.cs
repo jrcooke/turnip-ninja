@@ -29,6 +29,22 @@
             };
         }
 
+        public static Config Home()
+        {
+            return new Config()
+            {
+                Lat = Angle.FromDecimalDegrees(47.6867797),
+                Lon = Angle.FromDecimalDegrees(-122.2907541),
+                R = 60000,
+                DeltaR = 5,
+                MinAngle = Angle.FromDecimalDegrees(85.0),
+                MaxAngle = Angle.FromDecimalDegrees(95.0),
+                ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
+                ElevationViewMax = Angle.FromDecimalDegrees(2.0),
+                AngularResolution = Angle.FromDecimalDegrees(0.01),
+            };
+        }
+
         public static Config Owego()
         {
             return new Config()

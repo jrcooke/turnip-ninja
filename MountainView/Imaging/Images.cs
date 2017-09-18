@@ -14,9 +14,12 @@ namespace MountainView.Imaging
 {
     internal class Images : CachingHelper<SKColor>
     {
-        private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
+  //      private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private Images() : base("idata", "Images", 4)
+        private Images() : base("idata", "Images", 4, 8,
+            Utils.ColorToDoubleArray,
+            Utils.ColorFromDoubleArray,
+            Utils.WeightedColorAverage)
         {
         }
 
@@ -84,7 +87,7 @@ namespace MountainView.Imaging
             4. On bottom, for the "Date Range", use the start date as 09/03/2014, to help limit to a single set.
             5. On next tab "Data Sets", open "Ariel Imagery" and select "NAIP JPEG2000"
             6. On next tab, "results", on "Click here to export results", use "Non-limited results" and CSV, Will show up in the email.
-            7. Then open the "Show results control", and click "Add all results from current page to bluk download".
+            7. Then open the "Show results control", and click "Add all results from current page to bulk download".
                 a. Then click "Next ", and click "all to bulk again.
                 b. When done, click "View item basket"
             8. Open the "Bulk Download Application"
@@ -146,6 +149,9 @@ namespace MountainView.Imaging
         private static IEnumerable<ImageFileMetadata> GetChunkMetadata()
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
+            string rootMapFolder = "xxx";
+            throw new NotImplementedException();
+
             string path = Path.Combine(rootMapFolder, "NAIP*");
             DirectoryInfo root = new DirectoryInfo(rootMapFolder);
             foreach (var di in root.GetDirectories("NAIP*"))

@@ -1,4 +1,4 @@
-﻿// Based on Numerical Recipies code
+﻿// Based on Numerical Recipes code
 // http://www.it.uom.gr/teaching/linearalgebra/NumericalRecipiesInC/c3-6.pdf
 
 using System.Collections.Generic;

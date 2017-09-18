@@ -4,6 +4,7 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainView
 {
@@ -44,29 +45,38 @@ namespace MountainView
 
             Console.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
-            for (int zoomLevel = 0; zoomLevel <= 16; zoomLevel++)
+            for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
+                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
+                var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
+
                 var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
                 Console.Write(zoomLevel + "\t" + cc.LatDelta);
                 Console.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
             }
         }
 
-        public static void Test3(string outputFolder, Config c)
+        public static async Task Test3(string outputFolder, Config c)
         {
-            for (int zoomLevel = 10; zoomLevel <= 16; zoomLevel++)
+            for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 2; zoomLevel--)
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 
-                var pixels2 = Heights.Current.GetData(template).Result;
-                Utils.WriteImageFile(pixels2,
-                    Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
-                    a => Utils.GetColorForHeight(a));
+                var pixels2 = await Heights.Current.GetData(template);
+                if (pixels2 != null)
+                {
+                    Utils.WriteImageFile(pixels2,
+                        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
+                        a => Utils.GetColorForHeight(a));
+                }
 
-                var pixels = Images.Current.GetData(template).Result;
-                Utils.WriteImageFile(pixels,
-                    Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                    a => a);
+                //var pixels = Images.Current.GetData(template).Result;
+                //if (pixels != null)
+                //{
+                //    Utils.WriteImageFile(pixels,
+                //        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                //        a => a);
+                //}
             }
         }
     }
