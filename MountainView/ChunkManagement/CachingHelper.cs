@@ -52,7 +52,7 @@ namespace MountainView
             {
                 if (ms != null)
                 {
-                    Console.WriteLine("Cached " + description + " chunk file exista: " + fileName);
+                    Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
                     return ReadChunk(ms, template);
                 }
             }

@@ -19,7 +19,9 @@ namespace MountainView.Elevation
             @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip",
         };
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
-        private static string rootMapFolder = @"C:\Users\jrcoo\Desktop\Map";
+        private static string rootMapFolder = Directory.GetCurrentDirectory();//  @"C:\Users\jrcoo\Desktop\Map";
+
+        // https://viewer.nationalmap.gov/basic/?basemap=b1&category=ned,nedsrc&title=3DEP%20View
 
         private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
@@ -71,35 +73,37 @@ namespace MountainView.Elevation
                     var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
                     if (!File.Exists(target))
                     {
-                        Console.WriteLine("Attempting to download " + description + " source zip to '" + target + "'...");
-                        using (HttpClient client = new HttpClient())
-                        {
-                            client.Timeout = TimeSpan.FromMinutes(5);
-                            HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client).Result;
-                            if (message != null && message.StatusCode == HttpStatusCode.OK)
-                            {
-                                var content = message.Content.ReadAsByteArrayAsync().Result;
-                                File.WriteAllBytes(target, content);
-                            }
-                            else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
-                            {
-                                missing = true;
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException("Bad response: " + (message?.StatusCode.ToString() ?? "No response") + " when trying to get " + shortWebFile);
-                            }
-                        }
-
-                        if (!missing)
-                        {
-                            Console.WriteLine("Downloaded " + description + " source zip to '" + target + "'");
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
-                        }
+                        throw new InvalidOperationException("File missing: " + target);
+                        // Console.WriteLine("Attempting to download " + description + " source zip to '" + target + "'...");
                     }
+                    //    using (HttpClient client = new HttpClient())
+                    //    {
+                    //        client.Timeout = TimeSpan.FromMinutes(5);
+                    //        HttpResponseMessage message = TryDownloadDifferentFormats(shortWebFile, client).Result;
+                    //        if (message != null && message.StatusCode == HttpStatusCode.OK)
+                    //        {
+                    //            var content = message.Content.ReadAsByteArrayAsync().Result;
+                    //            File.WriteAllBytes(target, content);
+                    //        }
+                    //        else if (message != null && message.StatusCode == HttpStatusCode.NotFound)
+                    //        {
+                    //            missing = true;
+                    //        }
+                    //        else
+                    //        {
+                    //            throw new InvalidOperationException("Bad response: " + (message?.StatusCode.ToString() ?? "No response") + " when trying to get " + shortWebFile);
+                    //        }
+                    //    }
+
+                    //    if (!missing)
+                    //    {
+                    //        Console.WriteLine("Downloaded " + description + " source zip to '" + target + "'");
+                    //    }
+                    //    else
+                    //    {
+                    //        throw new InvalidOperationException("Source is missing. This is expected when asking for data outside of USA");
+                    //    }
+                    //}
 
                     if (!missing)
                     {
