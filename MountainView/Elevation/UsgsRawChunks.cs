@@ -13,7 +13,7 @@ namespace MountainView.Elevation
     internal static class UsgsRawChunks
     {
         private const string description = "USGS";
-        private const string inputFileTemplate = @"{0}\grd{0}_13\w001001.adf";
+        private static readonly string[] inputFileTemplate = new string[] { "{0}","grd{0}_13","w001001.adf"};
         private static readonly string[] sourceUrlTemplates = new string[] {
             @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/USGS_NED_13_{0}_ArcGrid.zip",
             @"https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/{0}.zip",
@@ -64,7 +64,7 @@ namespace MountainView.Elevation
                 var shortWebFile =
                     (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
                     (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
-                string inputFile = Path.Combine(rootMapFolder, string.Format(inputFileTemplate, shortWebFile));
+                string inputFile = Path.Combine(rootMapFolder, string.Format(Path.Combine(inputFileTemplate), shortWebFile));
                 if (!File.Exists(inputFile))
                 {
                     Console.WriteLine("Missing " + description + " data file: " + inputFile);
