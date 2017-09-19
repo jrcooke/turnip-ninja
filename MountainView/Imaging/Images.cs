@@ -14,7 +14,7 @@ namespace MountainView.Imaging
 {
     internal class Images : CachingHelper<SKColor>
     {
-  //      private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
+        //      private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
         private Images() : base("idata", "Images", 4, 8,
             Utils.ColorToDoubleArray,
@@ -149,18 +149,18 @@ namespace MountainView.Imaging
         private static IEnumerable<ImageFileMetadata> GetChunkMetadata()
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
-            string rootMapFolder = "xxx";
-            throw new NotImplementedException();
+            string path = @"C:\Users\jrcoo\Desktop\Map\NAIP_n46w121";
+            //          throw new NotImplementedException();
 
-            string path = Path.Combine(rootMapFolder, "NAIP*");
-            DirectoryInfo root = new DirectoryInfo(rootMapFolder);
-            foreach (var di in root.GetDirectories("NAIP*"))
+            //    string path = Path.Combine(rootMapFolder, "NAIP*");
+            //    DirectoryInfo root = new DirectoryInfo(rootMapFolder);
+            //   foreach (var di in root.GetDirectories("NAIP*"))
+            var di = new DirectoryInfo(path);
+            foreach (var metadata in di.GetFiles("*.csv"))
             {
-                var metadata = di.GetFiles("*.csv").AsEnumerable().First();
                 string[] metadataLines = File.ReadAllLines(metadata.FullName);
                 string[] header = metadataLines.First().Split(',');
                 var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
-
                 var fileInfo = metadataLines
                     .Skip(1)
                     .Select(p => p.Split(','))

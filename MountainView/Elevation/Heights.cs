@@ -27,10 +27,10 @@ namespace MountainView.Elevation
 
         protected override Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template)
         {
-            int latMin = (int)Math.Min(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree);
-            int latMax = (int)Math.Max(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree);
-            int lonMin = (int)Math.Min(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree);
-            int lonMax = (int)Math.Max(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree);
+            int latMin = (int)(Math.Min(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree) + 1.0e-5);
+            int latMax = (int)(Math.Max(template.LatLo.DecimalDegree, template.LatHi.DecimalDegree) - 1.0e-5);
+            int lonMin = (int)(Math.Min(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree) + 1.0e-5);
+            int lonMax = (int)(Math.Max(template.LonLo.DecimalDegree, template.LonHi.DecimalDegree) - 1.0e-5);
             List<ChunkHolder<float>> chunks = new List<ChunkHolder<float>>();
             for (int latInt = latMin; latInt <= latMax; latInt++)
             {
