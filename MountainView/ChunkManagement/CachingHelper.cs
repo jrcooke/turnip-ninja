@@ -11,6 +11,7 @@ namespace MountainView
     public abstract class CachingHelper<T>
     {
         private const string cachedFileTemplate = "{0}.v7.{1}";
+        private const string cachedFileContainer = "mapv7";
         private readonly string fileExt;
         private readonly string description;
         private readonly int pixelDataSize;
@@ -36,7 +37,7 @@ namespace MountainView
             this.filenameCache = new ConcurrentDictionary<long, string>();
         }
 
-        public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
+        public async Task<ChunkHolder<T>> ProcessRawData(StandardChunkMetadata template)
         {
             if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
@@ -48,7 +49,7 @@ namespace MountainView
             }
 
             string fileName = string.Format(cachedFileTemplate, filename, fileExt);
-            using (var ms = await BlobHelper.TryGetStream(fileName))
+            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileName))
             {
                 if (ms != null)
                 {
@@ -66,7 +67,102 @@ namespace MountainView
                 Console.WriteLine("Starting generation...");
                 try
                 {
-                    var ret = GenerateData(template);
+                    var ret = await GenerateData(template);
+                    await WriteChunk(ret, fileName);
+                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                    return ret;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
+                    Console.WriteLine(ex.ToString());
+                }
+
+            }
+            else if (template.ZoomLevel < this.sourceDataZoom)
+            {
+                Console.WriteLine("Need to aggregate up from higher zoom data");
+                var children = template.GetChildChunks();
+                List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
+                foreach (var child in children)
+                {
+                    Console.WriteLine(child);
+                    chunks.Add(await GetData(child));
+                }
+
+                var ret = new ChunkHolder<T>(
+                      template.LatSteps, template.LonSteps,
+                      template.LatLo, template.LonLo,
+                      template.LatHi, template.LonHi,
+                      null,
+                      toDouble,
+                      fromDouble);
+
+                ret.RenderChunksInto(chunks, aggregate);
+
+                await WriteChunk(ret, fileName);
+                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+
+                return ret;
+            }
+            else
+            {
+                Console.WriteLine("Need to interpolate from lower zoom data");
+                var lower = StandardChunkMetadata.GetRangeContaingPoint(
+                    Angle.Divide(Angle.Add(template.LatLo, template.LatHi), 2),
+                    Angle.Divide(Angle.Add(template.LonLo, template.LonHi), 2),
+                    template.ZoomLevel - 1);
+                Console.WriteLine("Lower data: " + lower);
+                Console.WriteLine("TODO!!!");
+            }
+            //Console.WriteLine("Starting generation...");
+            //try
+            //{
+            //    var ret = await GenerateData(template);
+            //    await WriteChunk(ret, fileName);
+            //    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            //    return ret;
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
+            //    Console.WriteLine(ex.ToString());
+            //}
+
+            return null;
+        }
+
+        public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
+        {
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            {
+                filename = string.Format("{0}{1}{2:D2}",
+                    template.LatLo.ToLatString(),
+                    template.LonLo.ToLonString(),
+                    template.ZoomLevel);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
+            }
+
+            string fileName = string.Format(cachedFileTemplate, filename, fileExt);
+            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileName))
+            {
+                if (ms != null)
+                {
+                    Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                    return ReadChunk(ms, template);
+                }
+            }
+
+            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            if (template.ZoomLevel == this.sourceDataZoom)
+            {
+                //throw new InvalidDataException
+                Console.WriteLine("Source data is missing for chunk " + template.ToString());
+
+                Console.WriteLine("Starting generation...");
+                try
+                {
+                    var ret = await GenerateData(template);
                     await WriteChunk(ret, fileName);
                     Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
                     return ret;
@@ -146,7 +242,7 @@ namespace MountainView
                 }
 
                 stream.Position = 0;
-                await BlobHelper.WriteStream(fileName, stream);
+                await BlobHelper.WriteStream(cachedFileContainer, fileName, stream);
             }
         }
 
@@ -173,7 +269,7 @@ namespace MountainView
             return ret;
         }
 
-        protected abstract ChunkHolder<T> GenerateData(StandardChunkMetadata template);
+        protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template);
         protected abstract void WritePixel(MemoryStream stream, T pixel);
         protected abstract T ReadPixel(MemoryStream stream, byte[] buffer);
     }

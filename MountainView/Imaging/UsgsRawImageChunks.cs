@@ -1,16 +1,18 @@
 ﻿using FreeImageAPI;
 using MountainView.Base;
 using MountainView.ChunkManagement;
-using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainView.Imaging
 {
     internal static class UsgsRawImageChunks
     {
+        private const string cachedFileContainer = "sources";
+
         /*
             1. Go to https://earthexplorer.usgs.gov/
             2. Login
@@ -32,9 +34,9 @@ namespace MountainView.Imaging
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static ChunkHolder<MyColor> GetRawColors(Angle lat, Angle lon)
+        public static async Task<ChunkHolder<MyColor>> GetRawColors(Angle lat, Angle lon)
         {
-            ImageFileMetadata fileInfo = GetChunkMetadata()
+            ImageFileMetadata fileInfo = (await GetChunkMetadata())
                 .Where(p => Utils.Contains(p.Points, lat.DecimalDegree, lon.DecimalDegree))
                 .FirstOrDefault();
 
@@ -43,12 +45,24 @@ namespace MountainView.Imaging
                 throw new InvalidOperationException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
             }
 
-            if (!File.Exists(fileInfo.FileName))
+            if (!File.Exists(fileInfo.LocalName))
             {
-                throw new InvalidOperationException("File should exist: '" + fileInfo.FileName + "'");
+                using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileInfo.FileName))
+                {
+                    if (ms == null)
+                    {
+                        throw new InvalidOperationException("File should exist: '" + fileInfo.FileName + "'");
+                    }
+
+                    using (var fileStream = File.Create(fileInfo.LocalName))
+                    {
+                        ms.Position = 0;
+                        ms.CopyTo(fileStream);
+                    }
+                }
             }
 
-            string fileName = fileInfo.FileName;
+            string fileName = fileInfo.LocalName;
             if (cache.TryGetValue(fileName, out ChunkHolder<MyColor> ret))
             {
                 return ret;
@@ -102,16 +116,31 @@ namespace MountainView.Imaging
             return ret;
         }
 
-        public static IEnumerable<ImageFileMetadata> GetChunkMetadata()
+        public static IEnumerable<string> ReadLines(Func<Stream> streamProvider)
+        {
+            using (var stream = streamProvider())
+            using (var reader = new StreamReader(stream))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    yield return line;
+                }
+            }
+        }
+
+        public static async Task<IEnumerable<ImageFileMetadata>> GetChunkMetadata()
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
-            string rootMapFolder = @"C:\Users\jrcoo\Desktop\Map";
-            DirectoryInfo root = new DirectoryInfo(rootMapFolder);
-            foreach (var di in root.GetDirectories("NAIP*"))
+
+            //            string rootMapFolder = @"C:\Users\jrcoo\Desktop\Map";
+            //            DirectoryInfo root = new DirectoryInfo(rootMapFolder);
+            foreach (var di in await BlobHelper.GetDirectories(cachedFileContainer, "NAIP"))
             {
-                foreach (var metadata in di.GetFiles("*.csv"))
+                var files = await BlobHelper.GetFiles(cachedFileContainer, di);
+                foreach (var metadata in files.Where(p => p.EndsWith(".csv")))
                 {
-                    string[] metadataLines = File.ReadAllLines(metadata.FullName);
+                    var metadataLines = await BlobHelper.ReadAllLines(cachedFileContainer, metadata);
                     string[] header = metadataLines.First().Split(',');
                     var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
                     var fileInfo = metadataLines
@@ -120,7 +149,7 @@ namespace MountainView.Imaging
                         .Select(p =>
                             new ImageFileMetadata
                             {
-                                FileName = Path.Combine(metadata.Directory.FullName, p[nameToIndex["NAIP Entity ID"]] + ".jp2"),
+                                FileName = di + "/" + p[nameToIndex["NAIP Entity ID"]].ToLowerInvariant() + ".jp2",
                                 Points = new Tuple<double, double>[] {
                                     new Tuple<double, double> (double.Parse(p[nameToIndex["NW Corner Lat dec"]]), double.Parse(p[nameToIndex["NW Corner Long dec"]])),
                                     new Tuple<double, double> (double.Parse(p[nameToIndex["NE Corner Lat dec"]]), double.Parse(p[nameToIndex["NE Corner Long dec"]])),
@@ -138,6 +167,7 @@ namespace MountainView.Imaging
         public class ImageFileMetadata
         {
             public string FileName;
+            public string LocalName { get { return FileName.Replace("/", "_"); } }
             public Tuple<double, double>[] Points;
         }
     }

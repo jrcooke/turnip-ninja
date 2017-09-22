@@ -25,8 +25,9 @@ namespace MountainView.Elevation
             }
         }
 
-        protected override ChunkHolder<float> GenerateData(StandardChunkMetadata template)
+        protected override async Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template)
         {
+            await Task.Delay(0);
             var ret = new ChunkHolder<float>(
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,

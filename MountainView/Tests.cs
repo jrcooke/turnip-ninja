@@ -67,7 +67,7 @@ namespace MountainView
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 
-                var pixels2 = await Heights.Current.GetData(template);
+                //var pixels2 = await Heights.Current.GetData(template);
                 //if (pixels2 != null)
                 //{
                 //    Utils.WriteImageFile(pixels2,
@@ -75,13 +75,13 @@ namespace MountainView
                 //        a => Utils.GetColorForHeight(a));
                 //}
 
-//                var pixels = Images.Current.GetData(template).Result;
-                //if (pixels != null)
-                //{
-                //    Utils.WriteImageFile(pixels,
-                //        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                //        a => a);
-                //}
+                var pixels = Images.Current.GetData(template).Result;
+                if (pixels != null)
+                {
+                    Utils.WriteImageFile(pixels,
+                        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                        a => a);
+                }
             }
         }
     }
