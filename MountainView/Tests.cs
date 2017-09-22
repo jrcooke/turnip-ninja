@@ -30,7 +30,7 @@ namespace MountainView
             ////Utils.WriteImageFile(ddd, Path.Combine(outputFolder, "ddd.png"), a => Utils.GetColorForHeight(a));
 
             //var tttt = ImageWorker.GetColors(homeLat, homeLon, 13).Result;
-            ////ChunkHolder<SKColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
+            ////ChunkHolder<MyColor> ddd2 = tttt.RenderSubChunk(homeLat, homeLon,
             ////    Angle.FromMinutes(2), Angle.FromMinutes(2),
             ////    Angle.FromThirds(20), Angle.FromThirds(20),
             ////    Utils.WeightedColorAverage);
@@ -40,6 +40,11 @@ namespace MountainView
 
         public static void Test12()
         {
+            for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
+            {
+                StandardChunkMetadata.GetKey(100, 100, i);
+            }
+
             var lat = Angle.FromDecimalDegrees(47.6867797);
             var lon = Angle.FromDecimalDegrees(-122.2907541);
 
@@ -63,14 +68,14 @@ namespace MountainView
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
 
                 var pixels2 = await Heights.Current.GetData(template);
-                if (pixels2 != null)
-                {
-                    Utils.WriteImageFile(pixels2,
-                        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
-                        a => Utils.GetColorForHeight(a));
-                }
+                //if (pixels2 != null)
+                //{
+                //    Utils.WriteImageFile(pixels2,
+                //        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
+                //        a => Utils.GetColorForHeight(a));
+                //}
 
-                //var pixels = Images.Current.GetData(template).Result;
+//                var pixels = Images.Current.GetData(template).Result;
                 //if (pixels != null)
                 //{
                 //    Utils.WriteImageFile(pixels,

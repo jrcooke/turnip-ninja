@@ -3,7 +3,6 @@ using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
 using MountainViewDesktop.Interpolation;
-using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,13 +14,9 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
-            for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
-            {
-                StandardChunkMetadata.GetKey(100, 100, i);
-            }
             try
             {
-                Tests.Test12();
+                //Tests.Test12();
                 Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
 
                 // So lets have the resolutions be 60, 20, 4, 1
@@ -104,7 +99,7 @@ namespace MountainView
                         var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
                         var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
                         if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, buffer, out float data) &&
-                            interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferR, out SKColor color))
+                            interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferR, out MyColor color))
                         {
                             ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data };
                         }
@@ -135,18 +130,18 @@ namespace MountainView
 
         public struct ColorHeight
         {
-            public SKColor Color;
+            public MyColor Color;
             public float Height;
         }
 
         public struct ColorDistance
         {
-            public SKColor Color;
+            public MyColor Color;
             public double Distance;
         }
 
         // Haze adds bluish overlay to colors. Say (195, 240, 247)
-        private static readonly SKColor skyColor = new SKColor(195, 240, 247);
+        private static readonly MyColor skyColor = new MyColor(195, 240, 247);
 
         private static ColorDistance[][] CollapseToViewFromHere(
             ColorHeight[][] thetaRad,
@@ -166,12 +161,12 @@ namespace MountainView
                 for (int r = 1; r < thetaRad[i].Length; r++)
                 {
                     double dist = deltaR * r;
-                    SKColor col = thetaRad[i][r].Color;
+                    MyColor col = thetaRad[i][r].Color;
                     double clearWeight = 0.2 + 0.8 / (1.0 + dist * dist * 1.0e-8);
-                    col = new SKColor(
-                        (byte)(int)(col.Red * clearWeight + skyColor.Red * (1 - clearWeight)),
-                        (byte)(int)(col.Green * clearWeight + skyColor.Green * (1 - clearWeight)),
-                        (byte)(int)(col.Blue * clearWeight + skyColor.Blue * (1 - clearWeight)));
+                    col = new MyColor(
+                        (byte)(int)(col.R * clearWeight + skyColor.R * (1 - clearWeight)),
+                        (byte)(int)(col.G * clearWeight + skyColor.G * (1 - clearWeight)),
+                        (byte)(int)(col.B * clearWeight + skyColor.B * (1 - clearWeight)));
 
                     double curTheta = Math.Atan2(thetaRad[i][r].Height - heightOffset, dist);
                     while ((elevationViewMin.Radians + j * angularRes.Radians) < curTheta && j < numParts)

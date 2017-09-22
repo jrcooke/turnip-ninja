@@ -10,14 +10,14 @@ namespace MountainView
 {
     public abstract class CachingHelper<T>
     {
-        private const string cachedFileTemplate = "{0}.v6.{1}";
+        private const string cachedFileTemplate = "{0}.v7.{1}";
         private readonly string fileExt;
         private readonly string description;
         private readonly int pixelDataSize;
         private readonly int sourceDataZoom;
-        private readonly Func<T, double>[] toDouble;
-        private readonly Func<double[], T> fromDouble;
-        private readonly Func<int, T, T, T> aggregate;
+        protected readonly Func<T, double>[] toDouble;
+        protected readonly Func<double[], T> fromDouble;
+        protected readonly Func<int, T, T, T> aggregate;
         private readonly ConcurrentDictionary<long, string> filenameCache;
 
         public CachingHelper(string fileExt, string description, int pixelDataSize, int sourceDataZoom,
@@ -66,7 +66,7 @@ namespace MountainView
                 Console.WriteLine("Starting generation...");
                 try
                 {
-                    var ret = await GenerateData(template);
+                    var ret = GenerateData(template);
                     await WriteChunk(ret, fileName);
                     Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
                     return ret;
@@ -173,7 +173,7 @@ namespace MountainView
             return ret;
         }
 
-        protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template);
+        protected abstract ChunkHolder<T> GenerateData(StandardChunkMetadata template);
         protected abstract void WritePixel(MemoryStream stream, T pixel);
         protected abstract T ReadPixel(MemoryStream stream, byte[] buffer);
     }

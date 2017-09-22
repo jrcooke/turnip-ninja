@@ -1,5 +1,5 @@
 ﻿{
   "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=jcookestorage;AccountKey=pUB632D3pby0oru86SCEPHy5LBem1ibCS7Sb9S+SdQ6O6VANxxozzQfKwu2hGtwgDmBoudMXa5oMyTS+xAEByA==;EndpointSuffix=core.windows.net",
-  "Container": "mapv5",
+  "Container": "mapv7",
   "OutputFolder": "C:\\Users\\jrcoo\\Desktop"
 }

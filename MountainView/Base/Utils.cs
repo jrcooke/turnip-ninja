@@ -35,9 +35,9 @@ namespace MountainView.Base
             return Angle.FromDecimalDegrees(dist * Math.Sin(heading.Radians) / LengthOfLatDegree / cosLat);
         }
 
-        internal static SKColor GetColorForHeight(float a)
+        internal static MyColor GetColorForHeight(float a)
         {
-            return new SKColor(
+            return new MyColor(
                 (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
                 (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
                 (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
@@ -61,7 +61,7 @@ namespace MountainView.Base
                         })));
         }
 
-        public static SKColor WeightedColorAverage(int prevAveraged, SKColor prevAverage, SKColor toAdd)
+        public static MyColor WeightedColorAverage(int prevAveraged, MyColor prevAverage, MyColor toAdd)
         {
             if (prevAveraged == 0)
             {
@@ -69,10 +69,10 @@ namespace MountainView.Base
             }
             else
             {
-                return new SKColor(
-                    (byte)((prevAverage.Red * prevAveraged + toAdd.Red) / (prevAveraged + 1)),
-                    (byte)((prevAverage.Green * prevAveraged + toAdd.Green) / (prevAveraged + 1)),
-                    (byte)((prevAverage.Blue * prevAveraged + toAdd.Blue) / (prevAveraged + 1)));
+                return new MyColor(
+                    (byte)((prevAverage.R * prevAveraged + toAdd.R) / (prevAveraged + 1)),
+                    (byte)((prevAverage.G * prevAveraged + toAdd.G) / (prevAveraged + 1)),
+                    (byte)((prevAverage.B * prevAveraged + toAdd.B) / (prevAveraged + 1)));
             }
         }
 
@@ -101,11 +101,11 @@ namespace MountainView.Base
             return result;
         }
 
-        public static Func<SKColor, double>[] ColorToDoubleArray = new Func<SKColor, double>[] { p => p.Red, p => p.Green, p => p.Blue };
+        public static Func<MyColor, double>[] ColorToDoubleArray = new Func<MyColor, double>[] { p => p.R, p => p.G, p => p.B };
 
-        public static SKColor ColorFromDoubleArray(double[] p)
+        public static MyColor ColorFromDoubleArray(double[] p)
         {
-            return new SKColor(
+            return new MyColor(
                 (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
                 (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
                 (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2]));
@@ -114,7 +114,7 @@ namespace MountainView.Base
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
-            Func<T, SKColor> transform)
+            Func<T, MyColor> transform)
         {
             using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
             {
@@ -135,7 +135,7 @@ namespace MountainView.Base
         public static void WriteImageFile<T>(
             T[][] colorBuff,
             string fileName,
-            Func<T, SKColor> transform)
+            Func<T, MyColor> transform)
         {
             int width = colorBuff.Length;
             int height = colorBuff[0].Length;
@@ -161,7 +161,7 @@ namespace MountainView.Base
             int width,
             int height,
             string fileName,
-            Func<int, int, SKColor> transform)
+            Func<int, int, MyColor> transform)
         {
             using (DirectBitmap bm = new DirectBitmap(width, height))
             {
@@ -193,13 +193,13 @@ namespace MountainView.Base
                 bitmap.SetPixels(bitsHandle.AddrOfPinnedObject());
             }
 
-            public void SetPixel(int i, int j, SKColor color)
+            public void SetPixel(int i, int j, MyColor color)
             {
                 int offset = 4 * ((bitmap.Height - 1 - j) * bitmap.Width + i);
-                bits[offset++] = color.Red;
-                bits[offset++] = color.Green;
-                bits[offset++] = color.Blue;
-                bits[offset++] = color.Alpha;
+                bits[offset++] = color.R;
+                bits[offset++] = color.G;
+                bits[offset++] = color.B;
+                bits[offset++] = 255;
             }
 
             public void WriteFile(string fileName)

@@ -17,23 +17,20 @@ namespace MountainView.ChunkManagement
             this.Key = key;
         }
 
-        public const int MaxZoomLevel = 9;
+        public const int MaxZoomLevel = 6;
         private static readonly Angle[] pixelSizeForZoom = new Angle[] {
             Angle.FromMinutes(1), Angle.FromSeconds(20), Angle.FromSeconds(4),
             Angle.FromSeconds(1), Angle.FromThirds( 20), Angle.FromThirds( 4),
-            Angle.FromThirds( 1), Angle.FromFourths(20), Angle.FromFourths(4),
-            Angle.FromFourths(1),
+            Angle.FromThirds( 1)
         };
 
         private static readonly Angle[] frameSizeForZoom = new Angle[] {
             Angle.FromDecimalDegrees(20), Angle.FromDecimalDegrees(4), Angle.FromDecimalDegrees(1),
             Angle.FromMinutes(       20), Angle.FromMinutes(       4), Angle.FromMinutes(       1),
-            Angle.FromSeconds(       20), Angle.FromSeconds(       4), Angle.FromSeconds(       1),
-            Angle.FromThirds(        20),
+            Angle.FromSeconds(       20)
         };
 
         private static readonly int[] numPixelsForZoom = new int[] {
-            1200, 720, 900,
             1200, 720, 900,
             1200, 720, 900,
             1200,
