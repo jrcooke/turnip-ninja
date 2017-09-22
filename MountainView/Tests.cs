@@ -76,12 +76,12 @@ namespace MountainView
                 //}
 
                 var pixels = Images.Current.GetData(template).Result;
-                if (pixels != null)
-                {
-                    Utils.WriteImageFile(pixels,
-                        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                        a => a);
-                }
+                // if (pixels != null)
+                // {
+                //     Utils.WriteImageFile(pixels,
+                //         Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                //         a => a);
+                // }
             }
         }
     }

@@ -30,6 +30,7 @@ namespace MountainView.Imaging
          */
 
         private static Dictionary<string, ChunkHolder<MyColor>> cache = new Dictionary<string, ChunkHolder<MyColor>>();
+        private static Dictionary<string, DateTime> cacheLastTouched = new Dictionary<string, DateTime>();
 
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
@@ -65,6 +66,7 @@ namespace MountainView.Imaging
             string fileName = fileInfo.LocalName;
             if (cache.TryGetValue(fileName, out ChunkHolder<MyColor> ret))
             {
+                cacheLastTouched[fileName] = DateTime.Now;
                 return ret;
             }
 
@@ -82,6 +84,7 @@ namespace MountainView.Imaging
             {
                 if (cache.TryGetValue(fileName, out ret))
                 {
+                    cacheLastTouched[fileName] = DateTime.Now;
                     return ret;
                 }
 
@@ -111,6 +114,13 @@ namespace MountainView.Imaging
                 }
 
                 cache.Add(fileName, ret);
+                cacheLastTouched.Add(fileName, DateTime.Now);
+
+                if (cache.Count > 4) {
+var toRemove =                    cacheLastTouched.OrderBy(p => p.Value).First().Key;
+cache.Remove(toRemove);
+cacheLastTouched.Remove(toRemove);
+                }
             }
 
             return ret;
