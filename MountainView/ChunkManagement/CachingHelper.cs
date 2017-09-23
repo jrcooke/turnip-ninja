@@ -39,100 +39,90 @@ namespace MountainView
 
         public async Task<ChunkHolder<T>> ProcessRawData(StandardChunkMetadata template)
         {
-            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            var computedChunk = await GetComputedChunk(template);
+            string fileName = computedChunk.Item1;
+            ChunkHolder<T> ret = computedChunk.Item2;
+            if (computedChunk.Item2 != null)
             {
-                filename = string.Format("{0}{1}{2:D2}",
-                    template.LatLo.ToLatString(),
-                    template.LonLo.ToLonString(),
-                    template.ZoomLevel);
-                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-            }
-
-            string fileName = string.Format(cachedFileTemplate, filename, fileExt);
-            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileName))
-            {
-                if (ms != null)
-                {
-                    Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
-                    return ReadChunk(ms, template);
-                }
+                Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                return computedChunk.Item2;
             }
 
             Console.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
-            if (template.ZoomLevel == this.sourceDataZoom)
+
+            if (template.ZoomLevel > this.sourceDataZoom)
             {
-                //throw new InvalidDataException
-                Console.WriteLine("Source data is missing for chunk " + template.ToString());
-
-                Console.WriteLine("Starting generation...");
-                try
-                {
-                    var ret = await GenerateData(template);
-                    await WriteChunk(ret, fileName);
-                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-                    return ret;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
-                    Console.WriteLine(ex.ToString());
-                }
-
+                // Nothing to do for processing
+                return null;
             }
-            else if (template.ZoomLevel < this.sourceDataZoom)
+            else if (template.ZoomLevel == this.sourceDataZoom)
             {
-                Console.WriteLine("Need to aggregate up from higher zoom data");
-                var children = template.GetChildChunks();
-                List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
-                foreach (var child in children)
-                {
-                    Console.WriteLine(child);
-                    chunks.Add(await GetData(child));
-                }
-
-                var ret = new ChunkHolder<T>(
-                      template.LatSteps, template.LonSteps,
-                      template.LatLo, template.LonLo,
-                      template.LatHi, template.LonHi,
-                      null,
-                      toDouble,
-                      fromDouble);
-
-                ret.RenderChunksInto(chunks, aggregate);
-
+                Console.WriteLine("Starting generation...");
+                ret = await GenerateData(template);
                 await WriteChunk(ret, fileName);
                 Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-
                 return ret;
             }
-            else
-            {
-                Console.WriteLine("Need to interpolate from lower zoom data");
-                var lower = StandardChunkMetadata.GetRangeContaingPoint(
-                    Angle.Divide(Angle.Add(template.LatLo, template.LatHi), 2),
-                    Angle.Divide(Angle.Add(template.LonLo, template.LonHi), 2),
-                    template.ZoomLevel - 1);
-                Console.WriteLine("Lower data: " + lower);
-                Console.WriteLine("TODO!!!");
-            }
-            //Console.WriteLine("Starting generation...");
-            //try
-            //{
-            //    var ret = await GenerateData(template);
-            //    await WriteChunk(ret, fileName);
-            //    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-            //    return ret;
-            //}
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
-            //    Console.WriteLine(ex.ToString());
-            //}
 
-            return null;
+            Console.WriteLine("Need to aggregate up from higher zoom data");
+            var children = template.GetChildChunks();
+            List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
+            foreach (var child in children)
+            {
+                Console.WriteLine(child);
+                chunks.Add(await ProcessRawData(child));
+            }
+
+            ret = new ChunkHolder<T>(
+                 template.LatSteps, template.LonSteps,
+                 template.LatLo, template.LonLo,
+                 template.LatHi, template.LonHi,
+                 null,
+                 toDouble,
+                 fromDouble);
+
+            ret.RenderChunksInto(chunks, aggregate);
+            await WriteChunk(ret, fileName);
+            Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+
+            return ret;
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
+        {
+            var computedChunk = await GetComputedChunk(template);
+            string fileName = computedChunk.Item1;
+            ChunkHolder<T> ret = computedChunk.Item2;
+            if (computedChunk.Item2 != null)
+            {
+                Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                return computedChunk.Item2;
+            }
+
+            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            if (template.ZoomLevel <= this.sourceDataZoom)
+            {
+                throw new InvalidOperationException("Source data is missing for chunk " + template.ToString());
+            }
+
+            Console.WriteLine("Need to interpolate from lower zoom data");
+            var parent = template.GetParentChunk();
+            var chunks = new ChunkHolder<T>[] { await GetData(parent) };
+
+            ret = new ChunkHolder<T>(
+                 template.LatSteps, template.LonSteps,
+                 template.LatLo, template.LonLo,
+                 template.LatHi, template.LonHi,
+                 null,
+                 toDouble,
+                 fromDouble);
+            ret.RenderChunksInto(chunks, aggregate);
+            await WriteChunk(ret, fileName);
+            Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            return ret;
+        }
+
+        private async Task<Tuple<string, ChunkHolder<T>>> GetComputedChunk(StandardChunkMetadata template)
         {
             if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
@@ -143,88 +133,16 @@ namespace MountainView
                 filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
-            string fileName = string.Format(cachedFileTemplate, filename, fileExt);
-            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileName))
+            Tuple<string, ChunkHolder<T>> ret = new Tuple<string, ChunkHolder<T>>(string.Format(cachedFileTemplate, filename, fileExt), null);
+            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, ret.Item1))
             {
                 if (ms != null)
                 {
-                    Console.WriteLine("Cached " + description + " chunk file exists: " + fileName);
-                    return ReadChunk(ms, template);
+                    ret = new Tuple<string, ChunkHolder<T>>(ret.Item1, ReadChunk(ms, template));
                 }
             }
 
-            Console.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
-            if (template.ZoomLevel == this.sourceDataZoom)
-            {
-                //throw new InvalidDataException
-                Console.WriteLine("Source data is missing for chunk " + template.ToString());
-
-                Console.WriteLine("Starting generation...");
-                try
-                {
-                    var ret = await GenerateData(template);
-                    await WriteChunk(ret, fileName);
-                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-                    return ret;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
-                    Console.WriteLine(ex.ToString());
-                }
-
-            }
-            else if (template.ZoomLevel < this.sourceDataZoom)
-            {
-                Console.WriteLine("Need to aggregate up from higher zoom data");
-                var children = template.GetChildChunks();
-                List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
-                foreach (var child in children)
-                {
-                    Console.WriteLine(child);
-                    chunks.Add(await GetData(child));
-                }
-
-                var ret = new ChunkHolder<T>(
-                      template.LatSteps, template.LonSteps,
-                      template.LatLo, template.LonLo,
-                      template.LatHi, template.LonHi,
-                      null,
-                      toDouble,
-                      fromDouble);
-
-                ret.RenderChunksInto(chunks, aggregate);
-
-                await WriteChunk(ret, fileName);
-                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-
-                return ret;
-            }
-            else
-            {
-                Console.WriteLine("Need to interpolate from lower zoom data");
-                var lower = StandardChunkMetadata.GetRangeContaingPoint(
-                    Angle.Divide(Angle.Add(template.LatLo, template.LatHi), 2),
-                    Angle.Divide(Angle.Add(template.LonLo, template.LonHi), 2),
-                    template.ZoomLevel - 1);
-                Console.WriteLine("Lower data: " + lower);
-                Console.WriteLine("TODO!!!");
-            }
-            //Console.WriteLine("Starting generation...");
-            //try
-            //{
-            //    var ret = await GenerateData(template);
-            //    await WriteChunk(ret, fileName);
-            //    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-            //    return ret;
-            //}
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine("Problem generating " + description + " cached chunk file: " + fileName);
-            //    Console.WriteLine(ex.ToString());
-            //}
-
-            return null;
+            return ret;
         }
 
         private async Task WriteChunk(ChunkHolder<T> ret, string fileName)

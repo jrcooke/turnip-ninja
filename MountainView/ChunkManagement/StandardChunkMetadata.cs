@@ -17,23 +17,23 @@ namespace MountainView.ChunkManagement
             this.Key = key;
         }
 
-        public const int MaxZoomLevel = 6;
+        public const int MaxZoomLevel = 8;
         private static readonly Angle[] pixelSizeForZoom = new Angle[] {
             Angle.FromMinutes(1), Angle.FromSeconds(20), Angle.FromSeconds(4),
             Angle.FromSeconds(1), Angle.FromThirds( 20), Angle.FromThirds( 4),
-            Angle.FromThirds( 1)
+            Angle.FromThirds( 1), Angle.FromFourths(20), Angle.FromFourths(4),
         };
 
         private static readonly Angle[] frameSizeForZoom = new Angle[] {
             Angle.FromDecimalDegrees(20), Angle.FromDecimalDegrees(4), Angle.FromDecimalDegrees(1),
             Angle.FromMinutes(       20), Angle.FromMinutes(       4), Angle.FromMinutes(       1),
-            Angle.FromSeconds(       20)
+            Angle.FromSeconds(       20), Angle.FromSeconds(       4), Angle.FromSeconds(       1),
         };
 
         private static readonly int[] numPixelsForZoom = new int[] {
             1200, 720, 900,
             1200, 720, 900,
-            1200,
+            1200, 720, 900,
         };
 
         // Continental unites states bounded by: 24N125W by 50N66W
@@ -118,6 +118,13 @@ namespace MountainView.ChunkManagement
             }
 
             return ret;
+        }
+
+        internal StandardChunkMetadata GetParentChunk()
+        {
+            var latLoopCenter = Angle.Add(this.LatLo, Angle.Divide(this.LatDelta, 2));
+            var lonLoopCenter = Angle.Add(this.LonLo, Angle.Divide(this.LonDelta, 2));
+            return GetRangeContaingPoint(latLoopCenter, lonLoopCenter, this.ZoomLevel - 1);
         }
 
         public override string ToString()
