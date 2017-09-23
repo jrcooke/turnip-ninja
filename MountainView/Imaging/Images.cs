@@ -16,7 +16,7 @@ namespace MountainView.Imaging
     {
         //      private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
 
-        private Images() : base("idata", "Images", 4, 6,
+        private Images() : base("idata", "Images", 4, 5,
             Utils.ColorToDoubleArray,
             Utils.ColorFromDoubleArray,
             Utils.WeightedColorAverage)
