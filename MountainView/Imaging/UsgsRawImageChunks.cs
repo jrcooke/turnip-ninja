@@ -116,7 +116,7 @@ namespace MountainView.Imaging
                 cache.Add(fileName, ret);
                 cacheLastTouched.Add(fileName, DateTime.Now);
 
-                if (cache.Count > 4) {
+                if (cache.Count > 8) {
 var toRemove =                    cacheLastTouched.OrderBy(p => p.Value).First().Key;
 cache.Remove(toRemove);
 cacheLastTouched.Remove(toRemove);
