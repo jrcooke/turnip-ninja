@@ -16,20 +16,20 @@ namespace MountainView
         {
             try
             {
-//                Tests.Test12();
+                //                Tests.Test12();
 
                 Task.WaitAll(ProcessRawData(
                     Angle.FromDecimalDegrees(47.5),
                     Angle.FromDecimalDegrees(-121.5)));
-;
+
                 Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
 
                 // So lets have the resolutions be 60, 20, 4, 1
                 // Natural resolution for the elevations is 20T per pixel, images 4T per pixel.
 
                 //string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-               // Config c = Config.Juaneta();
-               // Task.WaitAll(GetPolarData(c));
+                // Config c = Config.Juaneta();
+                // Task.WaitAll(GetPolarData(c));
             }
             catch (Exception ex)
             {
@@ -39,18 +39,9 @@ namespace MountainView
 
         public static async Task ProcessRawData(Angle lat, Angle lon)
         {
-                StandardChunkMetadata template = 
-                StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
-                // await Heights.Current.ProcessRawData(template);
-                await Images.Current.ProcessRawData(template);
-        }
-
-
-        private static void ProcessSources(int lat, int lon)
-        {
-            UsgsRawChunks.GetRawHeightsInMeters(lat, lon);
-
-            throw new NotImplementedException();
+            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
+            await Heights.Current.ProcessRawData(template);
+            await Images.Current.ProcessRawData(template);
         }
 
         public static async Task GetPolarData(Config config)

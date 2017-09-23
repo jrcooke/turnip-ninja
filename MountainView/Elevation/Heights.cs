@@ -45,7 +45,7 @@ namespace MountainView.Elevation
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
                 {
-                    chunks.Add(UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
+                    chunks.Add(await UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
                 }
             }
 

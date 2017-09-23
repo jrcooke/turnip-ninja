@@ -75,7 +75,7 @@ namespace MountainView
                         a => Utils.GetColorForHeight(a));
                 }
 
-                var pixels = Images.Current.GetData(template).Result;
+                var pixels = await Images.Current.GetData(template);
                 if (pixels != null)
                 {
                     Utils.WriteImageFile(pixels,

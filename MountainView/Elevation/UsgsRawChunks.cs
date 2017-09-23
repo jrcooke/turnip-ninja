@@ -1,8 +1,10 @@
-﻿using MountainView.ChunkManagement;
+﻿using MountainView.Base;
+using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
@@ -13,18 +15,36 @@ namespace MountainView.Elevation
         private const string description = "USGS";
         private static readonly string[] inputFileTemplate = new string[] { "{0}", "grd{0}_13", "w001001.adf" };
         private const string sourceZipFileTemplate = "USGS_NED_13_{0}_ArcGrid.zip";
-        private static string rootMapFolder = Directory.GetCurrentDirectory();//  @"C:\Users\jrcoo\Desktop\Map";
+        private const string cachedFileContainer = "sources";
 
         private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
+        public static async Task<ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
                 (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString();
+
+            var zipFile = string.Format(sourceZipFileTemplate, fileName);
+            if (!File.Exists(zipFile))
+            {
+                using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, zipFile))
+                {
+                    if (ms == null)
+                    {
+                        throw new InvalidOperationException("File should exist: '" + zipFile + "'");
+                    }
+
+                    using (var fileStream = File.Create(zipFile))
+                    {
+                        ms.Position = 0;
+                        ms.CopyTo(fileStream);
+                    }
+                }
+            }
 
             if (cache.TryGetValue(fileName, out ChunkHolder<float> ret))
             {
@@ -51,18 +71,12 @@ namespace MountainView.Elevation
                 var shortWebFile =
                     (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
                     (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
-                string inputFile = Path.Combine(rootMapFolder, string.Format(Path.Combine(inputFileTemplate), shortWebFile));
+                string inputFile = string.Format(Path.Combine(inputFileTemplate), shortWebFile);
                 if (!File.Exists(inputFile))
                 {
                     Console.WriteLine("Missing " + description + " data file: " + inputFile);
-                    var target = Path.Combine(rootMapFolder, string.Format(sourceZipFileTemplate, fileName));
-                    if (!File.Exists(target))
-                    {
-                        throw new InvalidOperationException("File missing: " + target);
-                    }
-
-                    Console.WriteLine("Extracting raw " + description + " data from zip file '" + target + "'...");
-                    ZipFile.ExtractToDirectory(target, Path.Combine(rootMapFolder, shortWebFile));
+                    Console.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
+                    ZipFile.ExtractToDirectory(zipFile, shortWebFile);
                     Console.WriteLine("Extracted raw " + description + " data from zip file.");
                 }
 
