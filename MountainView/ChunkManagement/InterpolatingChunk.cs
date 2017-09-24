@@ -1,11 +1,10 @@
-﻿using MountainView.Base;
-using MountainViewDesktop.Interpolation;
+﻿using MountainViewDesktop.Interpolation;
 using System;
 using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    class InterpolatingChunk<T> // : IChunkPointAccessor<T>
+    class InterpolatingChunk<T>
     {
         private double latLo;
         private double lonLo;
@@ -55,7 +54,7 @@ namespace MountainView.ChunkManagement
                         return false;
                     }
 
-                    buffer[i] = z; // fromDouble(z);
+                    buffer[i] = z;
                 }
 
                 data = fromDouble(buffer);

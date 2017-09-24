@@ -83,6 +83,10 @@ namespace MountainView.ChunkManagement
                                 this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
                                 counter[i][j]++;
                             }
+                            else
+                            {
+
+                            }
                         }
                         else
                         {
@@ -90,6 +94,10 @@ namespace MountainView.ChunkManagement
                             {
                                 this.Data[i][j] = aggregate(counter[i][j], this.Data[i][j], data);
                                 counter[i][j]++;
+                            }
+                            else
+                            {
+
                             }
                         }
                     }
@@ -158,7 +166,7 @@ namespace MountainView.ChunkManagement
             return new InterpolatingChunk<T>(lats, lons, values, fromDouble, interpolatonType);
         }
 
-        internal InterpolatingChunk<T> GetInterpolator(Func<T, double>[] toDouble, Func<double[], T> fromDouble, InterpolatonType interpolatonType)
+        internal InterpolatingChunk<T> GetInterpolator(InterpolatonType interpolatonType)
         {
             return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble, interpolatonType);
         }

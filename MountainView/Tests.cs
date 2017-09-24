@@ -61,11 +61,11 @@ namespace MountainView
             }
         }
 
-        public static async Task Test3(string outputFolder, Config c)
+        public static async Task Test3(string outputFolder, Angle lat, Angle lon)
         {
             for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 2; zoomLevel--)
             {
-                StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(c.Lat, c.Lon, zoomLevel);
+                StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
 
                 var pixels2 = await Heights.Current.GetData(template);
                 if (pixels2 != null)

@@ -175,7 +175,7 @@ namespace MountainView
             var ret = new ChunkHolder<T>(width, height,
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi,
-                null, null, null);
+                null, toDouble, fromDouble);
             for (int i = 0; i < width; i++)
             {
                 for (int j = 0; j < height; j++)

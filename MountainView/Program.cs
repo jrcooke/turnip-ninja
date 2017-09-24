@@ -18,18 +18,24 @@ namespace MountainView
             {
                 //                Tests.Test12();
 
-                Task.WaitAll(ProcessRawData(
-                    Angle.FromDecimalDegrees(47.5),
-                    Angle.FromDecimalDegrees(-121.5)));
+                //Task.WaitAll(ProcessRawData(
+                //    Angle.FromDecimalDegrees(47.5),
+                //    Angle.FromDecimalDegrees(-121.5)));
 
-                Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
+                //                Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
+                //Task.WaitAll(
+                //    Tests.Test3(
+                //        Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"),
+                //        Angle.FromDecimalDegrees(47.5),
+                //        Angle.FromDecimalDegrees(-121.5)));
 
                 // So lets have the resolutions be 60, 20, 4, 1
                 // Natural resolution for the elevations is 20T per pixel, images 4T per pixel.
 
-                //string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-                // Config c = Config.Juaneta();
-                // Task.WaitAll(GetPolarData(c));
+
+                //     string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
+                Config c = Config.Juaneta();
+                Task.WaitAll(GetPolarData(c));
             }
             catch (Exception ex)
             {
@@ -39,6 +45,7 @@ namespace MountainView
 
         public static async Task ProcessRawData(Angle lat, Angle lon)
         {
+            // Generate for a 1 degree square region.
             StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
             await Heights.Current.ProcessRawData(template);
             await Images.Current.ProcessRawData(template);
@@ -62,8 +69,8 @@ namespace MountainView
                     double r = iR * config.DeltaR;
                     var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
                     double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
-                    var zoomLevel = (int)(12 - Math.Log(metersPerElement * 540 * 20 / (Utils.LengthOfLatDegree * cosLat), 2));
-                    zoomLevel = zoomLevel > StandardChunkMetadata.MaxZoomLevel ? StandardChunkMetadata.MaxZoomLevel : zoomLevel;
+                    var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
+                    var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
                     chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel));
                 }
             }
@@ -77,38 +84,44 @@ namespace MountainView
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
-            await Utils.ForEachAsync(chunkKeys, 3, async (chunkKey) =>
+            await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
             {
-                double[] buffer = new double[1];
-                double[] bufferR = new double[3];
+                double[] bufferH = new double[1];
+                double[] bufferI = new double[3];
 
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                var interpChunk = (await Heights.Current.GetData(chunk))
-                    .GetInterpolator(new Func<float, double>[] { p => p }, p => (float)p[0], InterpolatonType.Nearest);
-                var interpChunkR = (await Images.Current.GetData(chunk))
-                    .GetInterpolator(Utils.ColorToDoubleArray, Utils.ColorFromDoubleArray, InterpolatonType.Nearest);
 
-                // Now do that again, but do the rendering per chunk.
-                for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
+                InterpolatingChunk<float> interpChunkH = null;
+                InterpolatingChunk<MyColor> interpChunkI = null;
+                try
                 {
-                    Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
+                    interpChunkH = (await Heights.Current.GetData(chunk)).GetInterpolator(InterpolatonType.Nearest);
+                    interpChunkI = (await Images.Current.GetData(chunk)).GetInterpolator(InterpolatonType.Nearest);
 
-                    // Use this angle to compute a heading.
-                    var endRLat = Utils.DeltaMetersLat(theta, config.R);
-                    var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
-
-                    for (int iR = 1; iR < numR; iR++)
+                    // Now do that again, but do the rendering per chunk.
+                    for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
                     {
-                        var mult = iR * config.DeltaR / config.R;
+                        Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
 
-                        var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                        var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                        if (interpChunk.TryGetDataAtPoint(curLatDegree, curLonDegree, buffer, out float data) &&
-                            interpChunkR.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferR, out MyColor color))
+                        // Use this angle to compute a heading.
+                        var endRLat = Utils.DeltaMetersLat(theta, config.R);
+                        var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
+                        for (int iR = 1; iR < numR; iR++)
                         {
-                            ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data };
+                            var mult = iR * config.DeltaR / config.R;
+                            var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                            var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                            if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferH, out float data) &&
+                                interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferI, out MyColor color))
+                            {
+                                ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data };
+                            }
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
 
                 counter++;

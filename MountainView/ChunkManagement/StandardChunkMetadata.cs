@@ -36,6 +36,19 @@ namespace MountainView.ChunkManagement
             1200, 720, 900,
         };
 
+        public static int GetZoomLevel(double decimalDegreesPerPixel)
+        {
+            for (int zoomLevel = 0; zoomLevel < MaxZoomLevel; zoomLevel++)
+            {
+                if (decimalDegreesPerPixel > pixelSizeForZoom[zoomLevel].DecimalDegree)
+                {
+                    return zoomLevel;
+                }
+            }
+
+            return MaxZoomLevel;
+        }
+
         // Continental unites states bounded by: 24N125W by 50N66W
         // So 26 degrees lat, 59 degrees lon
         private static readonly Angle usMinLat = Angle.FromDecimalDegrees(24.0);

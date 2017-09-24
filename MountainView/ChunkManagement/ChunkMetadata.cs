@@ -31,12 +31,12 @@ namespace MountainView.ChunkManagement
 
         protected Angle GetLat(int i)
         {
-            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps));
+            return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps - 1));
         }
 
         protected Angle GetLon(int j)
         {
-            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j), LonSteps));
+            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j - 1), LonSteps));
         }
 
         protected int GetLatIndex(Angle lat)
