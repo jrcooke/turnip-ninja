@@ -36,7 +36,7 @@ namespace MountainView.ChunkManagement
 
         protected Angle GetLon(int j)
         {
-            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j - 1), LonSteps));
+            return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j), LonSteps - 1));
         }
 
         protected int GetLatIndex(Angle lat)

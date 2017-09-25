@@ -37,18 +37,38 @@ namespace MountainView.Base
 
         public static async Task<MemoryStream> TryGetStream(string containerName, string fileName)
         {
-            try
+            if (!File.Exists(fileName))
             {
-                CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                var stream = new MemoryStream();
-                await blockBlob.DownloadToStreamAsync(stream);
-                stream.Position = 0;
-                return stream;
+                try
+                {
+                    CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+                    await blockBlob.DownloadToFileAsync(fileName, FileMode.CreateNew);
+                }
+                catch
+                {
+                    return null;
+                }
             }
-            catch
-            {
-                return null;
-            }
+
+            var stream = new MemoryStream();
+            var fs = File.OpenRead(fileName);
+            fs.Position = 0;
+            await fs.CopyToAsync(stream);
+            stream.Position = 0;
+            return stream;
+
+            /*            try
+                        {
+                            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+                            var stream = new MemoryStream();
+                            await blockBlob.DownloadToStreamAsync(stream);
+                            stream.Position = 0;
+                            return stream;
+                        }
+                        catch
+                        {
+                            return null;
+                        }*/
         }
 
         public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)
