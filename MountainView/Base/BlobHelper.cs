@@ -8,8 +8,10 @@ using System.Linq;
 
 namespace MountainView.Base
 {
-    public class BlobHelper
+    public static class BlobHelper
     {
+        public static bool CacheLocally { get; set; }
+
         private static object locker = new object();
         private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
 
@@ -37,38 +39,43 @@ namespace MountainView.Base
 
         public static async Task<MemoryStream> TryGetStream(string containerName, string fileName)
         {
-            if (!File.Exists(fileName))
+            if (CacheLocally)
+            {
+                if (!File.Exists(fileName))
+                {
+                    try
+                    {
+                        CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+                        await blockBlob.DownloadToFileAsync(fileName, FileMode.CreateNew);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+
+                var stream = new MemoryStream();
+                var fs = File.OpenRead(fileName);
+                fs.Position = 0;
+                await fs.CopyToAsync(stream);
+                stream.Position = 0;
+                return stream;
+            }
+            else
             {
                 try
                 {
                     CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                    await blockBlob.DownloadToFileAsync(fileName, FileMode.CreateNew);
+                    var stream = new MemoryStream();
+                    await blockBlob.DownloadToStreamAsync(stream);
+                    stream.Position = 0;
+                    return stream;
                 }
                 catch
                 {
                     return null;
                 }
             }
-
-            var stream = new MemoryStream();
-            var fs = File.OpenRead(fileName);
-            fs.Position = 0;
-            await fs.CopyToAsync(stream);
-            stream.Position = 0;
-            return stream;
-
-            /*            try
-                        {
-                            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                            var stream = new MemoryStream();
-                            await blockBlob.DownloadToStreamAsync(stream);
-                            stream.Position = 0;
-                            return stream;
-                        }
-                        catch
-                        {
-                            return null;
-                        }*/
         }
 
         public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)

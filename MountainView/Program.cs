@@ -84,7 +84,7 @@ namespace MountainView
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
-            await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
+            await Utils.ForEachAsync(chunkKeys, 4, async (chunkKey) =>
             {
                 double[] bufferH = new double[1];
                 double[] bufferI = new double[3];
