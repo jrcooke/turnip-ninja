@@ -11,7 +11,8 @@ namespace MountainView.Elevation
     internal static class UsgsRawChunks
     {
         // https://viewer.nationalmap.gov/basic/?basemap=b1&category=ned,nedsrc&title=3DEP%20View
-// Need to add one to each angle, so for 46.8N 121.7W is in
+        //
+        // Need to add one to each angle, so for 46.8N 121.7W is in
         // https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/ArcGrid/n47w122.zip
 
         private const string description = "USGS";

@@ -16,6 +16,7 @@ namespace MountainView
         {
             try
             {
+                BlobHelper.CacheLocally = true;
                 //                Tests.Test12();
 
                 //Task.WaitAll(ProcessRawData(
