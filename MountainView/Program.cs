@@ -138,7 +138,12 @@ namespace MountainView
 
         private static void NewMethod(Config config, ColorHeight[][] ret, int counter)
         {
-            string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
+            string outputFolder = "Output";
+            if (!Directory.Exists(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmp" + counter + ".png"), a => Utils.GetColorForHeight(a.Height));
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmi" + counter + ".png"), a => a.Color);
 
