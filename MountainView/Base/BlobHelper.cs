@@ -45,7 +45,9 @@ namespace MountainView.Base
                     try
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                        await blockBlob.DownloadToFileAsync(fileName, FileMode.CreateNew);
+                        var tmpName = System.Guid.NewGuid().ToString() + ".tmp";
+                        await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
+                        File.Move(tmpName, fileName);
                     }
                     catch
                     {

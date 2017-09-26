@@ -10,7 +10,6 @@
     <PackageReference Include="FreeImage-dotnet-core" Version="4.3.5" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0" />
-    <PackageReference Include="SkiaSharp" Version="1.59.1" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.4.0" />
   </ItemGroup>
   <ItemGroup>

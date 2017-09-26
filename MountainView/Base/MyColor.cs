@@ -1,6 +1,4 @@
-﻿using SkiaSharp;
-
-namespace MountainView.Base
+﻿namespace MountainView.Base
 {
     public struct MyColor
     {
@@ -13,10 +11,6 @@ namespace MountainView.Base
             R = red;
             G = green;
             B = blue;
-        }
-
-        public MyColor(SKColor color) : this(color.Red, color.Green, color.Blue)
-        {
         }
     }
 }

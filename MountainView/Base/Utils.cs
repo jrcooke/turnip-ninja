@@ -1,8 +1,10 @@
-﻿using MountainView.ChunkManagement;
-using SkiaSharp;
+﻿using FreeImageAPI;
+using MountainView.ChunkManagement;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -180,39 +182,39 @@ namespace MountainView.Base
 
         private class DirectBitmap : IDisposable
         {
-            private SKBitmap bitmap;
+            private readonly int width;
+            private readonly int height;
             private byte[] bits;
             private bool disposed;
             private GCHandle bitsHandle;
 
             public DirectBitmap(int width, int height)
             {
+                this.width = width;
+                this.height = height;
                 bits = new byte[width * height * 4];
                 bitsHandle = GCHandle.Alloc(bits, GCHandleType.Pinned);
-                bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque);
-                bitmap.SetPixels(bitsHandle.AddrOfPinnedObject());
+
             }
 
             public void SetPixel(int i, int j, MyColor color)
             {
-                int offset = 4 * ((bitmap.Height - 1 - j) * bitmap.Width + i);
-                bits[offset++] = color.R;
-                bits[offset++] = color.G;
+                int offset = 4 * ((height - 1 - j) * width + i);
                 bits[offset++] = color.B;
+                bits[offset++] = color.G;
+                bits[offset++] = color.R;
                 bits[offset++] = 255;
             }
 
             public void WriteFile(string fileName)
             {
-                using (var image = SKImage.FromBitmap(bitmap))
+                using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
                 {
-                    using (var data = image.Encode(SKEncodedImageFormat.Png, 80))
-                    {
-                        using (var stream = File.OpenWrite(fileName))
-                        {
-                            data.SaveTo(stream);
-                        }
-                    }
+                    // JPEG_QUALITYGOOD is 75 JPEG.
+                    // JPEG_BASELINE strips metadata (EXIF, etc.)
+                    bitmap.Save(fileName, FREE_IMAGE_FORMAT.FIF_JPEG,
+                            FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
+                            FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
                 }
             }
 
@@ -220,7 +222,6 @@ namespace MountainView.Base
             {
                 if (disposed) return;
                 disposed = true;
-                bitmap.Dispose();
                 bitsHandle.Free();
             }
         }
