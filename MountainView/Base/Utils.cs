@@ -210,11 +210,14 @@ namespace MountainView.Base
             {
                 using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
                 {
-                    // JPEG_QUALITYGOOD is 75 JPEG.
-                    // JPEG_BASELINE strips metadata (EXIF, etc.)
-                    bitmap.Save(fileName, FREE_IMAGE_FORMAT.FIF_JPEG,
+                    using (FileStream stream = File.OpenWrite(fileName))
+                    {
+                        // JPEG_QUALITYGOOD is 75 JPEG.
+                        // JPEG_BASELINE strips metadata (EXIF, etc.)
+                        bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
                             FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
                             FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
+                    }                    
                 }
             }
 

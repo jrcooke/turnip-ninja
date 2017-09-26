@@ -14,29 +14,22 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
+            bool isClient = false;
+            bool isServer = true;
             try
             {
-                BlobHelper.CacheLocally = true;
-                //                Tests.Test12();
+                if (isServer)
+                {
+                    Task.WaitAll(ProcessRawData(
+                    Angle.FromDecimalDegrees(46.5),
+                    Angle.FromDecimalDegrees(-122.5)));
+                }
 
-                //Task.WaitAll(ProcessRawData(
-                //    Angle.FromDecimalDegrees(47.5),
-                //    Angle.FromDecimalDegrees(-121.5)));
-
-                //                Task.WaitAll(Tests.Test3(Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"), Config.Home()));
-                //Task.WaitAll(
-                //    Tests.Test3(
-                //        Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output"),
-                //        Angle.FromDecimalDegrees(47.5),
-                //        Angle.FromDecimalDegrees(-121.5)));
-
-                // So lets have the resolutions be 60, 20, 4, 1
-                // Natural resolution for the elevations is 20T per pixel, images 4T per pixel.
-
-
-                //     string outputFolder = Path.Combine(ConfigurationManager.AppSettings["OutputFolder"], "Output");
-                Config c = Config.Juaneta();
-                Task.WaitAll(GetPolarData(c));
+                if (isClient) {
+                    BlobHelper.CacheLocally = true;
+                    Config c = Config.Juaneta();
+                    Task.WaitAll(GetPolarData(c));
+                }
             }
             catch (Exception ex)
             {
