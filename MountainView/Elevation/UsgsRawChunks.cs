@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MountainView.Elevation
@@ -90,5 +91,23 @@ namespace MountainView.Elevation
 
             return ret;
         }
+
+        public static void Uploader()
+        {
+            var path = "./bin/Debug/netcoreapp2.0";
+            foreach(var x in Directory.GetFiles(path).Where(p => p.EndsWith(".zip")))
+            {
+                System.Console.WriteLine(x);
+                using (var ms = new MemoryStream()) 
+                {
+                    using (var fs = File.OpenRead(x))
+                    {    
+                        fs.CopyTo(ms);
+                        ms.Position = 0;
+                        Task.WaitAll(BlobHelper.WriteStream("sources", x.Split(Path.DirectorySeparatorChar).Last(),ms));
+                    }
+                }
+            }
+        }        
     }
 }

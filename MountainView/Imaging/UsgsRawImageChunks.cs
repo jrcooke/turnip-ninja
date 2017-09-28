@@ -175,6 +175,24 @@ namespace MountainView.Imaging
             return ret;
         }
 
+        private static void Uploader()
+        {
+            var path = "./bin/Debug/netcoreapp2.0";
+            foreach(var x in Directory.GetFiles(path).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
+            {
+                System.Console.WriteLine(x);
+                using (var ms = new MemoryStream()) 
+                {
+                    using (var fs = File.OpenRead(x))
+                    {    
+                        fs.CopyTo(ms);
+                        ms.Position = 0;
+                        Task.WaitAll(BlobHelper.WriteStream("sources", "NAIP_n46w122/" + x.Split(Path.DirectorySeparatorChar).Last(),ms));
+                    }
+                }
+            }
+        }
+
         public class ImageFileMetadata
         {
             public string FileName;
