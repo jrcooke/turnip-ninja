@@ -14,6 +14,9 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
+            // UsgsRawImageChunks.Uploader("/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0/NAIP_n47w120/", "NAIP_n47w120");
+            // return;
+
             bool isClient = false;
             bool isServer = true;
             try
@@ -21,8 +24,8 @@ namespace MountainView
                 if (isServer)
                 {
                     Task.WaitAll(ProcessRawData(
-                    Angle.FromDecimalDegrees(46.5),
-                    Angle.FromDecimalDegrees(-122.5)));
+                    Angle.FromDecimalDegrees(47.5),
+                    Angle.FromDecimalDegrees(-120.5)));
                 }
 
                 if (isClient) {
