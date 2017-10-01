@@ -92,9 +92,8 @@ namespace MountainView.Elevation
             return ret;
         }
 
-        public static void Uploader()
+        public static void Uploader(string path)
         {
-            var path = "./bin/Debug/netcoreapp2.0";
             foreach(var x in Directory.GetFiles(path).Where(p => p.EndsWith(".zip")))
             {
                 System.Console.WriteLine(x);
