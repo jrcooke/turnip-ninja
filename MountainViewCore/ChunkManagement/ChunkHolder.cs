@@ -36,7 +36,7 @@ namespace MountainView.ChunkManagement
             }
         }
 
-        internal void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate)
+        public void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate)
         {
             double[] buffer = new double[toDouble.Length];
             int[][] counter = new int[this.LatSteps][];
@@ -166,7 +166,7 @@ namespace MountainView.ChunkManagement
             return new InterpolatingChunk<T>(lats, lons, values, fromDouble, interpolatonType);
         }
 
-        internal InterpolatingChunk<T> GetInterpolator(InterpolatonType interpolatonType)
+        public InterpolatingChunk<T> GetInterpolator(InterpolatonType interpolatonType)
         {
             return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble, interpolatonType);
         }

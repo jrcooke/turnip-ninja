@@ -8,11 +8,13 @@ using System.Threading.Tasks;
 
 namespace MountainView.Imaging
 {
-    internal class Images : CachingHelper<MyColor>
+    public class Images : CachingHelper<MyColor>
     {
-        //      private static string rootMapFolder = ConfigurationManager.AppSettings["RootMapFolder"];
-
-        private Images() : base("idata", "Images", 4, 5,
+        private Images() : base(
+            "idata",
+            "Images",
+            4,
+            5,
             Utils.ColorToDoubleArray,
             Utils.ColorFromDoubleArray,
             Utils.WeightedColorAverage)

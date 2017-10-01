@@ -16,8 +16,7 @@ namespace MountainView.Base
 
         private static CloudBlobContainer Container(string containerName)
         {
-            CloudBlobContainer ret;
-            if (!singleton.TryGetValue(containerName, out ret))
+            if (!singleton.TryGetValue(containerName, out CloudBlobContainer ret))
             {
                 lock (locker)
                 {
@@ -103,7 +102,7 @@ namespace MountainView.Base
             await blockBlob.UploadFromStreamAsync(stream);
         }
 
-        internal static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix)
+        public static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix)
         {
             var blobList = await Container(containerName)
                 .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
@@ -111,7 +110,7 @@ namespace MountainView.Base
             return x;
         }
 
-        internal static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
+        public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
         {
             var dir = Container(containerName).GetDirectoryReference(directory);
             var blobList = await dir.ListBlobsSegmentedAsync(true, BlobListingDetails.None, int.MaxValue, null, null, null);

@@ -37,7 +37,7 @@ namespace MountainView.Base
             return Angle.FromDecimalDegrees(dist * Math.Sin(heading.Radians) / LengthOfLatDegree / cosLat);
         }
 
-        internal static MyColor GetColorForHeight(float a)
+        public static MyColor GetColorForHeight(float a)
         {
             return new MyColor(
                 (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),

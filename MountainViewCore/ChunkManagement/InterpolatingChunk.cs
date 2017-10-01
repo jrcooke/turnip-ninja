@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
-    class InterpolatingChunk<T>
+    public class InterpolatingChunk<T>
     {
         private double latLo;
         private double lonLo;
