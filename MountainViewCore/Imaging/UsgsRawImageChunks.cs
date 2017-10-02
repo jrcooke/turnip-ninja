@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MountainView.Imaging
 {
-    internal static class UsgsRawImageChunks
+    public static class UsgsRawImageChunks
     {
         private const string cachedFileContainer = "sources";
 
@@ -175,18 +175,19 @@ namespace MountainView.Imaging
             return ret;
         }
 
-        public static void Uploader(string sourcePath, string destPath)
+        public static void Uploader(string sourcePath, int lat, int lon)
         {
-            foreach(var x in Directory.GetFiles(sourcePath).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
+            string folder = "NAIP_n" + lat + "w" + (-lon);
+            foreach (var x in Directory.GetFiles(Path.Combine(sourcePath, folder)).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
             {
                 System.Console.WriteLine(x);
-                using (var ms = new MemoryStream()) 
+                using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))
-                    {    
+                    {
                         fs.CopyTo(ms);
                         ms.Position = 0;
-                        Task.WaitAll(BlobHelper.WriteStream("sources", destPath + "/" + x.Split(Path.DirectorySeparatorChar).Last(),ms));
+                        Task.WaitAll(BlobHelper.WriteStream("sources", folder + "/" + x.Split(Path.DirectorySeparatorChar).Last(), ms));
                     }
                 }
             }

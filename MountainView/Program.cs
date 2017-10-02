@@ -12,24 +12,32 @@ namespace MountainView
 {
     class Program
     {
+        private static int version = 1;
+
         static void Main(string[] args)
         {
-            //UsgsRawChunks.Uploader("/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0");
-            // UsgsRawImageChunks.Uploader("/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0/NAIP_n47w123/", "NAIP_n47w123");
-            // return;
+            int serverLat = 47;
+            int serverLon = -123;
 
+            bool isServerUpload = true;
+            bool isServerCompute = true;
             bool isClient = false;
-            bool isServer = true;
             try
             {
-                if (isServer)
+                if (isServerUpload)
+                {
+                    string uploadPath = "/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0";
+                    UsgsRawChunks.Uploader(uploadPath, serverLat, serverLon);
+                    UsgsRawImageChunks.Uploader(uploadPath, serverLat, serverLon);
+                }
+                else if (isServerCompute)
                 {
                     Task.WaitAll(ProcessRawData(
-                    Angle.FromDecimalDegrees(47.5),
-                    Angle.FromDecimalDegrees(-123.5)));
+                        Angle.FromDecimalDegrees(serverLat + 0.5),
+                        Angle.FromDecimalDegrees(serverLon - 0.5)));
                 }
-
-                if (isClient) {
+                else if (isClient)
+                {
                     BlobHelper.CacheLocally = true;
                     Config c = Config.Juaneta();
                     Task.WaitAll(GetPolarData(c));
@@ -44,7 +52,7 @@ namespace MountainView
         public static async Task ProcessRawData(Angle lat, Angle lon)
         {
             // Generate for a 1 degree square region.
-            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
+            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2, version);
             await Heights.Current.ProcessRawData(template);
             await Images.Current.ProcessRawData(template);
         }
@@ -69,7 +77,7 @@ namespace MountainView
                     double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
                     var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
-                    chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel));
+                    chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel, version));
                 }
             }
 
@@ -87,7 +95,7 @@ namespace MountainView
                 double[] bufferH = new double[1];
                 double[] bufferI = new double[3];
 
-                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey, version);
 
                 InterpolatingChunk<float> interpChunkH = null;
                 InterpolatingChunk<MyColor> interpChunkI = null;

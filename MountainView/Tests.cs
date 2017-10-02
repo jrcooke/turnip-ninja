@@ -42,7 +42,7 @@ namespace MountainView
         {
             for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
             {
-                StandardChunkMetadata.GetKey(100, 100, i);
+                StandardChunkMetadata.GetKey(100, 100, i, 1);
             }
 
             var lat = Angle.FromDecimalDegrees(47.6867797);
@@ -52,10 +52,10 @@ namespace MountainView
 
             for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
-                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
-                var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
+                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel, 1);
+                var xxx = StandardChunkMetadata.GetRangeFromKey(kay, 1);
 
-                var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+                var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel, 1);
                 Console.Write(zoomLevel + "\t" + cc.LatDelta);
                 Console.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
             }
@@ -65,7 +65,7 @@ namespace MountainView
         {
             for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 2; zoomLevel--)
             {
-                StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+                StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel, 1);
 
                 var pixels2 = await Heights.Current.GetData(template);
                 if (pixels2 != null)

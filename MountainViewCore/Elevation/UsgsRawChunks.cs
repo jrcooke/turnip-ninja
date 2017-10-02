@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
-    internal static class UsgsRawChunks
+    public static class UsgsRawChunks
     {
         // https://viewer.nationalmap.gov/basic/?basemap=b1&category=ned,nedsrc&title=3DEP%20View
         //
@@ -92,21 +92,26 @@ namespace MountainView.Elevation
             return ret;
         }
 
-        public static void Uploader(string path)
+        public static void Uploader(string path, int lat, int lon)
         {
-            foreach(var x in Directory.GetFiles(path).Where(p => p.EndsWith(".zip")))
+            var shortWebFile =
+                (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
+                (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
+
+            foreach (var x in Directory.GetFiles(path).Where(p => p.Split(Path.DirectorySeparatorChar).Last() ==  shortWebFile + ".zip"))
             {
-                System.Console.WriteLine(x);
-                using (var ms = new MemoryStream()) 
+                Console.WriteLine(x);
+                using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))
-                    {    
+                    {
                         fs.CopyTo(ms);
                         ms.Position = 0;
-                        Task.WaitAll(BlobHelper.WriteStream("sources", x.Split(Path.DirectorySeparatorChar).Last(),ms));
+                        var blobFile = string.Format(sourceZipFileTemplate, shortWebFile);
+                        Task.WaitAll(BlobHelper.WriteStream("sources", blobFile, ms));
                     }
                 }
             }
-        }        
+        }
     }
 }
