@@ -1,7 +1,6 @@
 ﻿using MountainView.Base;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
@@ -165,7 +164,6 @@ namespace MountainView.ChunkManagement
             }
 
             return ret;
-
         }
 
         internal IEnumerable<StandardChunkMetadata> GetChildChunks()
