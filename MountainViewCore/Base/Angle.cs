@@ -135,6 +135,42 @@ namespace MountainView.Base
             }
         }
 
+        public static Angle Parse(string v)
+        {
+            bool isNegative = false;
+            if (v[0] == '-')
+            {
+                isNegative = true;
+                v = v.Substring(1);
+            }
+            else
+            {
+                var last = v[v.Length - 1];
+                if (last == 's' || last == 'w')
+                {
+                    isNegative = true;
+                    v = v.Substring(0, v.Length - 1);
+                }
+                else if (last == 'n' || last == 'e')
+                {
+                    v = v.Substring(0, v.Length - 1);
+                }
+            }
+
+            var parts = v.Split(new char[] { 'D', 'M', 'S', 'T', 'F' }, StringSplitOptions.RemoveEmptyEntries);
+            return Angle.FromFourths((isNegative ? -1 : 1) * (
+                NewMethod(parts, 4) + 60L * (
+                NewMethod(parts, 3) + 60L * (
+                NewMethod(parts, 2) + 60L * (
+                NewMethod(parts, 1) + 60L * (
+                NewMethod(parts, 0)))))));
+        }
+
+        private static int NewMethod(string[] parts, int i)
+        {
+            return parts.Length > i ? int.Parse(parts[i]) : 0;
+        }
+
         internal Angle Truncate()
         {
             return Angle.FromThirds((this.Fourths / 60 / 60 / 60) * 60 * 60);

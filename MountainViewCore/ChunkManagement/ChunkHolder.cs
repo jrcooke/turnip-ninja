@@ -47,6 +47,7 @@ namespace MountainView.ChunkManagement
 
             foreach (var loopChunk in chunks.Where(p => p != null))
             {
+                Console.WriteLine("Processing " + loopChunk);
                 InterpolatingChunk<T> chunk2 = null;
                 if (loopChunk.PixelSizeLatDeg > this.PixelSizeLatDeg ||
                     loopChunk.PixelSizeLonDeg > this.PixelSizeLonDeg)

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace MountainView
 {
@@ -24,6 +25,13 @@ namespace MountainView
             bool isClient = false;
             try
             {
+                Task.WaitAll(Foo());
+                Tests.Test12();
+
+                Task.WaitAll(Tests.Test3("output",
+                    Angle.FromDecimalDegrees(47.6867797),
+                    Angle.FromDecimalDegrees(-122.2907541)));
+
                 if (isServerUpload)
                 {
                     string uploadPath = "/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0";
@@ -47,6 +55,36 @@ namespace MountainView
             {
                 Console.WriteLine(ex.ToString());
             }
+        }
+
+        public static async Task Foo()
+        {
+            var fff = (await BlobHelper.GetFiles("mapv7", ""))
+                .Select(p => StandardChunkMetadata.Parse(p))
+                .Where(p => p.Item1.ZoomLevel == 2 && p.Item2)
+                .Select(p => p.Item1)
+                .ToArray();
+
+            foreach (var ffff in fff)
+            {
+                // Generate for a 1 degree square region.
+                for (int zoomLevel = 3; zoomLevel <= Heights.Current.SourceDataZoom; zoomLevel++)
+                {
+                    StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(ffff.LatMid, ffff.LonMid, zoomLevel, 2);
+                    await Heights.Current.ProcessRawData2(template);
+                }
+
+                for (int zoomLevel = 3; zoomLevel <= Images.Current.SourceDataZoom; zoomLevel++)
+                {
+                    StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(ffff.LatMid, ffff.LonMid, zoomLevel, 2);
+                    await Images.Current.ProcessRawData2(template);
+                }
+            }
+
+            //var fff2 = await BlobHelper.GetFiles("mapv8", "");
+            //var f2 = fff2.Select(p => StandardChunkMetadata.Parse(p)).ToArray();
+            //var ff2 = f2.GroupBy(p => p.Item2).ToArray();
+            //var fn2 = ff2.Select(p => new { p.Key, Values = p.Select(q => q.Item1).ToArray(), SourceDataZoom = p.Key ? Images.Current.SourceDataZoom : Heights.Current.SourceDataZoom }).ToArray();
         }
 
         public static async Task ProcessRawData(Angle lat, Angle lon)

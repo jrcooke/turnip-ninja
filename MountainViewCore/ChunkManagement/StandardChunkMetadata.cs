@@ -1,5 +1,7 @@
 ﻿using MountainView.Base;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
@@ -80,8 +82,8 @@ namespace MountainView.ChunkManagement
             return MaxZoomLevel;
         }
 
-        // Continental unites states bounded by: 24N125W by 50N66W
-        // So 26 degrees lat, 59 degrees lon
+        // Continental United States bounded by: 24N125W by 50N66W
+        // So 26 degrees latitude, 59 degrees longitude
         private static readonly Angle usMinLat = Angle.FromDecimalDegrees(24.0);
         private static readonly Angle usMinLon = Angle.FromDecimalDegrees(-125.0);
         private static readonly Angle usDeltaLat = Angle.FromDecimalDegrees(26.0);
@@ -145,6 +147,27 @@ namespace MountainView.ChunkManagement
             return GetRangeFromKey(GetKey(lat.Fourths, lon.Fourths, zoomLevel, version), version);
         }
 
+        internal IEnumerable<StandardChunkMetadata> GetV1ChildChunks()
+        {
+            var ratio = Angle.FloorDivide(frameSizeForZoom[this.Version][this.ZoomLevel], frameSizeForZoom[this.Version][this.ZoomLevel + 1]);
+            var latLoopLo = Angle.Add(this.LatLo, Angle.Divide(frameSizeForZoom[this.Version][this.ZoomLevel + 1], 2));
+            var lonLoopLo = Angle.Add(this.LonLo, Angle.Divide(frameSizeForZoom[this.Version][this.ZoomLevel + 1], 2));
+
+            List<StandardChunkMetadata> ret = new List<StandardChunkMetadata>();
+            for (int i = 0; i < ratio; i++)
+            {
+                var li = Angle.Add(latLoopLo, Angle.Multiply(frameSizeForZoom[this.Version][this.ZoomLevel + 1], i));
+                for (int j = 0; j < ratio; j++)
+                {
+                    var lj = Angle.Add(lonLoopLo, Angle.Multiply(frameSizeForZoom[this.Version][this.ZoomLevel + 1], j));
+                    ret.Add(GetRangeContaingPoint(li, lj, this.ZoomLevel + 1, this.Version));
+                }
+            }
+
+            return ret;
+
+        }
+
         internal IEnumerable<StandardChunkMetadata> GetChildChunks()
         {
             var ratio = Angle.FloorDivide(frameSizeForZoom[this.Version][this.ZoomLevel], frameSizeForZoom[this.Version][this.ZoomLevel + 1]);
@@ -175,6 +198,32 @@ namespace MountainView.ChunkManagement
         public override string ToString()
         {
             return ZoomLevel + "Z_" + LatLo.ToLatString() + "," + LonLo.ToLonString() + "_" + LatHi.ToLatString() + "," + LonHi.ToLonString();
+        }
+
+        public static Tuple<StandardChunkMetadata, bool> Parse(string x)
+        {
+            var parts = x.Split('.');
+            var split1 = Math.Max(x.IndexOf('n'), x.IndexOf('s'));
+            var split2 = Math.Max(x.IndexOf('w'), x.IndexOf('e'));
+
+            var lat = Angle.Parse(x.Substring(0, split1 + 1));
+            var lon = Angle.Parse(x.Substring(split1 + 1, split2 - split1));
+            var zoom = int.Parse(parts[0].Substring(split2 + 1));
+
+            var version = int.Parse(parts[1].Replace("v", "")) - 6;
+            bool isImage = (parts[2][0] == 'i');
+
+            var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoom, version);
+
+            var ggg = isImage ?
+                Imaging.Images.Current.GetFileName(template) :
+                Elevation.Heights.Current.GetFileName(template);
+            if (ggg != x)
+            {
+                throw new InvalidOperationException();
+            }
+
+            return new Tuple<StandardChunkMetadata, bool>(template, isImage);
         }
     }
 }

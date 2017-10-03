@@ -78,6 +78,12 @@ namespace MountainView.Base
             }
         }
 
+        public static Task<bool> BlobExists(string containerName, string fileName)
+        {
+            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+            return blockBlob.ExistsAsync();
+        }
+
         public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)
         {
             List<string> ret = new List<string>();
@@ -112,10 +118,27 @@ namespace MountainView.Base
 
         public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
         {
+            List<string> ret = new List<string>();
             var dir = Container(containerName).GetDirectoryReference(directory);
-            var blobList = await dir.ListBlobsSegmentedAsync(true, BlobListingDetails.None, int.MaxValue, null, null, null);
-            var x = blobList.Results.OfType<CloudBlockBlob>().Select(p => p.Name).ToArray();
-            return x;
+            BlobContinuationToken bcc = null;
+            while (true)
+            {
+                var blobList = await dir.ListBlobsSegmentedAsync(
+                    useFlatBlobListing: true,
+                    blobListingDetails: BlobListingDetails.None,
+                    maxResults: int.MaxValue,
+                    currentToken: bcc,
+                    options: null,
+                    operationContext: null);
+                bcc = blobList.ContinuationToken;
+                ret.AddRange(blobList.Results.OfType<CloudBlockBlob>().Select(p => p.Name));
+                if (bcc == null)
+                {
+                    break;
+                }
+            }
+
+            return ret;
         }
     }
 }
