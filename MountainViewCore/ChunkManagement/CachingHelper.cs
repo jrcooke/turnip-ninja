@@ -102,43 +102,45 @@ namespace MountainView
 
         public async Task ProcessRawData2(StandardChunkMetadata template)
         {
-            if (await ExistsComputedChunk(template))
+            if (!(await ExistsComputedChunk(template)))
+            {
+                Console.WriteLine("Cached " + description + " chunk file does not exist: " + template);
+                if (template.Version == 2)
+                {
+                    var t1 = StandardChunkMetadata.GetRangeContaingPoint(
+                        template.LatMid, template.LonMid,
+                        template.ZoomLevel - 1,
+                        version: 1);
+
+                    Console.WriteLine("Need to aggregate up from v1 zoom data");
+                    var children = t1.GetChildChunks();
+                    List<ChunkHolder<T>> c1 = new List<ChunkHolder<T>>();
+                    foreach (var child in children)
+                    {
+                        Console.WriteLine(child);
+                        c1.Add(await GetData(child));
+                    }
+
+                    var ret = new ChunkHolder<T>(
+                        template.LatSteps, template.LonSteps,
+                        template.LatLo, template.LonLo,
+                        template.LatHi, template.LonHi,
+                        null,
+                        toDouble,
+                        fromDouble);
+
+                    ret.RenderChunksInto(c1, aggregate);
+
+                    string fileName = GetFileName(template);
+                    await WriteChunk(ret, fileName, template.Version);
+                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                }
+            }
+            else 
             {
                 Console.WriteLine("Cached " + description + " chunk file exists: " + template);
-                return;
             }
 
-            Console.WriteLine("Cached " + description + " chunk file does not exist: " + template);
-            if (template.Version == 2)
-            {
-                var t1 = StandardChunkMetadata.GetRangeContaingPoint(
-                    template.LatMid, template.LonMid,
-                    template.ZoomLevel - 1,
-                    version: 1);
-
-                Console.WriteLine("Need to aggregate up from v1 zoom data");
-                var children = t1.GetChildChunks();
-                List<ChunkHolder<T>> c1 = new List<ChunkHolder<T>>();
-                foreach (var child in children)
-                {
-                    Console.WriteLine(child);
-                    c1.Add(await GetData(child));
-                }
-
-                var ret = new ChunkHolder<T>(
-                     template.LatSteps, template.LonSteps,
-                     template.LatLo, template.LonLo,
-                     template.LatHi, template.LonHi,
-                     null,
-                     toDouble,
-                     fromDouble);
-
-                ret.RenderChunksInto(c1, aggregate);
-
-                string fileName = filenameCache[template.Key];
-                await WriteChunk(ret, fileName, template.Version);
-                Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-            }
 
             if (template.ZoomLevel < this.SourceDataZoom)
             {
