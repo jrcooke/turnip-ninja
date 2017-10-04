@@ -13,20 +13,18 @@ namespace MountainView
 {
     class Program
     {
-        private static int version = 1;
-
         static void Main(string[] args)
         {
             int serverLat = 47;
             int serverLon = -123;
 
-            bool isServerUpload = true;
-            bool isServerCompute = true;
-            bool isClient = false;
+            bool isServerUpload = false;
+            bool isServerCompute = false;
+            bool isClient = true;
             try
             {
-                Task.WaitAll(Foo());
-                Tests.Test12();
+                //Task.WaitAll(Foo());
+                //Tests.Test12();
 
                 Task.WaitAll(Tests.Test3("output",
                     Angle.FromDecimalDegrees(47.6867797),
@@ -57,40 +55,10 @@ namespace MountainView
             }
         }
 
-        public static async Task Foo()
-        {
-            var fff = (await BlobHelper.GetFiles("mapv7", ""))
-                .Select(p => StandardChunkMetadata.Parse(p))
-                .Where(p => p.Item1.ZoomLevel == 2 && p.Item2)
-                .Select(p => p.Item1)
-                .ToArray();
-
-            foreach (var ffff in fff)
-            {
-                // Generate for a 1 degree square region.
-                for (int zoomLevel = 3; zoomLevel <= Heights.Current.SourceDataZoom; zoomLevel++)
-                {
-                    StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(ffff.LatMid, ffff.LonMid, zoomLevel, 2);
-                    await Heights.Current.ProcessRawData2(template);
-                }
-
-                for (int zoomLevel = 3; zoomLevel <= Images.Current.SourceDataZoom; zoomLevel++)
-                {
-                    StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(ffff.LatMid, ffff.LonMid, zoomLevel, 2);
-                    await Images.Current.ProcessRawData2(template);
-                }
-            }
-
-            //var fff2 = await BlobHelper.GetFiles("mapv8", "");
-            //var f2 = fff2.Select(p => StandardChunkMetadata.Parse(p)).ToArray();
-            //var ff2 = f2.GroupBy(p => p.Item2).ToArray();
-            //var fn2 = ff2.Select(p => new { p.Key, Values = p.Select(q => q.Item1).ToArray(), SourceDataZoom = p.Key ? Images.Current.SourceDataZoom : Heights.Current.SourceDataZoom }).ToArray();
-        }
-
         public static async Task ProcessRawData(Angle lat, Angle lon)
         {
             // Generate for a 1 degree square region.
-            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2, version);
+            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
             await Heights.Current.ProcessRawData(template);
             await Images.Current.ProcessRawData(template);
         }
@@ -115,7 +83,7 @@ namespace MountainView
                     double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
                     var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
-                    chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel, version));
+                    chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel));
                 }
             }
 
@@ -133,7 +101,7 @@ namespace MountainView
                 double[] bufferH = new double[1];
                 double[] bufferI = new double[3];
 
-                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey, version);
+                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
                 InterpolatingChunk<float> interpChunkH = null;
                 InterpolatingChunk<MyColor> interpChunkI = null;

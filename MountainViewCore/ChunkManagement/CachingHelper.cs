@@ -10,19 +10,8 @@ namespace MountainView
 {
     public abstract class CachingHelper<T>
     {
-        private static readonly string[] cachedFileTemplate = new string[]
-        {
-            null,
-            "{0}.v7.{1}",
-            "{0}.v8.{1}",
-        };
-
-        private static readonly string[] cachedFileContainer = new string[]
-        {
-            null,
-            "mapv7",
-            "mapv8",
-        };
+        private static readonly string cachedFileTemplate = "{0}.v8.{1}";
+        private static readonly string cachedFileContainer = "mapv8";
 
         private readonly string fileExt;
         private readonly string description;
@@ -71,7 +60,7 @@ namespace MountainView
             {
                 Console.WriteLine("Starting generation...");
                 ret = await GenerateData(template);
-                await WriteChunk(ret, fileName, template.Version);
+                await WriteChunk(ret, fileName);
                 Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
                 return ret;
             }
@@ -94,64 +83,10 @@ namespace MountainView
                  fromDouble);
 
             ret.RenderChunksInto(chunks, aggregate);
-            await WriteChunk(ret, fileName, template.Version);
+            await WriteChunk(ret, fileName);
             Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
 
             return ret;
-        }
-
-        public async Task ProcessRawData2(StandardChunkMetadata template)
-        {
-            if (!(await ExistsComputedChunk(template)))
-            {
-                Console.WriteLine("Cached " + description + " chunk file does not exist: " + template);
-                if (template.Version == 2)
-                {
-                    var t1 = StandardChunkMetadata.GetRangeContaingPoint(
-                        template.LatMid, template.LonMid,
-                        template.ZoomLevel - 1,
-                        version: 1);
-
-                    Console.WriteLine("Need to aggregate up from v1 zoom data");
-                    var children = t1.GetChildChunks();
-                    List<ChunkHolder<T>> c1 = new List<ChunkHolder<T>>();
-                    foreach (var child in children)
-                    {
-                        Console.WriteLine(child);
-                        c1.Add(await GetData(child));
-                    }
-
-                    var ret = new ChunkHolder<T>(
-                        template.LatSteps, template.LonSteps,
-                        template.LatLo, template.LonLo,
-                        template.LatHi, template.LonHi,
-                        null,
-                        toDouble,
-                        fromDouble);
-
-                    ret.RenderChunksInto(c1, aggregate);
-
-                    string fileName = GetFileName(template);
-                    await WriteChunk(ret, fileName, template.Version);
-                    Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-                }
-            }
-            else 
-            {
-                Console.WriteLine("Cached " + description + " chunk file exists: " + template);
-            }
-
-
-            if (template.ZoomLevel < this.SourceDataZoom)
-            {
-                Console.WriteLine("Need to aggregate up from higher zoom data");
-                var children = template.GetChildChunks();
-                foreach (var child in children)
-                {
-                    Console.WriteLine(child);
-                    await ProcessRawData2(child);
-                }
-            }
         }
 
         public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template)
@@ -184,7 +119,7 @@ namespace MountainView
                  toDouble,
                  fromDouble);
             ret.RenderChunksInto(chunks, aggregate);
-            await WriteChunk(ret, fileName, template.Version);
+            await WriteChunk(ret, fileName);
             Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
             return ret;
         }
@@ -198,7 +133,7 @@ namespace MountainView
             }
 
             Tuple<string, ChunkHolder<T>> ret = new Tuple<string, ChunkHolder<T>>(GetFullFileName(template, filename), null);
-            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer[template.Version], ret.Item1))
+            using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, ret.Item1))
             {
                 if (ms != null)
                 {
@@ -217,7 +152,7 @@ namespace MountainView
                 filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
             }
 
-            return BlobHelper.BlobExists(cachedFileContainer[template.Version], GetFullFileName(template, filename));
+            return BlobHelper.BlobExists(cachedFileContainer, GetFullFileName(template, filename));
         }
 
         public string GetFileName(StandardChunkMetadata template)
@@ -228,7 +163,7 @@ namespace MountainView
 
         private string GetFullFileName(StandardChunkMetadata template, string filename)
         {
-            return string.Format(cachedFileTemplate[template.Version], filename, fileExt);
+            return string.Format(cachedFileTemplate, filename, fileExt);
         }
 
         private static string GetBaseFileName(StandardChunkMetadata template)
@@ -239,7 +174,7 @@ namespace MountainView
                 template.ZoomLevel);
         }
 
-        private async Task WriteChunk(ChunkHolder<T> ret, string fileName, int version)
+        private async Task WriteChunk(ChunkHolder<T> ret, string fileName)
         {
             using (MemoryStream stream = new MemoryStream())
             {
@@ -254,7 +189,7 @@ namespace MountainView
                 }
 
                 stream.Position = 0;
-                await BlobHelper.WriteStream(cachedFileContainer[version], fileName, stream);
+                await BlobHelper.WriteStream(cachedFileContainer, fileName, stream);
             }
         }
 
