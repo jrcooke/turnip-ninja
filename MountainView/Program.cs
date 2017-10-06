@@ -15,6 +15,7 @@ namespace MountainView
     {
         static void Main(string[] args)
         {
+            DateTime start = DateTime.Now;
             int serverLat = 47;
             int serverLon = -123;
 
@@ -58,6 +59,10 @@ namespace MountainView
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
+                DateTime end = DateTime.Now;
+                System.Console.WriteLine(start);
+                System.Console.WriteLine(end);
+                System.Console.WriteLine(end - start);
             }
         }
 
