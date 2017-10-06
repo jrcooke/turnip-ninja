@@ -18,6 +18,12 @@ namespace MountainView
             int serverLat = 47;
             int serverLon = -123;
 
+            string outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop", "Output");
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+            }
+
             bool isServerUpload = false;
             bool isServerCompute = false;
             bool isClient = true;
@@ -26,7 +32,7 @@ namespace MountainView
                 //Task.WaitAll(Foo());
                 //Tests.Test12();
 
-                //Task.WaitAll(Tests.Test3("output",
+                //Task.WaitAll(Tests.Test3(     outputPath,
                 //    Angle.FromDecimalDegrees(47.6867797),
                 //    Angle.FromDecimalDegrees(-122.2907541)));
 
@@ -46,7 +52,7 @@ namespace MountainView
                 {
                     BlobHelper.CacheLocally = true;
                     Config c = Config.Juaneta();
-                    Task.WaitAll(GetPolarData(c));
+                    Task.WaitAll(GetPolarData(outputPath, c));
                 }
             }
             catch (Exception ex)
@@ -63,7 +69,7 @@ namespace MountainView
             await Images.Current.ProcessRawData(template);
         }
 
-        public static async Task GetPolarData(Config config)
+        public static async Task GetPolarData(string outputFolder, Config config)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
@@ -140,16 +146,15 @@ namespace MountainView
                 Console.WriteLine(counter + " of " + chunkKeys.Count);
                 if (counter % 50 == 0)
                 {
-                    NewMethod(config, ret, counter);
+                    NewMethod(outputFolder, config, ret, counter);
                 }
             });
 
-            NewMethod(config, ret, counter);
+            NewMethod(outputFolder, config, ret, counter);
         }
 
-        private static void NewMethod(Config config, ColorHeight[][] ret, int counter)
+        private static void NewMethod(string outputFolder, Config config, ColorHeight[][] ret, int counter)
         {
-            string outputFolder = "Output";
             if (!Directory.Exists(outputFolder))
             {
                 Directory.CreateDirectory(outputFolder);
