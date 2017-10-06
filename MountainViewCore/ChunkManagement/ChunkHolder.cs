@@ -172,6 +172,14 @@ namespace MountainView.ChunkManagement
             return ComputeInterpolation(LatLo, LonLo, LatHi, LonHi, toDouble, fromDouble, interpolatonType);
         }
 
+        public NearestInterpolatingChunk<T> GetSimpleInterpolator(InterpolatonType interpolatonType)
+        {
+            return new NearestInterpolatingChunk<T>(
+                this.LatLo.DecimalDegree, this.LonLo.DecimalDegree,
+                this.LatHi.DecimalDegree, this.LonHi.DecimalDegree,
+                this.Data);
+        }
+
         public bool TryGetDataAtPoint(Angle lat, Angle lon, out T data)
         {
             if (HasDataAtLat(lat) && HasDataAtLon(lon))

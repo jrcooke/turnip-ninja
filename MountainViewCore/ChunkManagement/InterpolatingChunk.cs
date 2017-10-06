@@ -65,4 +65,58 @@ namespace MountainView.ChunkManagement
             return false;
         }
     }
+
+    public class NearestInterpolatingChunk<T>
+    {
+        private double latLo;
+        private double lonLo;
+        private double latHi;
+        private double lonHi;
+        private T[][] values;
+        private int numLat;
+        private int numLon;
+        private double scaleLat;
+        private double scaleLon;
+
+        public NearestInterpolatingChunk(
+            double latLo, double lonLo,
+            double latHi, double lonHi,
+            T[][] values)
+        {
+            this.latLo = latLo;
+            this.lonLo = lonLo;
+            this.latHi = latHi;
+            this.lonHi = lonHi;
+            this.values = values;
+            this.numLat = values.Length;
+            this.numLon = values[0].Length;
+            this.scaleLat = (numLat - 1.0) / (latHi - latLo);
+            this.scaleLon = (numLon - 1.0) / (lonHi - lonLo);
+        }
+
+        public bool HasDataAtLat(double latDegree)
+        {
+            return this.latLo <= latDegree && latDegree <= this.latHi;
+        }
+
+        public bool HasDataAtLon(double lonDegree)
+        {
+            return this.lonLo <= lonDegree && lonDegree <= this.lonHi;
+        }
+
+        public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
+        {
+            if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
+            {
+                int i = (int)Math.Round(scaleLat * (latDegree - latLo));
+                int j = (int)Math.Round(scaleLon * (lonDegree - lonLo));
+                data = values[i][j];
+                return true;
+            }
+
+            data = default(T);
+            return false;
+        }
+
+    }
 }

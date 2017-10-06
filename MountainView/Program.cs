@@ -59,11 +59,12 @@ namespace MountainView
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-                DateTime end = DateTime.Now;
-                System.Console.WriteLine(start);
-                System.Console.WriteLine(end);
-                System.Console.WriteLine(end - start);
             }
+
+            DateTime end = DateTime.Now;
+            Console.WriteLine(start);
+            Console.WriteLine(end);
+            Console.WriteLine(end - start);
         }
 
         public static async Task ProcessRawData(Angle lat, Angle lon)
@@ -109,17 +110,14 @@ namespace MountainView
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
             await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
             {
-                double[] bufferH = new double[1];
-                double[] bufferI = new double[3];
-
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
-                InterpolatingChunk<float> interpChunkH = null;
-                InterpolatingChunk<MyColor> interpChunkI = null;
+                NearestInterpolatingChunk<float> interpChunkH = null;
+                NearestInterpolatingChunk<MyColor> interpChunkI = null;
                 try
                 {
-                    interpChunkH = (await Heights.Current.GetData(chunk)).GetInterpolator(InterpolatonType.Nearest);
-                    interpChunkI = (await Images.Current.GetData(chunk)).GetInterpolator(InterpolatonType.Nearest);
+                    interpChunkH = (await Heights.Current.GetData(chunk)).GetSimpleInterpolator(InterpolatonType.Nearest);
+                    interpChunkI = (await Images.Current.GetData(chunk)).GetSimpleInterpolator(InterpolatonType.Nearest);
 
                     // Now do that again, but do the rendering per chunk.
                     for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
@@ -134,8 +132,8 @@ namespace MountainView
                             var mult = iR * config.DeltaR / config.R;
                             var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
                             var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                            if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferH, out float data) &&
-                                interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, bufferI, out MyColor color))
+                            if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data) &&
+                                interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, out MyColor color))
                             {
                                 ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data };
                             }
