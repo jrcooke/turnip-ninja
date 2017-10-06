@@ -108,7 +108,7 @@ namespace MountainView
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
-            await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
+            await Utils.ForEachAsync(chunkKeys, 5, async (chunkKey) =>
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
