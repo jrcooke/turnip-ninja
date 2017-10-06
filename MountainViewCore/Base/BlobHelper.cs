@@ -39,16 +39,17 @@ namespace MountainView.Base
         {
             if (CacheLocally)
             {
-                if (!File.Exists(fileName))
+                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(localFileName))
                 {
                     try
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                        var tmpName = System.Guid.NewGuid().ToString() + ".tmp";
+                        var tmpName = Path.Combine(Path.GetTempPath(), System.Guid.NewGuid().ToString() + ".tmp");
                         await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
-                        if (!File.Exists(fileName))
+                        if (!File.Exists(localFileName))
                         {
-                            File.Move(tmpName, fileName);
+                            File.Move(tmpName, localFileName);
                         }
                         else
                         {
@@ -62,7 +63,7 @@ namespace MountainView.Base
                 }
 
                 var stream = new MemoryStream();
-                var fs = File.OpenRead(fileName);
+                var fs = File.OpenRead(localFileName);
                 fs.Position = 0;
                 await fs.CopyToAsync(stream);
                 stream.Position = 0;

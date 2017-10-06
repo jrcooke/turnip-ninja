@@ -76,64 +76,61 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\MountainView\Base\Angle.cs">
+    <Compile Include="..\MountainViewCore\Base\Angle.cs">
       <Link>Base\Angle.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\BlobHelper.cs">
+    <Compile Include="..\MountainViewCore\Base\BlobHelper.cs">
       <Link>Base\BlobHelper.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\Config.cs">
+    <Compile Include="..\MountainViewCore\Base\Config.cs">
       <Link>Base\Config.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\ConfigurationManager.cs">
+    <Compile Include="..\MountainViewCore\Base\ConfigurationManager.cs">
       <Link>Base\ConfigurationManager.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\MyColor.cs">
+    <Compile Include="..\MountainViewCore\Base\MyColor.cs">
       <Link>Base\MyColor.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Base\Utils.cs">
+    <Compile Include="..\MountainViewCore\Base\Utils.cs">
       <Link>Base\Utils.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\CachingHelper.cs">
+    <Compile Include="..\MountainViewCore\ChunkManagement\CachingHelper.cs">
       <Link>ChunkManagement\CachingHelper.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\ChunkHolder.cs">
+    <Compile Include="..\MountainViewCore\ChunkManagement\ChunkHolder.cs">
       <Link>ChunkManagement\ChunkHolder.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\ChunkMetadata.cs">
+    <Compile Include="..\MountainViewCore\ChunkManagement\ChunkMetadata.cs">
       <Link>ChunkManagement\ChunkMetadata.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\InterpolatingChunk.cs">
+    <Compile Include="..\MountainViewCore\ChunkManagement\InterpolatingChunk.cs">
       <Link>ChunkManagement\InterpolatingChunk.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\ChunkManagement\StandardChunkMetadata.cs">
+    <Compile Include="..\MountainViewCore\ChunkManagement\StandardChunkMetadata.cs">
       <Link>ChunkManagement\StandardChunkMetadata.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Elevation\AdfReaderWorker.cs">
+    <Compile Include="..\MountainViewCore\Elevation\AdfReaderWorker.cs">
       <Link>Elevation\AdfReaderWorker.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Elevation\Heights.cs">
+    <Compile Include="..\MountainViewCore\Elevation\Heights.cs">
       <Link>Elevation\Heights.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Elevation\UsgsRawChunks.cs">
+    <Compile Include="..\MountainViewCore\Elevation\UsgsRawChunks.cs">
       <Link>Elevation\UsgsRawChunks.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\GlobalSuppressions.cs">
-      <Link>GlobalSuppressions.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainView\Imaging\Images.cs">
+    <Compile Include="..\MountainViewCore\Imaging\Images.cs">
       <Link>Imaging\Images.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Imaging\UsgsRawImageChunks.cs">
+    <Compile Include="..\MountainViewCore\Imaging\UsgsRawImageChunks.cs">
       <Link>Imaging\UsgsRawImageChunks.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Interpolation\InterpolatonType.cs">
+    <Compile Include="..\MountainViewCore\Interpolation\InterpolatonType.cs">
       <Link>Interpolation\InterpolatonType.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Interpolation\OneDInterpolator.cs">
+    <Compile Include="..\MountainViewCore\Interpolation\OneDInterpolator.cs">
       <Link>Interpolation\OneDInterpolator.cs</Link>
     </Compile>
-    <Compile Include="..\MountainView\Interpolation\TwoDInterpolator.cs">
+    <Compile Include="..\MountainViewCore\Interpolation\TwoDInterpolator.cs">
       <Link>Interpolation\TwoDInterpolator.cs</Link>
     </Compile>
     <Compile Include="..\MountainView\Program.cs">
