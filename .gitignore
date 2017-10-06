@@ -5,6 +5,7 @@
 
 # Files with secrets
 app.config.json
+App.config
 
 # User-specific files
 *.suo
