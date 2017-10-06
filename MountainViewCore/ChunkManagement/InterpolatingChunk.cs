@@ -109,7 +109,7 @@ namespace MountainView.ChunkManagement
             if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
             {
                 int i = (int)Math.Round(scaleLat * (latDegree - latLo));
-                int j = (int)Math.Round(scaleLon * (lonDegree - lonLo));
+                int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
                 data = values[i][j];
                 return true;
             }
