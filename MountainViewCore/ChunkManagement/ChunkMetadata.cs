@@ -37,12 +37,12 @@ namespace MountainView.ChunkManagement
             this.lonMid = new Lazy<Angle>(() => Angle.Divide(Angle.Add(this.LonLo, this.LonHi), 2));
         }
 
-        protected Angle GetLat(int i)
+        public Angle GetLat(int i)
         {
             return Angle.Add(LatLo, Angle.Divide(Angle.Multiply(LatDelta, i), LatSteps - 1));
         }
 
-        protected Angle GetLon(int j)
+        public Angle GetLon(int j)
         {
             return Angle.Add(LonLo, Angle.Divide(Angle.Multiply(LonDelta, LonSteps - 1 - j), LonSteps - 1));
         }

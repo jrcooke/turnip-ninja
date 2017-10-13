@@ -88,6 +88,9 @@
     <Compile Include="..\MountainViewCore\Base\ConfigurationManager.cs">
       <Link>Base\ConfigurationManager.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Base\KDNode.cs">
+      <Link>Base\KDNode.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Base\MyColor.cs">
       <Link>Base\MyColor.cs</Link>
     </Compile>
@@ -132,6 +135,9 @@
     </Compile>
     <Compile Include="..\MountainViewCore\Interpolation\TwoDInterpolator.cs">
       <Link>Interpolation\TwoDInterpolator.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Landmarks\Features.cs">
+      <Link>NewFolder1\Features.cs</Link>
     </Compile>
     <Compile Include="..\MountainView\Program.cs">
       <Link>Program.cs</Link>

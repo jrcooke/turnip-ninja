@@ -71,20 +71,28 @@ namespace MountainView
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
 
-                var pixels2 = await Heights.Current.GetData(template);
-                if (pixels2 != null)
-                {
-                    Utils.WriteImageFile(pixels2,
-                        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
-                        a => Utils.GetColorForHeight(a));
-                }
+                //var pixels2 = await Heights.Current.GetData(template);
+                //if (pixels2 != null)
+                //{
+                //    Utils.WriteImageFile(pixels2,
+                //        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
+                //        a => Utils.GetColorForHeight(a));
+                //}
 
-                var pixels = await Images.Current.GetData(template);
-                if (pixels != null)
+                //var pixels = await Images.Current.GetData(template);
+                //if (pixels != null)
+                //{
+                //    Utils.WriteImageFile(pixels,
+                //        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                //        a => a);
+                //}
+
+                var pixels3 = await Features.Current.GetData(template);
+                if (pixels3 != null)
                 {
-                    Utils.WriteImageFile(pixels,
-                        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                        a => a);
+                    Utils.WriteImageFile(pixels3,
+                        Path.Combine(outputFolder, "AChunkF" + zoomLevel + ".png"),
+                        a => a);// new MyColor((byte)((a - short.MinValue) / 256), (byte)((a - short.MinValue) % 256), 0));
                 }
             }
         }

@@ -105,6 +105,12 @@ namespace MountainView
             if (template.ZoomLevel <= this.SourceDataZoom)
             {
                 throw new InvalidOperationException("Source data is missing for chunk " + template.ToString());
+
+                //Console.WriteLine("Starting generation...");
+                //ret = await GenerateData(template);
+                //await WriteChunk(ret, fileName);
+                //Console.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                //return ret;
             }
 
             Console.WriteLine("Need to interpolate from lower zoom data");

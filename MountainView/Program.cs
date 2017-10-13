@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
+using MountainViewCore.Landmarks;
 
 namespace MountainView
 {
@@ -135,7 +136,19 @@ namespace MountainView
                             if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data) &&
                                 interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, out MyColor color))
                             {
-                                ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data };
+                                var feature = UsgsRawFeatures.GetData(curLatDegree, curLonDegree);
+                                var dist = Math.Sqrt(
+                                    (curLatDegree - feature.Lat.DecimalDegree) *
+                                    (curLatDegree - feature.Lat.DecimalDegree) +
+                                    (curLonDegree - feature.Lon.DecimalDegree) *
+                                    (curLonDegree - feature.Lon.DecimalDegree));
+                                var dist2 = ((int)(dist * 100000.0) % 256);
+                                var featureColor = new MyColor(
+                                    (byte)((feature.Id - short.MinValue) / 256),
+                                    (byte)((feature.Id - short.MinValue) % 256),
+                                    (byte)dist2);
+
+                                ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data, FeatureColor = featureColor };
                             }
                         }
                     }
@@ -165,16 +178,22 @@ namespace MountainView
 
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmp" + counter + ".png"), a => Utils.GetColorForHeight(a.Height));
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmi" + counter + ".png"), a => a.Color);
+            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmf" + counter + ".png"), a => a.FeatureColor);
 
-            var xxx = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
+            var xxx = CollapseToViewFromHere(ret, (p) => p.Color, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx" + counter + ".png"), a => Utils.GetColorForHeight((float)a.Distance));
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi" + counter + ".png"), a => a.Color);
+
+            var xxx2 = CollapseToViewFromHere(ret, (p) => p.FeatureColor, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
+            Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf" + counter + ".png"), a => a.Color);
         }
 
         public struct ColorHeight
         {
             public MyColor Color;
             public float Height;
+
+            public MyColor FeatureColor { get; internal set; }
         }
 
         public struct ColorDistance
@@ -188,6 +207,7 @@ namespace MountainView
 
         private static ColorDistance[][] CollapseToViewFromHere(
             ColorHeight[][] thetaRad,
+            Func<ColorHeight, MyColor> colorGetter,
             double deltaR,
             Angle elevationViewMin, Angle elevationViewMax,
             Angle angularRes)
@@ -204,7 +224,7 @@ namespace MountainView
                 for (int r = 1; r < thetaRad[i].Length; r++)
                 {
                     double dist = deltaR * r;
-                    MyColor col = thetaRad[i][r].Color;
+                    MyColor col = colorGetter(thetaRad[i][r]);
                     double clearWeight = 0.2 + 0.8 / (1.0 + dist * dist * 1.0e-8);
                     col = new MyColor(
                         (byte)(int)(col.R * clearWeight + skyColor.R * (1 - clearWeight)),
