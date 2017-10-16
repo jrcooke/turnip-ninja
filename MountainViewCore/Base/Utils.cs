@@ -12,6 +12,12 @@ using System.Threading.Tasks;
 
 namespace MountainView.Base
 {
+    public enum OutputType
+    {
+        JPEG,
+        Bitmap,
+    }
+
     public static class Utils
     {
         private const double AlphaMeters = 6378000.0;
@@ -116,7 +122,8 @@ namespace MountainView.Base
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
-            Func<T, MyColor> transform)
+            Func<T, MyColor> transform,
+            OutputType outputType)
         {
             using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
             {
@@ -130,14 +137,15 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName);
+                bm.WriteFile(fileName, outputType);
             }
         }
 
         public static void WriteImageFile<T>(
             T[][] colorBuff,
             string fileName,
-            Func<T, MyColor> transform)
+            Func<T, MyColor> transform,
+            OutputType outputType)
         {
             int width = colorBuff.Length;
             int height = colorBuff[0].Length;
@@ -155,7 +163,7 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName);
+                bm.WriteFile(fileName, outputType);
             }
         }
 
@@ -163,7 +171,8 @@ namespace MountainView.Base
             int width,
             int height,
             string fileName,
-            Func<int, int, MyColor> transform)
+            Func<int, int, MyColor> transform,
+            OutputType outputType)
         {
             using (DirectBitmap bm = new DirectBitmap(width, height))
             {
@@ -176,7 +185,7 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName);
+                bm.WriteFile(fileName, outputType);
             }
         }
 
@@ -206,18 +215,31 @@ namespace MountainView.Base
                 bits[offset++] = 255;
             }
 
-            public void WriteFile(string fileName)
+            public void WriteFile(string fileName, OutputType outputType)
             {
                 using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
                 {
                     using (FileStream stream = File.OpenWrite(fileName))
                     {
-                        // JPEG_QUALITYGOOD is 75 JPEG.
-                        // JPEG_BASELINE strips metadata (EXIF, etc.)
-                        bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
-                            FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
-                            FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
-                    }                    
+                        switch (outputType)
+                        {
+                            case OutputType.JPEG:
+                                // JPEG_QUALITYGOOD is 75 JPEG.
+                                // JPEG_BASELINE strips metadata (EXIF, etc.)
+                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
+                                    FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
+                                    FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
+                                break;
+                            case OutputType.Bitmap:
+                                // JPEG_QUALITYGOOD is 75 JPEG.
+                                // JPEG_BASELINE strips metadata (EXIF, etc.)
+                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_BMP);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException("outputType");
+                        }
+
+                    }
                 }
             }
 

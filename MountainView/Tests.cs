@@ -17,10 +17,10 @@ namespace MountainView
 
             var scm = StandardChunkMetadata.GetRangeContaingPoint(homeLat, homeLon, 4);
             var xxx = Images.Current.GetData(scm).Result;
-            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.png"), a => a);
+            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.jpg"), a => a, OutputType.JPEG);
 
             var yyy = Heights.Current.GetData(scm).Result;
-            Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.png"), a => Utils.GetColorForHeight(a));
+            Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
 
             //var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
             //// Utils.WriteImageFile(newONe, Path.Combine(outputFolder, "newONe.png"), a => Utils.GetColorForHeight(a));
@@ -91,8 +91,9 @@ namespace MountainView
                 if (pixels3 != null)
                 {
                     Utils.WriteImageFile(pixels3,
-                        Path.Combine(outputFolder, "AChunkF" + zoomLevel + ".png"),
-                        a => a);// new MyColor((byte)((a - short.MinValue) / 256), (byte)((a - short.MinValue) % 256), 0));
+                        Path.Combine(outputFolder, "AChunkF" + zoomLevel + ".jpg"),
+                        a => a,
+                        OutputType.JPEG);// new MyColor((byte)((a - short.MinValue) / 256), (byte)((a - short.MinValue) % 256), 0));
                 }
             }
         }

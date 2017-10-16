@@ -118,5 +118,42 @@ namespace MountainView.ChunkManagement
             return false;
         }
 
+        public bool TryGetIntersectLine(
+            double latDegree, double latDegreeDelta,
+            double lonDegree, double lonDegreeDelta,
+            out double loX, out double hiX)
+        {
+            double?[] candidates = new double?[] {
+                LineIntersectsLineX(latLo, lonLo, latHi - latLo, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
+                LineIntersectsLineX(latLo, lonHi, latHi - latLo, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
+                LineIntersectsLineX(lonLo, latLo, lonHi - lonLo, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta),
+                LineIntersectsLineX(lonLo, latHi, lonHi - lonLo, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta)
+            };
+
+            var values = candidates.Where(p => p.HasValue).Select(p => p.Value).OrderBy(p => p).ToArray();
+            if (values.Length < 2)
+            {
+                loX = 0.0;
+                hiX = 1.0;
+                return false;
+            }
+            else
+            {
+                loX = values[0];
+                hiX = values[values.Length - 1];
+                return true;
+            }
+        }
+
+        private static double? LineIntersectsLineX(
+            double li, double lj, double deltaLi, /* j chosen so deltaLj == 0 */
+            double pi, double pj, double deltaPi, double deltaPj)
+        {
+            if (deltaPj == 0.0) return null;
+            double x = (lj - pj) / deltaPj;
+            double y = (deltaPi * x - (li - pi)) / deltaLi;
+            if (y < 0.0 || y > 1.0) return null;
+            return x;
+        }
     }
 }
