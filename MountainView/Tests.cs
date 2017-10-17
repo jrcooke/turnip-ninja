@@ -70,7 +70,7 @@ namespace MountainView
             for (int zoomLevel = 5; zoomLevel >= 3; zoomLevel--)
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-
+                await Task.Delay(0);
                 //var pixels2 = await Heights.Current.GetData(template);
                 //if (pixels2 != null)
                 //{

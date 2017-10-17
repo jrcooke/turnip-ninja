@@ -130,7 +130,7 @@ namespace MountainView
             return ret;
         }
 
-        internal NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
+        public NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
         {
 
             if (!filenameCache.TryGetValue(template.Key, out string filename))

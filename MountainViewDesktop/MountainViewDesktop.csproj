@@ -136,9 +136,6 @@
     <Compile Include="..\MountainViewCore\Interpolation\TwoDInterpolator.cs">
       <Link>Interpolation\TwoDInterpolator.cs</Link>
     </Compile>
-    <Compile Include="..\MountainViewCore\Landmarks\Features.cs">
-      <Link>NewFolder1\Features.cs</Link>
-    </Compile>
     <Compile Include="..\MountainViewCore\Landmarks\UsgsRawFeatures.cs">
       <Link>NewFolder1\UsgsRawFeatures.cs</Link>
     </Compile>
