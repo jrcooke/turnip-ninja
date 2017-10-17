@@ -97,8 +97,8 @@ namespace MountainView.ChunkManagement
             this.lonHi = lonHi;
             this.numLat = numLat;
             this.numLon = numLon;
-            this.scaleLat = (numLat - 1.0) / (latHi - latLo);
-            this.scaleLon = (numLon - 1.0) / (lonHi - lonLo);
+            scaleLat = (numLat - 1.0) / (latHi - latLo);
+            scaleLon = (numLon - 1.0) / (lonHi - lonLo);
             this.container = container;
             this.fullFileName = fullFileName;
             this.readPixel = readPixel;
@@ -106,12 +106,12 @@ namespace MountainView.ChunkManagement
 
         public bool HasDataAtLat(double latDegree)
         {
-            return this.latLo <= latDegree && latDegree <= this.latHi;
+            return latLo <= latDegree && latDegree <= latHi;
         }
 
         public bool HasDataAtLon(double lonDegree)
         {
-            return this.lonLo <= lonDegree && lonDegree <= this.lonHi;
+            return lonLo <= lonDegree && lonDegree <= lonHi;
         }
 
         public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
@@ -123,16 +123,16 @@ namespace MountainView.ChunkManagement
                 ms = task.Result;
             }
 
-            if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
+            if (!HasDataAtLat(latDegree) || !HasDataAtLon(lonDegree))
             {
-                int i = (int)Math.Round(scaleLat * (latDegree - latLo));
-                int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
-                data = this.readPixel(ms, i, j);
-                return true;
+                data = default(T);
+                return false;
             }
 
-            data = default(T);
-            return false;
+            int i = (int)Math.Round(scaleLat * (latDegree - latLo));
+            int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
+            data = readPixel(ms, i, j);
+            return true;
         }
 
         public bool TryGetIntersectLine(
@@ -174,19 +174,13 @@ namespace MountainView.ChunkManagement
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue = false;
 
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
-                if (disposing)
-                {
-                    if (ms != null)
-                    {
-                        ms.Dispose();
-                    }
-                }
+                if (disposing && ms != null) ms.Dispose();
                 disposedValue = true;
             }
         }

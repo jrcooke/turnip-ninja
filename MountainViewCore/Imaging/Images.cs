@@ -13,7 +13,7 @@ namespace MountainView.Imaging
         private Images() : base(
             "idata",
             "Images",
-            4,
+            3,
             5,
             Utils.ColorToDoubleArray,
             Utils.ColorFromDoubleArray,

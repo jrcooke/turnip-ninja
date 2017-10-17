@@ -94,24 +94,32 @@ namespace MountainView
 
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
+                // Use this angle to compute a heading.
                 Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
+                var endRLat = Utils.DeltaMetersLat(theta, config.R);
+                var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
+
                 double cosTheta = Math.Cos(theta.Radians);
                 double sinTheta = Math.Sin(theta.Radians);
                 for (int iR = 1; iR < numR; iR++)
                 {
+                    var mult = iR * config.DeltaR / config.R;
+                    ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                    ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                    ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
+
                     double r = iR * config.DeltaR;
                     var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
                     double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
                     var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
-                    chunkKeys.Add(StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel));
+                    var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
+                    chunkKeys.Add(chunkKey);
+                    ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
                 }
             }
 
-
             int counter = 0;
-
-            // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
             await Utils.ForEachAsync(chunkKeys, 5, async (chunkKey) =>
             {
                 await Task.Delay(0);
@@ -128,8 +136,6 @@ namespace MountainView
                     for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
                     {
                         Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
-
-                        // Use this angle to compute a heading.
                         var endRLat = Utils.DeltaMetersLat(theta, config.R);
                         var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
@@ -140,19 +146,16 @@ namespace MountainView
                             config.Lon.DecimalDegree, endRLon.DecimalDegree,
                             out double loX, out double hiX))
                         {
-                            int loR = Math.Max(1, (int)(loX * numR));
+                            int loR = Math.Max(1, (int)(loX * numR) + 1);
                             int hiR = Math.Min(numR, (int)(hiX * numR));
                             for (int iR = loR; iR < hiR; iR++)
                             {
-                                var mult = iR * config.DeltaR / config.R;
-                                var curLatDegree = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                                var curLonDegree = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                                if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data) &&
-                                    interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, out MyColor color))
+                                if (interpChunkH.TryGetDataAtPoint(
+                                    ret[iTheta - iThetaMin][iR].LatDegrees,
+                                    ret[iTheta - iThetaMin][iR].LonDegrees,
+                                    out float data))
                                 {
-                                    var cur = ret[iTheta - iThetaMin][iR];
-                                    cur.Color = color;
-                                    cur.Height = data;
+                                    ret[iTheta - iThetaMin][iR].Height = data;
                                 }
                             }
                         }
@@ -168,10 +171,6 @@ namespace MountainView
 
                 counter++;
                 Console.WriteLine(counter + " of " + chunkKeys.Count);
-                if (counter % 50 == 0)
-                {
-                    NewMethod(outputFolder, config, ret, counter);
-                }
             });
 
             NewMethod(outputFolder, config, ret, counter);
@@ -184,39 +183,49 @@ namespace MountainView
                 Directory.CreateDirectory(outputFolder);
             }
 
-            //            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmp" + counter + ".jpg"), a => Utils.GetColorForHeight(a.Height), OutputType.JPEG);
-            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmi" + counter + ".jpg"), a => a.Color, OutputType.JPEG);
-            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmf" + counter + ".bmp"), a => new MyColor(
-                (byte)(((a.Feature?.Id ?? short.MinValue) - short.MinValue) / 256 % 256),
-                (byte)(((a.Feature?.Id ?? short.MinValue) - short.MinValue) % 256),
-                (byte)(((a.Feature?.Id ?? short.MinValue) - short.MinValue) / 256 / 256 % 256)), OutputType.Bitmap);
+            var view = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
 
-            var xxx = CollapseToViewFromHere(
-                ret,
-                (p, dist) =>
+            Dictionary<long, NearestInterpolatingChunk<MyColor>> images = new Dictionary<long, NearestInterpolatingChunk<MyColor>>();
+            // Haze adds bluish overlay to colors. Say (195, 240, 247)
+            MyColor skyColor = new MyColor(195, 240, 247);
+            var xxx = view.Select(q => q.Select(p =>
                 {
-                    double clearWeight = 0.2 + 0.8 / (1.0 + dist * dist * 1.0e-8);
+                    if (p.ChunkKey == 0)
+                    {
+                        return skyColor;
+                    }
+
+                    if (!images.TryGetValue(p.ChunkKey, out NearestInterpolatingChunk<MyColor> image))
+                    {
+                        StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(p.ChunkKey);
+                        image = Images.Current.GetLazySimpleInterpolator(chunk);
+                        images[p.ChunkKey] = image;
+                    }
+
+                    image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees, out MyColor color);
+                    double clearWeight = 0.2 + 0.8 / (1.0 + p.Distance * p.Distance * 1.0e-8);
                     return new MyColor(
-                        (byte)(int)(p.Color.R * clearWeight + skyColor.R * (1 - clearWeight)),
-                        (byte)(int)(p.Color.G * clearWeight + skyColor.G * (1 - clearWeight)),
-                        (byte)(int)(p.Color.B * clearWeight + skyColor.B * (1 - clearWeight)));
-                },
-                skyColor,
-                config.DeltaR,
-                config.ElevationViewMin,
-                config.ElevationViewMax,
-                config.AngularResolution);
-            //            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx" + counter + ".png"), a => Utils.GetColorForHeight((float)a.Distance));
+                        (byte)(int)(color.R * clearWeight + skyColor.R * (1 - clearWeight)),
+                        (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
+                        (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
+                }).ToArray()).ToArray();
+
+            foreach (var x in images.Values)
+            {
+                x.Dispose();
+            }
+
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi" + counter + ".jpg"), a => a, OutputType.JPEG);
 
-            var xxx2 = CollapseToViewFromHere(
-                ret,
-                (p, dist) => p.Feature,
-                null,
-                config.DeltaR,
-                config.ElevationViewMin,
-                config.ElevationViewMax,
-                config.AngularResolution);
+            var xxx2 = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
+            Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf" + counter + ".bmp"), p =>
+            {
+                return p == null ? new MyColor(0, 0, 0) :
+                new MyColor(
+                    (byte)((p.Id - short.MinValue) / 256 % 256),
+                    (byte)((p.Id - short.MinValue) % 256),
+                    (byte)((p.Id - short.MinValue) / 256 / 256 % 256));
+            }, OutputType.Bitmap);
 
 
             /*
@@ -245,59 +254,39 @@ namespace MountainView
 
              */
 
-            Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf" + counter + ".bmp"), p =>
-            {
-                return p == null ? new MyColor(0, 0, 0) :
-                new MyColor(
-                    (byte)((p.Id - short.MinValue) / 256 % 256),
-                    (byte)((p.Id - short.MinValue) % 256),
-                    (byte)((p.Id - short.MinValue) / 256 / 256 % 256));
-            }, OutputType.Bitmap);
         }
 
         public struct ColorHeight
         {
-            public MyColor Color;
             public float Height;
-            public FeatureInfo Feature;
+            public double Distance;
+            public double LatDegrees;
+            public double LonDegrees;
+            internal long ChunkKey;
         }
 
-        // Haze adds bluish overlay to colors. Say (195, 240, 247)
-        private static readonly MyColor skyColor = new MyColor(195, 240, 247);
-
-        private static T[][] CollapseToViewFromHere<T>(
+        private static ColorHeight[][] CollapseToViewFromHere(
             ColorHeight[][] thetaRad,
-            Func<ColorHeight, double, T> colorGetter,
-            T defaultValue,
             double deltaR,
             Angle elevationViewMin, Angle elevationViewMax,
             Angle angularRes)
         {
-            T[][] ret = new T[thetaRad.Length][];
+            ColorHeight[][] ret = new ColorHeight[thetaRad.Length][];
             int numParts = (int)((elevationViewMax.Radians - elevationViewMin.Radians) / angularRes.Radians);
             for (int i = 0; i < ret.Length; i++)
             {
-                ret[i] = new T[numParts];
+                ret[i] = new ColorHeight[numParts];
                 float eyeHeight = 10;
                 float heightOffset = thetaRad[i][0].Height + eyeHeight;
 
                 int j = 0;
                 for (int r = 1; r < thetaRad[i].Length; r++)
                 {
-                    double dist = deltaR * r;
-                    T col = colorGetter(thetaRad[i][r], dist);
-
-                    double curTheta = Math.Atan2(thetaRad[i][r].Height - heightOffset, dist);
+                    double curTheta = Math.Atan2(thetaRad[i][r].Height - heightOffset, thetaRad[i][r].Distance);
                     while ((elevationViewMin.Radians + j * angularRes.Radians) < curTheta && j < numParts)
                     {
-                        ret[i][j++] = col;
+                        ret[i][j++] = thetaRad[i][r];
                     }
-                }
-
-                // Fill in the rest of the sky.
-                while (j < numParts)
-                {
-                    ret[i][j++] = defaultValue;
                 }
             }
 

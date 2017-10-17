@@ -87,14 +87,14 @@ namespace MountainView
                 //        a => a);
                 //}
 
-                var pixels3 = await Features.Current.GetData(template);
-                if (pixels3 != null)
-                {
-                    Utils.WriteImageFile(pixels3,
-                        Path.Combine(outputFolder, "AChunkF" + zoomLevel + ".jpg"),
-                        a => a,
-                        OutputType.JPEG);// new MyColor((byte)((a - short.MinValue) / 256), (byte)((a - short.MinValue) % 256), 0));
-                }
+                //var pixels3 = await Features.Current.GetData(template);
+                //if (pixels3 != null)
+                //{
+                //    Utils.WriteImageFile(pixels3,
+                //        Path.Combine(outputFolder, "AChunkF" + zoomLevel + ".jpg"),
+                //        a => a,
+                //        OutputType.JPEG);// new MyColor((byte)((a - short.MinValue) / 256), (byte)((a - short.MinValue) % 256), 0));
+                //}
             }
         }
     }
