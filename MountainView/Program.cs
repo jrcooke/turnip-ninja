@@ -116,6 +116,28 @@ namespace MountainView
                     var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
                     chunkKeys.Add(chunkKey);
                     ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
+
+                    StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+                    using (var hChunk = Heights.Current.GetLazySimpleInterpolator(chunk))
+                    {
+                        if (hChunk.TryGetIntersectLine(
+                            config.Lat.DecimalDegree, endRLat.DecimalDegree,
+                            config.Lon.DecimalDegree, endRLon.DecimalDegree,
+                            out double loX, out double hiX))
+                        {
+                            int hiR = Math.Min(numR, (int)(hiX * numR));
+                            iR++;
+                            while (iR < hiR - 1)
+                            {
+                                iR++;
+                                mult = iR * config.DeltaR / config.R;
+                                ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                                ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                                ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
+                                ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
+                            }
+                        }
+                    }
                 }
             }
 
