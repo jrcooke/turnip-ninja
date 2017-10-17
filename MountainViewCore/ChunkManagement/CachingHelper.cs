@@ -130,6 +130,29 @@ namespace MountainView
             return ret;
         }
 
+        internal NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
+        {
+
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            {
+                filename = GetBaseFileName(template);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
+            }
+
+            string fullFileName = GetFullFileName(template, filename);
+            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
+            return new NearestInterpolatingChunk<T>(
+                template.LatLo.DecimalDegree, template.LonLo.DecimalDegree,
+                template.LatHi.DecimalDegree, template.LonHi.DecimalDegree,
+                template.LatSteps, template.LonSteps,
+                cachedFileContainer, fullFileName,
+                (ms, i, j) =>
+                {
+                    ms.Seek(8 + pixelDataSize * (i * template.LatSteps + j), SeekOrigin.Begin);
+                    return ReadPixel(ms, buffer);
+                });
+        }
+
         private async Task<Tuple<string, ChunkHolder<T>>> GetComputedChunk(StandardChunkMetadata template)
         {
             if (!filenameCache.TryGetValue(template.Key, out string filename))

@@ -84,6 +84,14 @@ namespace MountainView
             int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
             int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
             HashSet<long> chunkKeys = new HashSet<long>();
+
+
+            ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
+            for (int i = 0; i < ret.Length; i++)
+            {
+                ret[i] = new ColorHeight[numR];
+            }
+
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
                 Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
@@ -100,25 +108,21 @@ namespace MountainView
                 }
             }
 
-            ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
-            for (int i = 0; i < ret.Length; i++)
-            {
-                ret[i] = new ColorHeight[numR];
-            }
 
             int counter = 0;
 
             // TODO: Add a function to partition these loose chunks into a few mega chunks to render in parallel
             await Utils.ForEachAsync(chunkKeys, 5, async (chunkKey) =>
             {
+                await Task.Delay(0);
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
                 NearestInterpolatingChunk<float> interpChunkH = null;
                 NearestInterpolatingChunk<MyColor> interpChunkI = null;
                 try
                 {
-                    interpChunkH = (await Heights.Current.GetData(chunk)).GetSimpleInterpolator(InterpolatonType.Nearest);
-                    interpChunkI = (await Images.Current.GetData(chunk)).GetSimpleInterpolator(InterpolatonType.Nearest);
+                    interpChunkH = Heights.Current.GetLazySimpleInterpolator(chunk);
+                    interpChunkI = Images.Current.GetLazySimpleInterpolator(chunk);
 
                     // Now do that again, but do the rendering per chunk.
                     for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
@@ -130,9 +134,6 @@ namespace MountainView
                         var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
                         // Get intersection between the chunk and the line we are going along.
-
-                        //                        int numR = (int)(config.R / config.DeltaR);
-
                         // See which range of R intersects with chunk.
                         if (interpChunkH.TryGetIntersectLine(
                             config.Lat.DecimalDegree, endRLat.DecimalDegree,
@@ -149,12 +150,16 @@ namespace MountainView
                                 if (interpChunkH.TryGetDataAtPoint(curLatDegree, curLonDegree, out float data) &&
                                     interpChunkI.TryGetDataAtPoint(curLatDegree, curLonDegree, out MyColor color))
                                 {
-                                    var feature = UsgsRawFeatures.GetData(curLatDegree, curLonDegree);
-                                    ret[iTheta - iThetaMin][iR] = new ColorHeight { Color = color, Height = data, Feature = feature };
+                                    var cur = ret[iTheta - iThetaMin][iR];
+                                    cur.Color = color;
+                                    cur.Height = data;
                                 }
                             }
                         }
                     }
+
+                    interpChunkH.Dispose();
+                    interpChunkI.Dispose();
                 }
                 catch (Exception ex)
                 {
@@ -179,7 +184,7 @@ namespace MountainView
                 Directory.CreateDirectory(outputFolder);
             }
 
-            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmp" + counter + ".jpg"), a => Utils.GetColorForHeight(a.Height), OutputType.JPEG);
+            //            Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmp" + counter + ".jpg"), a => Utils.GetColorForHeight(a.Height), OutputType.JPEG);
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmi" + counter + ".jpg"), a => a.Color, OutputType.JPEG);
             Utils.WriteImageFile(ret, Path.Combine(outputFolder, "tmf" + counter + ".bmp"), a => new MyColor(
                 (byte)(((a.Feature?.Id ?? short.MinValue) - short.MinValue) / 256 % 256),

@@ -1,6 +1,9 @@
-﻿using MountainViewDesktop.Interpolation;
+﻿using MountainView.Base;
+using MountainViewDesktop.Interpolation;
 using System;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainView.ChunkManagement
 {
@@ -66,32 +69,39 @@ namespace MountainView.ChunkManagement
         }
     }
 
-    public class NearestInterpolatingChunk<T>
+    public class NearestInterpolatingChunk<T> : IDisposable
     {
         private double latLo;
         private double lonLo;
         private double latHi;
         private double lonHi;
-        private T[][] values;
         private int numLat;
         private int numLon;
         private double scaleLat;
         private double scaleLon;
+        private string container;
+        private string fullFileName;
+        private Func<MemoryStream, int, int, T> readPixel;
+        private MemoryStream ms;
 
         public NearestInterpolatingChunk(
             double latLo, double lonLo,
             double latHi, double lonHi,
-            T[][] values)
+            int numLat, int numLon,
+            string container, string fullFileName,
+            Func<MemoryStream, int, int, T> readPixel)
         {
             this.latLo = latLo;
             this.lonLo = lonLo;
             this.latHi = latHi;
             this.lonHi = lonHi;
-            this.values = values;
-            this.numLat = values.Length;
-            this.numLon = values[0].Length;
+            this.numLat = numLat;
+            this.numLon = numLon;
             this.scaleLat = (numLat - 1.0) / (latHi - latLo);
             this.scaleLon = (numLon - 1.0) / (lonHi - lonLo);
+            this.container = container;
+            this.fullFileName = fullFileName;
+            this.readPixel = readPixel;
         }
 
         public bool HasDataAtLat(double latDegree)
@@ -106,11 +116,18 @@ namespace MountainView.ChunkManagement
 
         public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
         {
+            if (ms == null)
+            {
+                var task = BlobHelper.TryGetStream(container, fullFileName);
+                Task.WaitAll(task);
+                ms = task.Result;
+            }
+
             if (HasDataAtLat(latDegree) && HasDataAtLon(lonDegree))
             {
                 int i = (int)Math.Round(scaleLat * (latDegree - latLo));
                 int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
-                data = values[i][j];
+                data = this.readPixel(ms, i, j);
                 return true;
             }
 
@@ -155,5 +172,29 @@ namespace MountainView.ChunkManagement
             if (y < 0.0 || y > 1.0) return null;
             return x;
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (ms != null)
+                    {
+                        ms.Dispose();
+                    }
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+        #endregion
     }
 }
