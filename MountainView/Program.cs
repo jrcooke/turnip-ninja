@@ -208,36 +208,40 @@ namespace MountainView
             var view = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
 
             Dictionary<long, NearestInterpolatingChunk<MyColor>> images = new Dictionary<long, NearestInterpolatingChunk<MyColor>>();
-            // Haze adds bluish overlay to colors. Say (195, 240, 247)
-            MyColor skyColor = new MyColor(195, 240, 247);
-            var xxx = view.Select(q => q.Select(p =>
-                {
-                    if (p.ChunkKey == 0)
-                    {
-                        return skyColor;
-                    }
-
-                    if (!images.TryGetValue(p.ChunkKey, out NearestInterpolatingChunk<MyColor> image))
-                    {
-                        StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(p.ChunkKey);
-                        image = Images.Current.GetLazySimpleInterpolator(chunk);
-                        images[p.ChunkKey] = image;
-                    }
-
-                    image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees, out MyColor color);
-                    double clearWeight = 0.2 + 0.8 / (1.0 + p.Distance * p.Distance * 1.0e-8);
-                    return new MyColor(
-                        (byte)(int)(color.R * clearWeight + skyColor.R * (1 - clearWeight)),
-                        (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
-                        (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
-                }).ToArray()).ToArray();
-
-            foreach (var x in images.Values)
+            try
             {
-                x.Dispose();
-            }
+                // Haze adds bluish overlay to colors. Say (195, 240, 247)
+                MyColor skyColor = new MyColor(195, 240, 247);
+                var xxx = view.Select(q => q.Select(p =>
+                    {
+                        if (p.ChunkKey == 0)
+                        {
+                            return skyColor;
+                        }
 
-            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi" + counter + ".jpg"), a => a, OutputType.JPEG);
+                        if (!images.TryGetValue(p.ChunkKey, out NearestInterpolatingChunk<MyColor> image))
+                        {
+                            StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(p.ChunkKey);
+                            image = Images.Current.GetLazySimpleInterpolator(chunk);
+                            images[p.ChunkKey] = image;
+                        }
+
+                        image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees, out MyColor color);
+                        double clearWeight = 0.2 + 0.8 / (1.0 + p.Distance * p.Distance * 1.0e-8);
+                        return new MyColor(
+                            (byte)(int)(color.R * clearWeight + skyColor.R * (1 - clearWeight)),
+                            (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
+                            (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
+                    }).ToArray()).ToArray();
+                Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi" + counter + ".jpg"), a => a, OutputType.JPEG);
+            }
+            finally
+            {
+                foreach (var x in images.Values)
+                {
+                    x.Dispose();
+                }
+            }
 
             var xxx2 = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
             Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf" + counter + ".bmp"), p =>
