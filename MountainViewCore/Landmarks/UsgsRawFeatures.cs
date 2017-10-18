@@ -13,6 +13,11 @@ namespace MountainViewCore.Landmarks
         public string Name { get; set; }
         public Angle Lat { get; set; }
         public Angle Lon { get; set; }
+
+        public override string ToString()
+        {
+            return Id + " (" + Name + "), " + FeatureClass + "(" + Lat.ToLatString() + "," + Lon.ToLonString() + ")";
+        }
     }
 
     public enum FeatureClass
@@ -97,7 +102,7 @@ namespace MountainViewCore.Landmarks
                 .Select(p => new FeatureInfo
                 {
                     Id = int.Parse(p[nameToIndex["FEATURE_ID"]]),
-                    FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ","")),
+                    FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ", "")),
                     Name = p[nameToIndex["MAP_NAME"]],
                     Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
                     Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
