@@ -132,7 +132,6 @@ namespace MountainView
 
         public NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
         {
-
             if (!filenameCache.TryGetValue(template.Key, out string filename))
             {
                 filename = GetBaseFileName(template);
@@ -140,6 +139,14 @@ namespace MountainView
             }
 
             string fullFileName = GetFullFileName(template, filename);
+            while (
+                !BlobHelper.BlobExists(cachedFileContainer, fullFileName).Result &&
+                template.ZoomLevel > SourceDataZoom)
+            {
+                template = template.GetParentChunk();
+                return GetLazySimpleInterpolator(template);
+            }
+
             byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
             return new NearestInterpolatingChunk<T>(
                 template.LatLo.DecimalDegree, template.LonLo.DecimalDegree,

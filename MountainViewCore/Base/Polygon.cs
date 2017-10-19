@@ -40,18 +40,19 @@ namespace MountainViewCore.Base
             int height = cache[0].Length;
             int miny = points.Min(p => p.Y);
             int minx = points.Where(p => p.Y == miny).Min(p => p.X);
-            var startPoint = new Point(minx, miny);
+            var curPoint = new Point(minx, miny);
             // At the lower-left.
 
-            List<Point> border = new List<Point>() { startPoint };
             if (this.Count == 1)
             {
-                this.Border = border.ToArray();
+                this.Border = new Point[] { curPoint };
                 return;
             }
 
             int theta = 0;
-            Point curPoint = startPoint;
+            int startTheta = 0;
+            Point? startPoint = null;
+            List<Point> border = new List<Point>();
             while (true)
             {
                 Point testPoint = new Point(curPoint.X + deltaX[theta], curPoint.Y + deltaY[theta]);
@@ -59,7 +60,17 @@ namespace MountainViewCore.Base
                     testPoint.Y >= 0 && testPoint.Y < height &&
                     cache[testPoint.X][testPoint.Y].Value == Value)
                 {
-                    if (testPoint.X == startPoint.X && testPoint.Y == startPoint.Y && theta == 3) break;
+                    if (!startPoint.HasValue)
+                    {
+                        startPoint = testPoint;
+                        startTheta = theta;
+                        System.Console.WriteLine(startTheta);
+                    }
+                    else if (testPoint.X == startPoint.Value.X && testPoint.Y == startPoint.Value.Y)
+                    {
+                        if (theta == startTheta) break;
+                    }
+
                     theta = (theta + 5) % 8;
                     curPoint = testPoint;
                     border.Add(curPoint);

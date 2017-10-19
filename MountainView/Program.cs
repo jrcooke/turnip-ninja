@@ -118,31 +118,28 @@ namespace MountainView
                     ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
 
                     StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                    using (var hChunk = Heights.Current.GetLazySimpleInterpolator(chunk))
+                    if (chunk.TryGetIntersectLine(
+                        config.Lat.DecimalDegree, endRLat.DecimalDegree,
+                        config.Lon.DecimalDegree, endRLon.DecimalDegree,
+                        out double loX, out double hiX))
                     {
-                        if (hChunk.TryGetIntersectLine(
-                            config.Lat.DecimalDegree, endRLat.DecimalDegree,
-                            config.Lon.DecimalDegree, endRLon.DecimalDegree,
-                            out double loX, out double hiX))
+                        int hiR = Math.Min(numR, (int)(hiX * numR));
+                        iR++;
+                        while (iR < hiR - 1)
                         {
-                            int hiR = Math.Min(numR, (int)(hiX * numR));
                             iR++;
-                            while (iR < hiR - 1)
-                            {
-                                iR++;
-                                mult = iR * config.DeltaR / config.R;
-                                ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                                ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                                ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
-                                ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
-                            }
+                            mult = iR * config.DeltaR / config.R;
+                            ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                            ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                            ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
+                            ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
                         }
                     }
                 }
             }
 
             int counter = 0;
-            await Utils.ForEachAsync(chunkKeys, 5, async (chunkKey) =>
+            await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
             {
                 await Task.Delay(0);
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
@@ -161,7 +158,7 @@ namespace MountainView
 
                         // Get intersection between the chunk and the line we are going along.
                         // See which range of R intersects with chunk.
-                        if (interpChunkH.TryGetIntersectLine(
+                        if (chunk.TryGetIntersectLine(
                             config.Lat.DecimalDegree, endRLat.DecimalDegree,
                             config.Lon.DecimalDegree, endRLon.DecimalDegree,
                             out double loX, out double hiX))

@@ -21,7 +21,7 @@ namespace MountainView.Base
         public static Angle FromDecimalDegrees(double v)
         {
             double fourths = v * 60 * 60 * 60 * 60;
-            return FromFourths((int)Math.Round(fourths));
+            return FromFourths((long)Math.Round(fourths));
         }
 
         public static Angle FromMinutes(long totalDegrees)

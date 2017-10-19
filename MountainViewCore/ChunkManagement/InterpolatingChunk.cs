@@ -83,6 +83,7 @@ namespace MountainView.ChunkManagement
         private string fullFileName;
         private Func<MemoryStream, int, int, T> readPixel;
         private MemoryStream ms;
+        private bool triedToGetMS;
 
         public NearestInterpolatingChunk(
             double latLo, double lonLo,
@@ -116,14 +117,15 @@ namespace MountainView.ChunkManagement
 
         public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
         {
-            if (ms == null)
+            if (!triedToGetMS)
             {
                 var task = BlobHelper.TryGetStream(container, fullFileName);
                 Task.WaitAll(task);
                 ms = task.Result;
+                triedToGetMS = true;
             }
 
-            if (!HasDataAtLat(latDegree) || !HasDataAtLon(lonDegree))
+            if (ms == null || !HasDataAtLat(latDegree) || !HasDataAtLon(lonDegree))
             {
                 data = default(T);
                 return false;
@@ -133,44 +135,6 @@ namespace MountainView.ChunkManagement
             int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
             data = readPixel(ms, i, j);
             return true;
-        }
-
-        public bool TryGetIntersectLine(
-            double latDegree, double latDegreeDelta,
-            double lonDegree, double lonDegreeDelta,
-            out double loX, out double hiX)
-        {
-            double?[] candidates = new double?[] {
-                LineIntersectsLineX(latLo, lonLo, latHi - latLo, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
-                LineIntersectsLineX(latLo, lonHi, latHi - latLo, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
-                LineIntersectsLineX(lonLo, latLo, lonHi - lonLo, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta),
-                LineIntersectsLineX(lonLo, latHi, lonHi - lonLo, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta)
-            };
-
-            var values = candidates.Where(p => p.HasValue).Select(p => p.Value).OrderBy(p => p).ToArray();
-            if (values.Length < 2)
-            {
-                loX = 0.0;
-                hiX = 1.0;
-                return false;
-            }
-            else
-            {
-                loX = values[0];
-                hiX = values[values.Length - 1];
-                return true;
-            }
-        }
-
-        private static double? LineIntersectsLineX(
-            double li, double lj, double deltaLi, /* j chosen so deltaLj == 0 */
-            double pi, double pj, double deltaPi, double deltaPj)
-        {
-            if (deltaPj == 0.0) return null;
-            double x = (lj - pj) / deltaPj;
-            double y = (deltaPi * x - (li - pi)) / deltaLi;
-            if (y < 0.0 || y > 1.0) return null;
-            return x;
         }
 
         #region IDisposable Support

@@ -1,5 +1,6 @@
 ﻿using MountainView.Base;
 using System;
+using System.Linq;
 
 namespace MountainView.ChunkManagement
 {
@@ -66,6 +67,44 @@ namespace MountainView.ChunkManagement
                 (this.LatHi.DecimalDegree < that.LatLo.DecimalDegree) ||
                 (this.LonLo.DecimalDegree > that.LonHi.DecimalDegree) ||
                 (this.LonHi.DecimalDegree < that.LonLo.DecimalDegree);
+        }
+
+        public bool TryGetIntersectLine(
+            double latDegree, double latDegreeDelta,
+            double lonDegree, double lonDegreeDelta,
+            out double loX, out double hiX)
+        {
+            double?[] candidates = new double?[] {
+                LineIntersectsLineX(LatLo.DecimalDegree, LonLo.DecimalDegree, LatHi.DecimalDegree - LatLo.DecimalDegree, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
+                LineIntersectsLineX(LatLo.DecimalDegree, LonHi.DecimalDegree, LatHi.DecimalDegree - LatLo.DecimalDegree, latDegree, lonDegree, latDegreeDelta, lonDegreeDelta),
+                LineIntersectsLineX(LonLo.DecimalDegree, LatLo.DecimalDegree, LonHi.DecimalDegree - LonLo.DecimalDegree, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta),
+                LineIntersectsLineX(LonLo.DecimalDegree, LatHi.DecimalDegree, LonHi.DecimalDegree - LonLo.DecimalDegree, lonDegree, latDegree, lonDegreeDelta, latDegreeDelta),
+            };
+
+            var values = candidates.Where(p => p.HasValue).Select(p => p.Value).OrderBy(p => p).ToArray();
+            if (values.Length < 2)
+            {
+                loX = 0.0;
+                hiX = 1.0;
+                return false;
+            }
+            else
+            {
+                loX = values[0];
+                hiX = values[values.Length - 1];
+                return true;
+            }
+        }
+
+        private static double? LineIntersectsLineX(
+            double li, double lj, double deltaLi, /* j chosen so deltaLj == 0 */
+            double pi, double pj, double deltaPi, double deltaPj)
+        {
+            if (deltaPj == 0.0) return null;
+            double x = (lj - pj) / deltaPj;
+            double y = (deltaPi * x - (li - pi)) / deltaLi;
+            if (y < 0.0 || y > 1.0) return null;
+            return x;
         }
 
         public override string ToString()
