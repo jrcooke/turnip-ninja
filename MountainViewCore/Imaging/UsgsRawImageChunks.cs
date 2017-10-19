@@ -144,8 +144,6 @@ namespace MountainView.Imaging
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
 
-            //            string rootMapFolder = @"C:\Users\jrcoo\Desktop\Map";
-            //            DirectoryInfo root = new DirectoryInfo(rootMapFolder);
             foreach (var di in await BlobHelper.GetDirectories(cachedFileContainer, "NAIP"))
             {
                 var files = await BlobHelper.GetFiles(cachedFileContainer, di);

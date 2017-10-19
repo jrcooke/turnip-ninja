@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainViewCore.Landmarks
 {
@@ -90,9 +91,13 @@ namespace MountainViewCore.Landmarks
     }
     public static class UsgsRawFeatures
     {
+        private const string cachedFileContainer = "sources";
+
         private static Lazy<KDNode<FeatureInfo>> featureInfos = new Lazy<KDNode<FeatureInfo>>(() =>
         {
-            var metadataLines = File.ReadAllLines(@"C:\Users\jrcoo\Downloads\WA_Features_20170801 (1)\WA_Features_20170801.txt");
+            var task =  BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt");
+            Task.WaitAll(task);
+            var metadataLines = task.Result;
             string[] header = metadataLines.First().Split('|');
             string[] header2 = metadataLines.Skip(1).First().Split('|');
             var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
@@ -103,7 +108,6 @@ namespace MountainViewCore.Landmarks
                 {
                     Id = int.Parse(p[nameToIndex["FEATURE_ID"]]),
                     FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ", "")),
-                   // Name = p[nameToIndex["MAP_NAME"]],
                     Name = p[nameToIndex["FEATURE_NAME"]],
                     Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
                     Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
