@@ -103,7 +103,8 @@ namespace MountainViewCore.Landmarks
                 {
                     Id = int.Parse(p[nameToIndex["FEATURE_ID"]]),
                     FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ", "")),
-                    Name = p[nameToIndex["MAP_NAME"]],
+                   // Name = p[nameToIndex["MAP_NAME"]],
+                    Name = p[nameToIndex["FEATURE_NAME"]],
                     Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
                     Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
                 })

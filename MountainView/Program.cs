@@ -195,10 +195,10 @@ namespace MountainView
                 Console.WriteLine(counter + " of " + chunkKeys.Count);
             });
 
-            NewMethod(outputFolder, config, ret, counter);
+            ProcessOutput(outputFolder, config, ret);
         }
 
-        private static void NewMethod(string outputFolder, Config config, ColorHeight[][] ret, int counter)
+        private static void ProcessOutput(string outputFolder, Config config, ColorHeight[][] ret)
         {
             if (!Directory.Exists(outputFolder))
             {
@@ -210,7 +210,7 @@ namespace MountainView
             Dictionary<long, NearestInterpolatingChunk<MyColor>> images = new Dictionary<long, NearestInterpolatingChunk<MyColor>>();
             try
             {
-                // Haze adds bluish overlay to colors. Say (195, 240, 247)
+                // Haze adds bluish overlay to colors
                 MyColor skyColor = new MyColor(195, 240, 247);
                 var xxx = view.Select(q => q.Select(p =>
                     {
@@ -233,7 +233,7 @@ namespace MountainView
                             (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
                             (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
                     }).ToArray()).ToArray();
-                Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi" + counter + ".jpg"), a => a, OutputType.JPEG);
+                Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi.jpg"), a => a, OutputType.JPEG);
             }
             finally
             {
@@ -243,216 +243,46 @@ namespace MountainView
                 }
             }
 
-            var xxx2 = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
-            var items = xxx2.Where(p => p != null).Distinct().ToArray();
-            var idMatrix = xxx2.Select(q => q.Select(p => p?.Id ?? 0).ToArray()).ToArray();
+            var features = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
+            var polys = GetPolygons(features);
+            var polymap = polys
+                .Where(p => p.Value != null)
+                .Select(p => new
+                {
+                    id = p.Value.Id,
+                    alt = p.Value.Name,
+                    coords = string.Join(',', p.Border.Select(q => q.X + "," + (view[0].Length - 1 - q.Y))),
+                })
+                .Select(p => "<area href='" + p.alt + "' title='" + p.alt + "' alt='" + p.alt + "' shape='poly' coords='" + p.coords + "' >")
+                .ToArray();
+            var maptxt = @"
+<HTML>
+<HEAD>
+<TITLE>title of page</TITLE>
+</HEAD>
+<BODY>
+<div id='image_map'>
+<map name='map_example'>
+" + string.Join("\r\n", polymap) + @"
+</map>
+<img
+    src='xxi.jpg'
+    usemap='#map_example' >
+</div>
+</BODY>
+</HTML>
+";
 
-            var cells = GetPolygons<FeatureInfo>(xxx2);
+            File.WriteAllText(Path.Combine(outputFolder, "text.html"), maptxt);
 
-            Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf" + counter + ".bmp"), p =>
-            {
-                return p == null ? new MyColor(0, 0, 0) :
-                new MyColor(
-                    (byte)((p.Id - short.MinValue) / 256 % 256),
-                    (byte)((p.Id - short.MinValue) % 256),
-                    (byte)((p.Id - short.MinValue) / 256 / 256 % 256));
-            }, OutputType.Bitmap);
-
-
-            /*
-    <div id="image_map">
-        <map name="map_example">
-             <area
-                 href="https://facebook.com"
-                 alt="Facebook"
-                 target="_blank"
-                 shape=poly
-                 coords="30,100, 140,50, 290,220, 180,280">
-             <area
-                href="https://en.wikipedia.org/wiki/Social_media"
-                target="_blank"
-                alt="Wikipedia Social Media Article"
-                shape=poly
-                coords="190,75, 200,60, 495,60, 495,165, 275,165">
-        </map>
-         <img
-            src="../../wp-content/uploads/image_map_example_shapes.png"
-            alt="image map example"
-            width=500
-            height=332
-            usemap="#map_example">
-    </div>
-
-             */
-
-        }
-
-        private struct Point
-        {
-            public int X, Y;
-            public Point(int x, int y)
-            {
-                X = x;
-                Y = y;
-            }
-
-            public override string ToString()
-            {
-                return "(" + X + "," + Y + ")";
-            }
-        }
-
-
-        private class Polygon<T> where T : class
-        {
-            public T Value;
-            private HashSet<Point> points;
-
-            public int Count { get { return points.Count; } }
-
-            public Polygon(T value)
-            {
-                Value = value;
-                points = new HashSet<Point>();
-            }
-
-            public void Add(int x, int y)
-            {
-                points.Add(new Point(x, y));
-            }
-
-            public override string ToString()
-            {
-                return (Value?.ToString() ?? "<null>") + " has " + points.Count +
-                    ", min (x=" + points.Min(p => p.X) + ",y=" + points.Min(p => p.Y) + ")" +
-                    ", max (x=" + points.Max(p => p.X) + ",y=" + points.Max(p => p.Y) + ")";
-            }
-
-            internal bool ContainsPoint(int i, int j)
-            {
-                return points.Contains(new Point(i, j));
-            }
-
-            //// Moore contour tracing
-            //internal IEnumerable<Point> GetBoundary()
+            //Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf.bmp"), p =>
             //{
-            //    var miny = points.Min(p => p.Y);
-            //    var minx = points.Where(p => p.Y == miny).Min(p => p.X);
-            //    var startingPoint = new Point(minx, miny);
-            //    // At the lower-left.
-            //    // Start tracing
-
-            //    HashSet<Point> found = new HashSet<Point>();
-            //    List<Point> list = null;
-            //    List<List<Point>> lists = new List<List<Point>>();
-            //    bool inside = false;
-
-            //    // Defines the neighborhood offset position from current position and the neighborhood
-            //    // position we want to check next if we find a new border at checkLocationNr.
-            //    int width = size.Width;
-            //    Tuple<Func<Point, Point>, int>[] neighborhood = new Tuple<Func<Point, Point>, int>[]
-            //    {
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X-1,point.Y), 7),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X-1,point.Y-1), 7),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X,point.Y-1), 1),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X+1,point.Y-1), 1),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X+1,point.Y), 3),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X+1,point.Y+1), 3),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X,point.Y+1), 5),
-            //        new Tuple<Func<Point, Point>, int>(point => new Point(point.X-1,point.Y+1), 5)
-            //    };
-
-            //    for (int y = 0; y < size.Height; ++y)
-            //    {
-            //        for (int x = 0; x < size.Width; ++x)
-            //        {
-            //            Point point = new Point(x, y);
-            //            // Scan for non-transparent pixel
-            //            if (found.Contains(point) && !inside)
-            //            {
-            //                // Entering an already discovered border
-            //                inside = true;
-            //                continue;
-            //            }
-            //            bool isTransparent = pixels.isTransparent(point);
-            //            if (!isTransparent && inside)
-            //            {
-            //                // Already discovered border point
-            //                continue;
-            //            }
-            //            if (isTransparent && inside)
-            //            {
-            //                // Leaving a border
-            //                inside = false;
-            //                continue;
-            //            }
-            //            if (!isTransparent && !inside)
-            //            {
-            //                lists.Add(list = new List<Point>());
-
-            //                // Undiscovered border point
-            //                found.Add(point); list.Add(point);   // Mark the start pixel
-            //                int checkLocationNr = 1;  // The neighbor number of the location we want to check for a new border point
-            //                Point startPos = point;      // Set start position
-            //                int counter = 0;       // Counter is used for the jacobi stop criterion
-            //                int counter2 = 0;       // Counter2 is used to determine if the point we have discovered is one single point
-
-            //                // Trace around the neighborhood
-            //                while (true)
-            //                {
-            //                    // The corresponding absolute array address of checkLocationNr
-            //                    Point checkPosition = neighborhood[checkLocationNr - 1].Item1(point);
-            //                    // Variable that holds the neighborhood position we want to check if we find a new border at checkLocationNr
-            //                    int newCheckLocationNr = neighborhood[checkLocationNr - 1].Item2;
-
-            //                    // Beware that the point might be outside the bitmap.
-            //                    // The isTransparent method contains the safety check.
-            //                    if (!pixels.isTransparent(checkPosition))
-            //                    {
-            //                        // Next border point found
-            //                        if (checkPosition == startPos)
-            //                        {
-            //                            counter++;
-
-            //                            // Stopping criterion (jacob)
-            //                            if (newCheckLocationNr == 1 || counter >= 3)
-            //                            {
-            //                                // Close loop
-            //                                inside = true; // Since we are starting the search at were we first started we must set inside to true
-            //                                break;
-            //                            }
-            //                        }
-
-            //                        checkLocationNr = newCheckLocationNr; // Update which neighborhood position we should check next
-            //                        point = checkPosition;
-            //                        counter2 = 0;             // Reset the counter that keeps track of how many neighbors we have visited
-            //                        found.Add(point); list.Add(point); // Set the border pixel
-            //                    }
-            //                    else
-            //                    {
-            //                        // Rotate clockwise in the neighborhood
-            //                        checkLocationNr = 1 + (checkLocationNr % 8);
-            //                        if (counter2 > 8)
-            //                        {
-            //                            // If counter2 is above 8 we have traced around the neighborhood and
-            //                            // therefor the border is a single black pixel and we can exit
-            //                            counter2 = 0;
-            //                            list = null;
-            //                            break;
-            //                        }
-            //                        else
-            //                        {
-            //                            counter2++;
-            //                        }
-            //                    }
-            //                }
-
-            //            }
-            //        }
-            //    }
-            //    return lists;
-            //}
-
+            //    return p == null ? new MyColor(0, 0, 0) :
+            //    new MyColor(
+            //        (byte)((p.Id - short.MinValue) / 256 % 256),
+            //        (byte)((p.Id - short.MinValue) % 256),
+            //        (byte)((p.Id - short.MinValue) / 256 / 256 % 256));
+            //}, OutputType.Bitmap);
         }
 
         private static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : FeatureInfo // class
@@ -476,7 +306,7 @@ namespace MountainView
                     {
                         // start a new flood fill
                         var cur = new Polygon<T>(values[i][j]);
-                        FloodFill(cur, values, cache, i, j);
+                        cur.FloodFill(values, cache, i, j);
 
                         if (cur.Count < minSize && j > 0)
                         {
@@ -502,46 +332,32 @@ namespace MountainView
 
             foreach (var poly in ret)
             {
-//                var boundary = poly.GetBoundary();
+                poly.CacheBoundary(cache);
             }
-
-            Utils.WriteImageFile(width, height, Path.Combine(@"C:\Users\jrcoo\Desktop\Output", "xxfnew.bmp"), (i, j) =>
-            {
-                var x = cache[i][j];
-                return x.Value == null ? new MyColor(0, 0, 0) :
-                 new MyColor(
-                     (byte)((x.Value.Id - short.MinValue) / 256 % 256),
-                     (byte)((x.Value.Id - short.MinValue) % 256),
-                     (byte)((x.Value.Id - short.MinValue) / 256 / 256 % 256));
-            }, OutputType.Bitmap);
-
-
-
-
-            // Now have cluster.
 
             return ret.ToArray();
-        }
 
-        private static void FloodFill<T>(Polygon<T> cur, T[][] values, Polygon<T>[][] cache, int i, int j) where T : class
-        {
-            Queue<Point> queue = new Queue<Point>();
-            queue.Enqueue(new Point(i, j));
+            //            int counter = 0;
+            //            foreach (var poly in ret)
+            //            {
+            //                var boundary = poly.GetBoundary(cache, true);
+            ////                var hs = new HashSet<Point>(boundary);
+            //                //Utils.WriteImageFile(width, height, Path.Combine(@"C:\Users\jrcoo\Desktop\Output", "xxfnew" + counter + ".bmp"),
+            //                //    (i, j) => (!hs.Contains(new Point(i, j))) ? new MyColor(0, 0, 0) : new MyColor(255, 255, 255), OutputType.Bitmap);
+            //                //counter++;
+            //            }
 
-            while (queue.Count > 0)
-            {
-                var pt = queue.Dequeue();
-                if (pt.X < 0 || pt.Y < 0 || pt.X >= cache.Length || pt.Y >= cache[0].Length) continue;
-                if (cache[pt.X][pt.Y] != null) continue;
-                if (values[pt.X][pt.Y] != cur.Value) continue;
-                cache[pt.X][pt.Y] = cur;
-                cur.Add(pt.X, pt.Y);
+            //Utils.WriteImageFile(width, height, Path.Combine(@"C:\Users\jrcoo\Desktop\Output", "xxfnew.bmp"), (i, j) =>
+            //{
+            //    var x = cache[i][j];
+            //    return x.Value == null ? new MyColor(0, 0, 0) :
+            //     new MyColor(
+            //         (byte)((x.Value.Id - short.MinValue) / 256 % 256),
+            //         (byte)((x.Value.Id - short.MinValue) % 256),
+            //         (byte)((x.Value.Id - short.MinValue) / 256 / 256 % 256));
+            //}, OutputType.Bitmap);
 
-                queue.Enqueue(new Point(pt.X + 1, pt.Y));
-                queue.Enqueue(new Point(pt.X - 1, pt.Y));
-                queue.Enqueue(new Point(pt.X, pt.Y + 1));
-                queue.Enqueue(new Point(pt.X, pt.Y - 1));
-            }
+
         }
 
         public struct ColorHeight
@@ -581,4 +397,134 @@ namespace MountainView
             return ret;
         }
     }
+
+
+    public class Polygon<T> where T : class
+    {
+        public T Value;
+        public Point[] Border;
+        private HashSet<Point> points;
+
+        public int Count { get { return points.Count; } }
+
+        public Polygon(T value)
+        {
+            Value = value;
+            points = new HashSet<Point>();
+        }
+
+        public void Add(int x, int y)
+        {
+            points.Add(new Point(x, y));
+        }
+
+        public override string ToString()
+        {
+            return (Value?.ToString() ?? "<null>") + " has " + points.Count +
+                ", min (x=" + points.Min(p => p.X) + ",y=" + points.Min(p => p.Y) + ")" +
+                ", max (x=" + points.Max(p => p.X) + ",y=" + points.Max(p => p.Y) + ")";
+        }
+
+        private static readonly int[] deltaX = new int[] { +1, +0, -1, -1, -1, +0, +1, +1 };
+        private static readonly int[] deltaY = new int[] { -1, -1, -1, +0, +1, +1, +1, +0 };
+
+        // Moore contour tracing
+        internal void CacheBoundary(Polygon<T>[][] cache)
+        {
+            int width = cache.Length;
+            int height = cache[0].Length;
+            int miny = points.Min(p => p.Y);
+            int minx = points.Where(p => p.Y == miny).Min(p => p.X);
+            var startPoint = new Point(minx, miny);
+            // At the lower-left.
+
+            List<Point> border = new List<Point>() { startPoint };
+            if (this.Count == 1)
+            {
+                this.Border = border.ToArray();
+                return;
+            }
+
+            int theta = 0;
+            Point curPoint = startPoint;
+            while (true)
+            {
+                Point testPoint = new Point(curPoint.X + deltaX[theta], curPoint.Y + deltaY[theta]);
+                if (testPoint.X >= 0 && testPoint.X < width &&
+                    testPoint.Y >= 0 && testPoint.Y < height &&
+                    cache[testPoint.X][testPoint.Y].Value == Value)
+                {
+                    if (testPoint.X == startPoint.X && testPoint.Y == startPoint.Y && theta == 3) break;
+                    theta = (theta + 5) % 8;
+                    curPoint = testPoint;
+                    border.Add(curPoint);
+                }
+                else
+                {
+                    theta = (theta + 1) % 8;
+                }
+            }
+
+            var keepers = new List<Point>() { border[0] };
+            int index = 1;
+            int dx1 = border[index].X - border[index - 1].X;
+            int dy1 = border[index].Y - border[index - 1].Y;
+            index++;
+            while (index < border.Count)
+            {
+                int dx2 = border[index].X - border[index - 1].X;
+                int dy2 = border[index].Y - border[index - 1].Y;
+                if (!(dx1 == dx2 && dy1 == dy2))
+                {
+                    Point cur = border[index - 1];
+                    keepers.Add(border[index - 1]);
+                    dx1 = dx2;
+                    dy1 = dy2;
+                }
+
+                index++;
+            }
+
+            this.Border = keepers.ToArray();
+        }
+
+        public void FloodFill(T[][] values, Polygon<T>[][] cache, int i, int j)
+        {
+            Queue<Point> queue = new Queue<Point>();
+            queue.Enqueue(new Point(i, j));
+
+            while (queue.Count > 0)
+            {
+                var pt = queue.Dequeue();
+                if (pt.X < 0 || pt.Y < 0 || pt.X >= cache.Length || pt.Y >= cache[0].Length) continue;
+                if (cache[pt.X][pt.Y] != null) continue;
+                if (values[pt.X][pt.Y] != this.Value) continue;
+                cache[pt.X][pt.Y] = this;
+                this.Add(pt.X, pt.Y);
+
+                queue.Enqueue(new Point(pt.X + 1, pt.Y));
+                queue.Enqueue(new Point(pt.X - 1, pt.Y));
+                queue.Enqueue(new Point(pt.X, pt.Y + 1));
+                queue.Enqueue(new Point(pt.X, pt.Y - 1));
+            }
+        }
+
+
+        public struct Point
+        {
+            public int X, Y;
+            public Point(int x, int y)
+            {
+                X = x;
+                Y = y;
+            }
+
+            public override string ToString()
+            {
+                return "(" + X + "," + Y + ")";
+            }
+        }
+
+    }
 }
+
