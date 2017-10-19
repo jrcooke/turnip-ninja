@@ -29,6 +29,22 @@
             };
         }
 
+        public static Config Rainer()
+        {
+            return new Config()
+            {
+                Lat = Angle.FromDecimalDegrees(47.695736),
+                Lon = Angle.FromDecimalDegrees(-122.232330),
+                R = 100000,
+                DeltaR = 5,
+                MinAngle = Angle.FromDecimalDegrees(145.0),
+                MaxAngle = Angle.FromDecimalDegrees(170.0),
+                ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
+                ElevationViewMax = Angle.FromDecimalDegrees(2.5),
+                AngularResolution = Angle.FromDecimalDegrees(0.01),
+            };
+        }
+
         public static Config Home()
         {
             return new Config()
