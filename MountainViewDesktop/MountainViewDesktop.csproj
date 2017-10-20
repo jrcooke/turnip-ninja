@@ -94,6 +94,9 @@
     <Compile Include="..\MountainViewCore\Base\MyColor.cs">
       <Link>Base\MyColor.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Base\Polygon.cs">
+      <Link>Base\Polygon.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Base\Utils.cs">
       <Link>Base\Utils.cs</Link>
     </Compile>

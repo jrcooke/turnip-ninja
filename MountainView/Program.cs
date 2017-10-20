@@ -54,7 +54,7 @@ namespace MountainView
                 {
                     BlobHelper.CacheLocally = true;
                     Config c = Config.Juaneta();
-                    Task.WaitAll(GetPolarData(outputPath, c));
+                    GetPolarData(outputPath, c);
                 }
             }
             catch (Exception ex)
@@ -76,22 +76,17 @@ namespace MountainView
             await Images.Current.ProcessRawData(template);
         }
 
-        public static async Task GetPolarData(string outputFolder, Config config)
+        public static void GetPolarData(string outputFolder, Config config)
         {
+            float eyeHeight = 100;
+
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
 
             int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
             int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
             HashSet<long> chunkKeys = new HashSet<long>();
-
-
-            ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
-            for (int i = 0; i < ret.Length; i++)
-            {
-                ret[i] = new ColorHeight[numR];
-            }
-
+            var distToNearestPointInChunk = new Dictionary<long, int>();
             for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
             {
                 // Use this angle to compute a heading.
@@ -103,19 +98,23 @@ namespace MountainView
                 double sinTheta = Math.Sin(theta.Radians);
                 for (int iR = 1; iR < numR; iR++)
                 {
-                    var mult = iR * config.DeltaR / config.R;
-                    ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                    ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                    ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
-
                     double r = iR * config.DeltaR;
                     var point = Utils.APlusDeltaMeters(config.Lat, config.Lon, r * sinTheta, r * cosTheta, cosLat);
                     double metersPerElement = Math.Max(config.DeltaR / 10, r * config.AngularResolution.Radians);
+
                     var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
                     var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
                     chunkKeys.Add(chunkKey);
-                    ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
+
+                    if (distToNearestPointInChunk.TryGetValue(chunkKey, out int val))
+                    {
+                        if (val > iR) distToNearestPointInChunk[chunkKey] = iR;
+                    }
+                    else
+                    {
+                        distToNearestPointInChunk.Add(chunkKey, iR);
+                    }
 
                     StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
                     if (chunk.TryGetIntersectLine(
@@ -123,30 +122,29 @@ namespace MountainView
                         config.Lon.DecimalDegree, endRLon.DecimalDegree,
                         out double loX, out double hiX))
                     {
-                        int hiR = Math.Min(numR, (int)(hiX * numR));
-                        iR++;
-                        while (iR < hiR - 1)
-                        {
-                            iR++;
-                            mult = iR * config.DeltaR / config.R;
-                            ret[iTheta - iThetaMin][iR].LatDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                            ret[iTheta - iThetaMin][iR].LonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                            ret[iTheta - iThetaMin][iR].Distance = iR * config.DeltaR;
-                            ret[iTheta - iThetaMin][iR].ChunkKey = chunkKey;
-                        }
+                        iR = Math.Max(iR, Math.Min(numR, (int)(hiX * numR)) - 1);
                     }
                 }
             }
 
             int counter = 0;
-            await Utils.ForEachAsync(chunkKeys, 1, async (chunkKey) =>
-            {
-                await Task.Delay(0);
-                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
 
+            int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
+            int[] j = new int[iThetaMax - iThetaMin];
+            ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
+            float? heightOffset = null;
+            for (int i = 0; i < ret.Length; i++)
+            {
+                ret[i] = new ColorHeight[numParts];
+            }
+
+            foreach (var chunkKey in chunkKeys.OrderBy(p => distToNearestPointInChunk[p]))
+            {
+                Console.WriteLine(distToNearestPointInChunk[chunkKey]);
                 NearestInterpolatingChunk<float> interpChunkH = null;
                 try
                 {
+                    StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
                     interpChunkH = Heights.Current.GetLazySimpleInterpolator(chunk);
 
                     // Now do that again, but do the rendering per chunk.
@@ -167,12 +165,37 @@ namespace MountainView
                             int hiR = Math.Min(numR, (int)(hiX * numR));
                             for (int iR = loR; iR < hiR; iR++)
                             {
-                                if (interpChunkH.TryGetDataAtPoint(
-                                    ret[iTheta - iThetaMin][iR].LatDegrees,
-                                    ret[iTheta - iThetaMin][iR].LonDegrees,
-                                    out float data))
+                                var mult = iR * config.DeltaR / config.R;
+                                var latDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                                var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                                if (interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, out float height))
                                 {
-                                    ret[iTheta - iThetaMin][iR].Height = data;
+                                    if (!heightOffset.HasValue)
+                                    {
+                                        heightOffset = height + eyeHeight;
+                                    }
+                                    double distance = iR * config.DeltaR;
+                                    double curTheta = Math.Atan2(height - heightOffset.Value, distance);
+                                    var delta = curTheta - config.ElevationViewMin.Radians;
+                                    var norm = delta / config.AngularResolution.Radians;
+                                    var tots = 0;
+                                    while (j[iTheta - iThetaMin] < norm)
+                                    {
+                                        tots++;
+                                        if (tots > 5)
+                                        {
+
+                                        }
+                                        if (j[iTheta - iThetaMin] == numParts) break;
+                                        ret[iTheta - iThetaMin][j[iTheta - iThetaMin]++] = new ColorHeight()
+                                        {
+                                            ChunkKey = chunkKey,
+                                            LatDegrees = latDegrees,
+                                            LonDegrees = lonDegrees,
+                                            Distance = distance,
+                                            Height = height,
+                                        };
+                                    }
                                 }
                             }
                         }
@@ -187,7 +210,7 @@ namespace MountainView
 
                 counter++;
                 Console.WriteLine(counter + " of " + chunkKeys.Count);
-            });
+            };
 
             ProcessOutput(outputFolder, config, ret);
         }
@@ -245,7 +268,7 @@ namespace MountainView
                 {
                     id = p.Value.Id,
                     alt = p.Value.Name,
-                    coords = string.Join(',', p.Border.Select(q => q.X + "," + (view[0].Length - 1 - q.Y))),
+                    coords = string.Join(",", p.Border.Select(q => q.X + "," + (view[0].Length - 1 - q.Y))),
                 })
                 .Select(p => "<area href='" + p.alt + "' title='" + p.alt + "' alt='" + p.alt + "' shape='poly' coords='" + p.coords + "' >")
                 .ToArray();

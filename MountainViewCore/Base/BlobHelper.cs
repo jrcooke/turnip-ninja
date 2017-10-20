@@ -88,6 +88,15 @@ namespace MountainView.Base
 
         public static Task<bool> BlobExists(string containerName, string fileName)
         {
+            if (CacheLocally)
+            {
+                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(localFileName))
+                {
+                    return Task.FromResult(true);
+                }
+            }
+
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
             return blockBlob.ExistsAsync();
         }
