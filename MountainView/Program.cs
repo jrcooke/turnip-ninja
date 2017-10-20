@@ -343,34 +343,6 @@ namespace MountainView
             public double LonDegrees;
             internal long ChunkKey;
         }
-
-        private static ColorHeight[][] CollapseToViewFromHere(
-            ColorHeight[][] thetaRad,
-            double deltaR,
-            Angle elevationViewMin, Angle elevationViewMax,
-            Angle angularRes)
-        {
-            ColorHeight[][] ret = new ColorHeight[thetaRad.Length][];
-            int numParts = (int)((elevationViewMax.Radians - elevationViewMin.Radians) / angularRes.Radians);
-            for (int i = 0; i < ret.Length; i++)
-            {
-                ret[i] = new ColorHeight[numParts];
-                float eyeHeight = 10;
-                float heightOffset = thetaRad[i][0].Height + eyeHeight;
-
-                int j = 0;
-                for (int r = 1; r < thetaRad[i].Length; r++)
-                {
-                    double curTheta = Math.Atan2(thetaRad[i][r].Height - heightOffset, thetaRad[i][r].Distance);
-                    while ((elevationViewMin.Radians + j * angularRes.Radians) < curTheta && j < numParts)
-                    {
-                        ret[i][j++] = thetaRad[i][r];
-                    }
-                }
-            }
-
-            return ret;
-        }
     }
 }
 
