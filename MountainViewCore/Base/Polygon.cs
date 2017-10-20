@@ -64,7 +64,6 @@ namespace MountainViewCore.Base
                     {
                         startPoint = testPoint;
                         startTheta = theta;
-                        System.Console.WriteLine(startTheta);
                     }
                     else if (testPoint.X == startPoint.Value.X && testPoint.Y == startPoint.Value.Y)
                     {

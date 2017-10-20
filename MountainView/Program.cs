@@ -78,7 +78,7 @@ namespace MountainView
 
         public static void GetPolarData(string outputFolder, Config config)
         {
-            float eyeHeight = 100;
+            float eyeHeight = 5;
 
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
@@ -127,8 +127,6 @@ namespace MountainView
                 }
             }
 
-            int counter = 0;
-
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
             int[] j = new int[iThetaMax - iThetaMin];
             ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
@@ -138,6 +136,7 @@ namespace MountainView
                 ret[i] = new ColorHeight[numParts];
             }
 
+            int counter = 0;
             foreach (var chunkKey in chunkKeys.OrderBy(p => distToNearestPointInChunk[p]))
             {
                 Console.WriteLine(distToNearestPointInChunk[chunkKey]);
@@ -170,22 +169,14 @@ namespace MountainView
                                 var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
                                 if (interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, out float height))
                                 {
-                                    if (!heightOffset.HasValue)
-                                    {
-                                        heightOffset = height + eyeHeight;
-                                    }
+                                    if (!heightOffset.HasValue) heightOffset = height + eyeHeight;
+
                                     double distance = iR * config.DeltaR;
                                     double curTheta = Math.Atan2(height - heightOffset.Value, distance);
                                     var delta = curTheta - config.ElevationViewMin.Radians;
                                     var norm = delta / config.AngularResolution.Radians;
-                                    var tots = 0;
                                     while (j[iTheta - iThetaMin] < norm)
                                     {
-                                        tots++;
-                                        if (tots > 5)
-                                        {
-
-                                        }
                                         if (j[iTheta - iThetaMin] == numParts) break;
                                         ret[iTheta - iThetaMin][j[iTheta - iThetaMin]++] = new ColorHeight()
                                         {
@@ -215,14 +206,12 @@ namespace MountainView
             ProcessOutput(outputFolder, config, ret);
         }
 
-        private static void ProcessOutput(string outputFolder, Config config, ColorHeight[][] ret)
+        private static void ProcessOutput(string outputFolder, Config config, ColorHeight[][] view)
         {
             if (!Directory.Exists(outputFolder))
             {
                 Directory.CreateDirectory(outputFolder);
             }
-
-            var view = CollapseToViewFromHere(ret, config.DeltaR, config.ElevationViewMin, config.ElevationViewMax, config.AngularResolution);
 
             Dictionary<long, NearestInterpolatingChunk<MyColor>> images = new Dictionary<long, NearestInterpolatingChunk<MyColor>>();
             try
@@ -291,15 +280,6 @@ namespace MountainView
 ";
 
             File.WriteAllText(Path.Combine(outputFolder, "text.html"), maptxt);
-
-            //Utils.WriteImageFile(xxx2, Path.Combine(outputFolder, "xxf.bmp"), p =>
-            //{
-            //    return p == null ? new MyColor(0, 0, 0) :
-            //    new MyColor(
-            //        (byte)((p.Id - short.MinValue) / 256 % 256),
-            //        (byte)((p.Id - short.MinValue) % 256),
-            //        (byte)((p.Id - short.MinValue) / 256 / 256 % 256));
-            //}, OutputType.Bitmap);
         }
 
         private static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : class
@@ -353,28 +333,6 @@ namespace MountainView
             }
 
             return ret.ToArray();
-
-            //            int counter = 0;
-            //            foreach (var poly in ret)
-            //            {
-            //                var boundary = poly.GetBoundary(cache, true);
-            ////                var hs = new HashSet<Point>(boundary);
-            //                //Utils.WriteImageFile(width, height, Path.Combine(@"C:\Users\jrcoo\Desktop\Output", "xxfnew" + counter + ".bmp"),
-            //                //    (i, j) => (!hs.Contains(new Point(i, j))) ? new MyColor(0, 0, 0) : new MyColor(255, 255, 255), OutputType.Bitmap);
-            //                //counter++;
-            //            }
-
-            //Utils.WriteImageFile(width, height, Path.Combine(@"C:\Users\jrcoo\Desktop\Output", "xxfnew.bmp"), (i, j) =>
-            //{
-            //    var x = cache[i][j];
-            //    return x.Value == null ? new MyColor(0, 0, 0) :
-            //     new MyColor(
-            //         (byte)((x.Value.Id - short.MinValue) / 256 % 256),
-            //         (byte)((x.Value.Id - short.MinValue) % 256),
-            //         (byte)((x.Value.Id - short.MinValue) / 256 / 256 % 256));
-            //}, OutputType.Bitmap);
-
-
         }
 
         public struct ColorHeight
