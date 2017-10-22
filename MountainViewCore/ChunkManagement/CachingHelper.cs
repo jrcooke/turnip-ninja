@@ -38,6 +38,17 @@ namespace MountainView
             this.filenameCache = new ConcurrentDictionary<long, string>();
         }
 
+        public string GetShortFilename(StandardChunkMetadata template)
+        {
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            {
+                filename = GetBaseFileName(template);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
+            }
+
+            return filename;
+        }
+
         public async Task<ChunkHolder<T>> ProcessRawData(StandardChunkMetadata template)
         {
             var computedChunk = await GetComputedChunk(template);
@@ -132,12 +143,7 @@ namespace MountainView
 
         public NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
         {
-            if (!filenameCache.TryGetValue(template.Key, out string filename))
-            {
-                filename = GetBaseFileName(template);
-                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-            }
-
+            string filename = GetShortFilename(template);
             string fullFileName = GetFullFileName(template, filename);
             while (
                 !BlobHelper.BlobExists(cachedFileContainer, fullFileName).Result &&
@@ -162,12 +168,7 @@ namespace MountainView
 
         private async Task<Tuple<string, ChunkHolder<T>>> GetComputedChunk(StandardChunkMetadata template)
         {
-            if (!filenameCache.TryGetValue(template.Key, out string filename))
-            {
-                filename = GetBaseFileName(template);
-                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-            }
-
+            string filename = GetShortFilename(template);
             Tuple<string, ChunkHolder<T>> ret = new Tuple<string, ChunkHolder<T>>(GetFullFileName(template, filename), null);
             using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, ret.Item1))
             {
@@ -180,14 +181,9 @@ namespace MountainView
             return ret;
         }
 
-        private Task<bool> ExistsComputedChunk(StandardChunkMetadata template)
+        public Task<bool> ExistsComputedChunk(StandardChunkMetadata template)
         {
-            if (!filenameCache.TryGetValue(template.Key, out string filename))
-            {
-                filename = GetBaseFileName(template);
-                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-            }
-
+            string filename = GetShortFilename(template);
             return BlobHelper.BlobExists(cachedFileContainer, GetFullFileName(template, filename));
         }
 

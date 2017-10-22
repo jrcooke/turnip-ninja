@@ -98,7 +98,7 @@ namespace MountainView.Elevation
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
                 (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
 
-            foreach (var x in Directory.GetFiles(path).Where(p => p.Split(Path.DirectorySeparatorChar).Last() ==  shortWebFile + ".zip"))
+            foreach (var x in Directory.GetFiles(path).Where(p => p.Split(Path.DirectorySeparatorChar).Last() == shortWebFile + ".zip"))
             {
                 Console.WriteLine(x);
                 using (var ms = new MemoryStream())

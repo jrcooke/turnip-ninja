@@ -180,7 +180,7 @@ namespace MountainView.Imaging
             string folder = "NAIP_n" + lat + "w" + (-lon);
             foreach (var x in Directory.GetFiles(Path.Combine(sourcePath, folder)).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
             {
-                System.Console.WriteLine(x);
+                Console.WriteLine(x);
                 using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))

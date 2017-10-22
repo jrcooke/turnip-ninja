@@ -72,8 +72,32 @@ namespace MountainView
         {
             // Generate for a 1 degree square region.
             StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
-            await Heights.Current.ProcessRawData(template);
-            await Images.Current.ProcessRawData(template);
+            await ProcessRawData(template);
+        }
+
+        public static async Task ProcessRawData(StandardChunkMetadata template)
+        {
+            bool doMore = false;
+            if (template.ZoomLevel <= Heights.Current.SourceDataZoom)
+            {
+                var ok = await Heights.Current.ExistsComputedChunk(template);
+                Console.Write(ok ? "." : ("Heights:" + Heights.Current.GetShortFilename(template) + ":" + "missing"));
+                doMore = true;
+            }
+
+            if (template.ZoomLevel <= Images.Current.SourceDataZoom)
+            {
+                var ok = await Images.Current.ExistsComputedChunk(template);
+                Console.Write(ok ? "." : ("Images:" + Images.Current.GetShortFilename(template) + ":" + "missing"));
+                doMore = true;
+            }
+
+            if (!doMore) return;
+
+            foreach (var c in template.GetChildChunks())
+            {
+                await ProcessRawData(c);
+            }
         }
 
         public static void GetPolarData(string outputFolder, Config config)
@@ -104,6 +128,7 @@ namespace MountainView
 
                     var decimalDegreesPerElement = metersPerElement / (Utils.LengthOfLatDegree * cosLat);
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
+                    zoomLevel = Math.Max(3, zoomLevel);
                     var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
                     chunkKeys.Add(chunkKey);
 
@@ -239,7 +264,7 @@ namespace MountainView
                             (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
                             (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
                     }).ToArray()).ToArray();
-                Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxi.jpg"), a => a, OutputType.JPEG);
+                Utils.WriteImageFile(xxx, Path.Combine(outputFolder, config.Name + ".jpg"), a => a, OutputType.JPEG);
             }
             finally
             {
@@ -272,14 +297,14 @@ namespace MountainView
 " + string.Join("\r\n", polymap) + @"
 </map>
 <img
-    src='xxi.jpg'
+    src='" + config.Name + @".jpg'
     usemap='#map_example' >
 </div>
 </BODY>
 </HTML>
 ";
 
-            File.WriteAllText(Path.Combine(outputFolder, "text.html"), maptxt);
+            File.WriteAllText(Path.Combine(outputFolder, config.Name + ".html"), maptxt);
         }
 
         private static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : class

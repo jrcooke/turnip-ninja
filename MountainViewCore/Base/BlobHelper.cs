@@ -72,6 +72,7 @@ namespace MountainView.Base
                     }
                     catch
                     {
+                        System.Console.WriteLine("Missing blob: " + fileName);
                         return null;
                     }
                 }
