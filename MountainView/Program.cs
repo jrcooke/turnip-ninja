@@ -71,7 +71,7 @@ namespace MountainView
         public static async Task ProcessRawData(Angle lat, Angle lon)
         {
             // Generate for a 1 degree square region.
-            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 2);
+            StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
             await Heights.Current.ProcessRawData(template);
             await Images.Current.ProcessRawData(template);
         }

@@ -52,7 +52,9 @@ namespace MountainView.Imaging
                 {
                     if (ms == null)
                     {
-                        throw new InvalidOperationException("File should exist: '" + fileInfo.FileName + "'");
+                        Console.WriteLine("File should exist: '" + fileInfo.FileName + "'");
+                        System.Console.WriteLine("Assumeing the tile is empty");
+                        return null;
                     }
 
                     using (var fileStream = File.Create(fileInfo.LocalName))
