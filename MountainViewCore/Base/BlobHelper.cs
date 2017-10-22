@@ -12,19 +12,14 @@ namespace MountainView.Base
     {
         public static bool CacheLocally { get; set; }
 
-        private static string tempPath;
         private static string TempPath
         {
             get
             {
-                if (tempPath == null)
-                {
-                    tempPath = RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "/mnt/tmp" : Path.GetTempPath();
-                }
-
-                return tempPath;
+                return Path.GetTempPath();
             }
         }
+        
         private static object locker = new object();
         private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
 

@@ -127,7 +127,7 @@ namespace MountainView.ChunkManagement
             return ret;
         }
 
-        internal IEnumerable<StandardChunkMetadata> GetChildChunks()
+        public IEnumerable<StandardChunkMetadata> GetChildChunks()
         {
             var ratio = Angle.FloorDivide(frameSizeForZoom[this.ZoomLevel], frameSizeForZoom[this.ZoomLevel + 1]);
             var latLoopLo = Angle.Add(this.LatLo, Angle.Divide(frameSizeForZoom[this.ZoomLevel + 1], 2));
