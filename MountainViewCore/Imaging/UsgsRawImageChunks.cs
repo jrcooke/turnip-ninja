@@ -92,7 +92,7 @@ namespace MountainView.Imaging
 
                 // Now the real compute starts
                 Console.WriteLine("Reading into cache: " + fileName);
-                FIBITMAP sdib = FreeImage.LoadEx(fileName);
+                FIBITMAP sdib = FreeImage.LoadEx(Path.Combine(Path.GetTempPath(), fileName));
                 try
                 {
                     var width = (int)FreeImage.GetWidth(sdib);
