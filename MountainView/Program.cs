@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace MountainView
@@ -66,6 +67,31 @@ namespace MountainView
             Console.WriteLine(start);
             Console.WriteLine(end);
             Console.WriteLine(end - start);
+        }
+
+        public static async Task ImagesForTopChunks(string outputFolder)
+        {
+            var x = await BlobHelper.GetFiles("mapv8", "");
+            var top = new Regex(@"\d\d\dDn\d\d\dDw03[.]v8.*");
+            var t = x.Where(p => top.IsMatch(p)).ToArray();
+            foreach (var f in t)
+            {
+                var parts = f.Split('D', 'n');
+                var lat = Angle.FromDecimalDegrees(+int.Parse(parts[0]) + 0.5);
+                var lon = Angle.FromDecimalDegrees(-int.Parse(parts[2]) + 0.5);
+                var scm = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
+
+                if (f.EndsWith(".idata"))
+                {
+                    var xxx = Images.Current.GetData(scm).Result;
+                    Utils.WriteImageFile(xxx, Path.Combine(outputFolder, f + ".jpg"), a => a, OutputType.JPEG);
+                }
+                else
+                {
+                    var yyy = Heights.Current.GetData(scm).Result;
+                    Utils.WriteImageFile(yyy, Path.Combine(outputFolder, f + ".jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
+                }
+            }
         }
 
         public static async Task ProcessRawData(Angle lat, Angle lon)
