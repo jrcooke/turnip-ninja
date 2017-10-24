@@ -46,18 +46,18 @@ namespace MountainView.Imaging
                 throw new InvalidOperationException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
             }
 
-            if (!File.Exists(fileInfo.LocalName))
+            if (!File.Exists(Path.Combine(Path.GetTempPath(), fileInfo.LocalName)))
             {
                 using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, fileInfo.FileName))
                 {
                     if (ms == null)
                     {
                         Console.WriteLine("File should exist: '" + fileInfo.FileName + "'");
-                        System.Console.WriteLine("Assumeing the tile is empty");
+                        System.Console.WriteLine("Assuming the tile is empty");
                         return null;
                     }
 
-                    using (var fileStream = File.Create(fileInfo.LocalName))
+                    using (var fileStream = File.Create(Path.Combine(Path.GetTempPath(), fileInfo.LocalName)))
                     {
                         ms.Position = 0;
                         ms.CopyTo(fileStream);

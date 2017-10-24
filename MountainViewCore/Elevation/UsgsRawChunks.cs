@@ -33,7 +33,7 @@ namespace MountainView.Elevation
                 (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString();
 
             var zipFile = string.Format(sourceZipFileTemplate, fileName);
-            if (!File.Exists(zipFile))
+            if (!File.Exists(Path.Combine(Path.GetTempPath(), zipFile)))
             {
                 using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, zipFile))
                 {
@@ -42,7 +42,7 @@ namespace MountainView.Elevation
                         throw new InvalidOperationException("File should exist: '" + zipFile + "'");
                     }
 
-                    using (var fileStream = File.Create(zipFile))
+                    using (var fileStream = File.Create(Path.Combine(Path.GetTempPath(), zipFile)))
                     {
                         ms.Position = 0;
                         ms.CopyTo(fileStream);
@@ -76,11 +76,11 @@ namespace MountainView.Elevation
                     (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
                     (lon > 0 ? 'e' : 'w') + ((int)Math.Abs(lon) + 1).ToString("D3");
                 string inputFile = string.Format(Path.Combine(inputFileTemplate), shortWebFile);
-                if (!File.Exists(inputFile))
+                if (!File.Exists(Path.Combine(Path.GetTempPath(), inputFile)))
                 {
                     Console.WriteLine("Missing " + description + " data file: " + inputFile);
                     Console.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
-                    ZipFile.ExtractToDirectory(zipFile, shortWebFile);
+                    ZipFile.ExtractToDirectory(zipFile, Path.Combine(Path.GetTempPath(), shortWebFile));
                     Console.WriteLine("Extracted raw " + description + " data from zip file.");
                 }
 

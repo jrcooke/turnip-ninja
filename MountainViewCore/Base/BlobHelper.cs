@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 
 namespace MountainView.Base
 {
@@ -12,14 +11,6 @@ namespace MountainView.Base
     {
         public static bool CacheLocally { get; set; }
 
-        private static string TempPath
-        {
-            get
-            {
-                return Path.GetTempPath();
-            }
-        }
-        
         private static object locker = new object();
         private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
 
@@ -48,13 +39,13 @@ namespace MountainView.Base
         {
             if (CacheLocally)
             {
-                var localFileName = Path.Combine(TempPath, fileName.Replace('/', Path.DirectorySeparatorChar));
+                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(localFileName))
                 {
                     try
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                        var tmpName = Path.Combine(TempPath, System.Guid.NewGuid().ToString() + ".tmp");
+                        var tmpName = Path.Combine(Path.GetTempPath(), System.Guid.NewGuid().ToString() + ".tmp");
                         await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
                         if (!File.Exists(localFileName))
                         {
@@ -100,7 +91,7 @@ namespace MountainView.Base
         {
             if (CacheLocally)
             {
-                var localFileName = Path.Combine(TempPath, fileName.Replace('/', Path.DirectorySeparatorChar));
+                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
                 if (File.Exists(localFileName))
                 {
                     return Task.FromResult(true);
