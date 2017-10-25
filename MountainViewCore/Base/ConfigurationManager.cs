@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace MountainView.Base
 {
-    internal class ConfigurationManager
+    public class ConfigurationManager
     {
 #if !JDESKTOP
         private static Lazy<IConfigurationRoot> configuration = new Lazy<IConfigurationRoot>(() =>

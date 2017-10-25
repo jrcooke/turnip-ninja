@@ -50,13 +50,14 @@ namespace MountainView
                 {
                     ProcessRawData(
                         Angle.FromDecimalDegrees(serverLat + 0.5),
-                        Angle.FromDecimalDegrees(serverLon - 0.5)));
+                        Angle.FromDecimalDegrees(serverLon - 0.5));
                 }
                 else if (isClient)
                 {
                     BlobHelper.CacheLocally = true;
                     Config c = Config.Juaneta();
-                    GetPolarData(outputPath, c);
+                    var ret = GetPolarData(c);
+                    ProcessOutput(outputPath, c, ret);
                 }
             }
             catch (Exception ex)
@@ -127,7 +128,7 @@ namespace MountainView
             }
         }
 
-        public static void GetPolarData(string outputFolder, Config config)
+        public static ColorHeight[][] GetPolarData(Config config)
         {
             float eyeHeight = 5;
 
@@ -255,7 +256,7 @@ namespace MountainView
                 Console.WriteLine(counter + " of " + chunkKeys.Count);
             };
 
-            ProcessOutput(outputFolder, config, ret);
+            return ret;
         }
 
         private static void ProcessOutput(string outputFolder, Config config, ColorHeight[][] view)

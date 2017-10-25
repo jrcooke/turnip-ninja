@@ -30,7 +30,11 @@ namespace MountainView.Base
                         CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                         CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                         CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+#if !JDESKTOP
+                        System.Threading.Tasks.Task.WaitAll(container.CreateIfNotExistsAsync());
+#else
                         container.CreateIfNotExists();
+#endif
                         ret = container;
                     }
                 }
@@ -50,7 +54,11 @@ namespace MountainView.Base
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
                         var tmpName = Path.Combine(Path.GetTempPath(), System.Guid.NewGuid().ToString() + ".tmp");
+#if !JDESKTOP
+                        System.Threading.Tasks.Task.WaitAll(blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew));
+#else
                         blockBlob.DownloadToFile(tmpName, FileMode.CreateNew);
+#endif
                         if (!File.Exists(localFileName))
                         {
                             File.Move(tmpName, localFileName);
@@ -80,7 +88,11 @@ namespace MountainView.Base
                 {
                     CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
                     var stream = new MemoryStream();
+#if !JDESKTOP
+                    System.Threading.Tasks.Task.WaitAll(blockBlob.DownloadToStreamAsync(stream));
+#else
                     blockBlob.DownloadToStream(stream);
+#endif
                     stream.Position = 0;
                     return stream;
                 }
@@ -103,7 +115,11 @@ namespace MountainView.Base
             }
 
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+#if !JDESKTOP
+            return blockBlob.ExistsAsync().Result;
+#else
             return blockBlob.Exists();
+#endif
         }
 
         public static IEnumerable<string> ReadAllLines(string containerName, string fileName)
@@ -127,13 +143,21 @@ namespace MountainView.Base
         public static void WriteStream(string containerName, string fileName, MemoryStream stream)
         {
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+#if !JDESKTOP
+            System.Threading.Tasks.Task.WaitAll(blockBlob.UploadFromStreamAsync(stream));
+#else
             blockBlob.UploadFromStream(stream);
+#endif
         }
 
         public static IEnumerable<string> GetDirectories(string containerName, string directoryPrefix)
         {
             var blobList = Container(containerName)
+#if !JDESKTOP
+                .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null).Result;
+#else
                 .ListBlobsSegmented(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
+#endif
             var x = blobList.Results.OfType<CloudBlobDirectory>().Select(p => p.Prefix.TrimEnd('/')).ToArray();
             return x;
         }
@@ -145,13 +169,21 @@ namespace MountainView.Base
             BlobContinuationToken bcc = null;
             while (true)
             {
+#if !JDESKTOP
+                var blobList = dir.ListBlobsSegmentedAsync(
+#else
                 var blobList = dir.ListBlobsSegmented(
+#endif
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.None,
                     maxResults: int.MaxValue,
                     currentToken: bcc,
                     options: null,
-                    operationContext: null);
+                    operationContext: null)
+#if !JDESKTOP
+                    .Result
+#endif
+                    ;
                 bcc = blobList.ContinuationToken;
                 ret.AddRange(blobList.Results.OfType<CloudBlockBlob>().Select(p => p.Name));
                 if (bcc == null)
