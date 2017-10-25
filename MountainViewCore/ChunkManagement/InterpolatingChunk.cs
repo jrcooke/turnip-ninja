@@ -3,7 +3,6 @@ using MountainViewDesktop.Interpolation;
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainView.ChunkManagement
 {
@@ -119,9 +118,7 @@ namespace MountainView.ChunkManagement
         {
             if (!triedToGetMS)
             {
-                var task = BlobHelper.TryGetStream(container, fullFileName);
-                Task.WaitAll(task);
-                ms = task.Result;
+                ms = BlobHelper.TryGetStream(container, fullFileName);
                 triedToGetMS = true;
             }
 

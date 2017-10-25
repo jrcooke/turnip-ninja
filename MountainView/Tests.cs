@@ -4,7 +4,6 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using System;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace MountainView
 {
@@ -16,10 +15,10 @@ namespace MountainView
             var homeLon = Angle.FromDecimalDegrees(-122.2907541);
 
             var scm = StandardChunkMetadata.GetRangeContaingPoint(homeLat, homeLon, 4);
-            var xxx = Images.Current.GetData(scm).Result;
+            var xxx = Images.Current.GetData(scm);
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.jpg"), a => a, OutputType.JPEG);
 
-            var yyy = Heights.Current.GetData(scm).Result;
+            var yyy = Heights.Current.GetData(scm);
             Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
 
             //var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");
@@ -65,12 +64,11 @@ namespace MountainView
             //    }
         }
 
-        public static async Task Test3(string outputFolder, Angle lat, Angle lon)
+        public static void Test3(string outputFolder, Angle lat, Angle lon)
         {
             for (int zoomLevel = 5; zoomLevel >= 3; zoomLevel--)
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-                await Task.Delay(0);
                 //var pixels2 = await Heights.Current.GetData(template);
                 //if (pixels2 != null)
                 //{

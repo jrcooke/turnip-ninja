@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
@@ -26,7 +25,7 @@ namespace MountainView.Elevation
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static async Task<ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
+        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -35,7 +34,7 @@ namespace MountainView.Elevation
             var zipFile = string.Format(sourceZipFileTemplate, fileName);
             if (!File.Exists(Path.Combine(Path.GetTempPath(), zipFile)))
             {
-                using (var ms = await BlobHelper.TryGetStream(cachedFileContainer, zipFile))
+                using (var ms = BlobHelper.TryGetStream(cachedFileContainer, zipFile))
                 {
                     if (ms == null)
                     {
@@ -108,7 +107,7 @@ namespace MountainView.Elevation
                         fs.CopyTo(ms);
                         ms.Position = 0;
                         var blobFile = string.Format(sourceZipFileTemplate, shortWebFile);
-                        Task.WaitAll(BlobHelper.WriteStream("sources", blobFile, ms));
+                        BlobHelper.WriteStream("sources", blobFile, ms);
                     }
                 }
             }

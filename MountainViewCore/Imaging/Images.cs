@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainView.Imaging
 {
@@ -30,7 +29,7 @@ namespace MountainView.Imaging
             }
         }
 
-        protected override async Task<ChunkHolder<MyColor>> GenerateData(StandardChunkMetadata template)
+        protected override ChunkHolder<MyColor> GenerateData(StandardChunkMetadata template)
         {
             var ret = new ChunkHolder<MyColor>(
                 template.LatSteps, template.LonSteps,
@@ -40,7 +39,7 @@ namespace MountainView.Imaging
                 toDouble,
                 fromDouble);
 
-            var targetChunks = (await UsgsRawImageChunks.GetChunkMetadata())
+            var targetChunks = UsgsRawImageChunks.GetChunkMetadata()
                 .Select(p => new
                 {
                     p = p,
@@ -57,7 +56,7 @@ namespace MountainView.Imaging
             foreach (var tmp in targetChunks)
             {
                 Console.WriteLine(tmp.Chunk);
-                var col = await UsgsRawImageChunks.GetRawColors(
+                var col = UsgsRawImageChunks.GetRawColors(
                     Angle.Add(tmp.Chunk.LatLo, Angle.Divide(tmp.Chunk.LatDelta, 2)),
                     Angle.Add(tmp.Chunk.LonLo, Angle.Divide(tmp.Chunk.LonDelta, 2)));
 

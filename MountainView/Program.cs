@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace MountainView
 {
@@ -20,6 +19,8 @@ namespace MountainView
             DateTime start = DateTime.Now;
             int serverLat = 47;
             int serverLon = -123;
+
+            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
             string outputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Desktop", "Output");
             if (!Directory.Exists(outputPath))
@@ -47,7 +48,7 @@ namespace MountainView
                 }
                 else if (isServerCompute)
                 {
-                    Task.WaitAll(ProcessRawData(
+                    ProcessRawData(
                         Angle.FromDecimalDegrees(serverLat + 0.5),
                         Angle.FromDecimalDegrees(serverLon - 0.5)));
                 }
@@ -69,9 +70,9 @@ namespace MountainView
             Console.WriteLine(end - start);
         }
 
-        public static async Task ImagesForTopChunks(string outputFolder)
+        public static void ImagesForTopChunks(string outputFolder)
         {
-            var x = await BlobHelper.GetFiles("mapv8", "");
+            var x = BlobHelper.GetFiles("mapv8", "");
             var top = new Regex(@"\d\d\dDn\d\d\dDw03[.]v8.*");
             var t = x.Where(p => top.IsMatch(p)).ToArray();
             foreach (var f in t)
@@ -83,37 +84,37 @@ namespace MountainView
 
                 if (f.EndsWith(".idata"))
                 {
-                    var xxx = Images.Current.GetData(scm).Result;
+                    var xxx = Images.Current.GetData(scm);
                     Utils.WriteImageFile(xxx, Path.Combine(outputFolder, f + ".jpg"), a => a, OutputType.JPEG);
                 }
                 else
                 {
-                    var yyy = Heights.Current.GetData(scm).Result;
+                    var yyy = Heights.Current.GetData(scm);
                     Utils.WriteImageFile(yyy, Path.Combine(outputFolder, f + ".jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
                 }
             }
         }
 
-        public static async Task ProcessRawData(Angle lat, Angle lon)
+        public static void ProcessRawData(Angle lat, Angle lon)
         {
             // Generate for a 1 degree square region.
             StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
-            await ProcessRawData(template);
+            ProcessRawData(template);
         }
 
-        public static async Task ProcessRawData(StandardChunkMetadata template)
+        public static void ProcessRawData(StandardChunkMetadata template)
         {
             bool doMore = false;
             if (template.ZoomLevel <= Heights.Current.SourceDataZoom)
             {
-                var ok = await Heights.Current.ExistsComputedChunk(template);
+                var ok = Heights.Current.ExistsComputedChunk(template);
                 Console.Write(ok ? "." : ("Heights:" + Heights.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
 
             if (template.ZoomLevel <= Images.Current.SourceDataZoom)
             {
-                var ok = await Images.Current.ExistsComputedChunk(template);
+                var ok = Images.Current.ExistsComputedChunk(template);
                 Console.Write(ok ? "." : ("Images:" + Images.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
@@ -122,7 +123,7 @@ namespace MountainView
 
             foreach (var c in template.GetChildChunks())
             {
-                await ProcessRawData(c);
+                ProcessRawData(c);
             }
         }
 

@@ -3,7 +3,6 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainView.Base
 {
@@ -14,6 +13,12 @@ namespace MountainView.Base
         private static object locker = new object();
         private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
 
+        private static string connectionString;
+        public static void SetConnectionString(string connectionString)
+        {
+            BlobHelper.connectionString = connectionString;
+        }
+
         private static CloudBlobContainer Container(string containerName)
         {
             if (!singleton.TryGetValue(containerName, out CloudBlobContainer ret))
@@ -22,11 +27,10 @@ namespace MountainView.Base
                 {
                     if (!singleton.TryGetValue(containerName, out ret))
                     {
-                        var connectionString = ConfigurationManager.AppSettings["ConnectionString"];
                         CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                         CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                         CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-                        Task.WaitAll(container.CreateIfNotExistsAsync());
+                        container.CreateIfNotExists();
                         ret = container;
                     }
                 }
@@ -35,7 +39,7 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static async Task<MemoryStream> TryGetStream(string containerName, string fileName)
+        public static MemoryStream TryGetStream(string containerName, string fileName)
         {
             if (CacheLocally)
             {
@@ -46,7 +50,7 @@ namespace MountainView.Base
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
                         var tmpName = Path.Combine(Path.GetTempPath(), System.Guid.NewGuid().ToString() + ".tmp");
-                        await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
+                        blockBlob.DownloadToFile(tmpName, FileMode.CreateNew);
                         if (!File.Exists(localFileName))
                         {
                             File.Move(tmpName, localFileName);
@@ -66,7 +70,7 @@ namespace MountainView.Base
                 var stream = new MemoryStream();
                 var fs = File.OpenRead(localFileName);
                 fs.Position = 0;
-                await fs.CopyToAsync(stream);
+                fs.CopyTo(stream);
                 stream.Position = 0;
                 return stream;
             }
@@ -76,7 +80,7 @@ namespace MountainView.Base
                 {
                     CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
                     var stream = new MemoryStream();
-                    await blockBlob.DownloadToStreamAsync(stream);
+                    blockBlob.DownloadToStream(stream);
                     stream.Position = 0;
                     return stream;
                 }
@@ -87,25 +91,25 @@ namespace MountainView.Base
             }
         }
 
-        public static Task<bool> BlobExists(string containerName, string fileName)
+        public static bool BlobExists(string containerName, string fileName)
         {
             if (CacheLocally)
             {
                 var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
                 if (File.Exists(localFileName))
                 {
-                    return Task.FromResult(true);
+                    return true;
                 }
             }
 
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-            return blockBlob.ExistsAsync();
+            return blockBlob.Exists();
         }
 
-        public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)
+        public static IEnumerable<string> ReadAllLines(string containerName, string fileName)
         {
             List<string> ret = new List<string>();
-            using (var stream = await TryGetStream(containerName, fileName))
+            using (var stream = TryGetStream(containerName, fileName))
             {
                 using (var reader = new StreamReader(stream))
                 {
@@ -120,28 +124,28 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static async Task WriteStream(string containerName, string fileName, MemoryStream stream)
+        public static void WriteStream(string containerName, string fileName, MemoryStream stream)
         {
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-            await blockBlob.UploadFromStreamAsync(stream);
+            blockBlob.UploadFromStream(stream);
         }
 
-        public static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix)
+        public static IEnumerable<string> GetDirectories(string containerName, string directoryPrefix)
         {
-            var blobList = await Container(containerName)
-                .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
+            var blobList = Container(containerName)
+                .ListBlobsSegmented(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
             var x = blobList.Results.OfType<CloudBlobDirectory>().Select(p => p.Prefix.TrimEnd('/')).ToArray();
             return x;
         }
 
-        public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
+        public static IEnumerable<string> GetFiles(string containerName, string directory)
         {
             List<string> ret = new List<string>();
             var dir = Container(containerName).GetDirectoryReference(directory);
             BlobContinuationToken bcc = null;
             while (true)
             {
-                var blobList = await dir.ListBlobsSegmentedAsync(
+                var blobList = dir.ListBlobsSegmented(
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.None,
                     maxResults: int.MaxValue,

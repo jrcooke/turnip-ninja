@@ -1,7 +1,6 @@
 ﻿using MountainView.Base;
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainViewCore.Landmarks
 {
@@ -94,9 +93,7 @@ namespace MountainViewCore.Landmarks
 
         private static Lazy<KDNode<FeatureInfo>> featureInfos = new Lazy<KDNode<FeatureInfo>>(() =>
         {
-            var task =  BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt");
-            Task.WaitAll(task);
-            var metadataLines = task.Result;
+            var metadataLines =  BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt");
             string[] header = metadataLines.First().Split('|');
             string[] header2 = metadataLines.Skip(1).First().Split('|');
             var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
