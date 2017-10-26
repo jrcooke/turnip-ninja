@@ -100,6 +100,9 @@
     <Compile Include="..\MountainViewCore\Base\Utils.cs">
       <Link>Base\Utils.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Base\View.cs">
+      <Link>Base\View.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\ChunkManagement\CachingHelper.cs">
       <Link>ChunkManagement\CachingHelper.cs</Link>
     </Compile>
@@ -157,7 +160,8 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="FreeImage.dll">
+    <Content Include="..\packages\SBC.FreeImage.3.15.1.2\build\net40\freeimage\x86\FreeImage.dll">
+      <Link>FreeImage.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

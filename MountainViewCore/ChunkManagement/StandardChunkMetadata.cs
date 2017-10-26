@@ -76,6 +76,8 @@ namespace MountainView.ChunkManagement
 
         public static StandardChunkMetadata GetRangeFromKey(long key)
         {
+            if (key == 0) return null;
+
             int zoomLevel = (int)(key % (MaxZoomLevel + 1));
 
             Angle frameSize = frameSizeForZoom[zoomLevel];

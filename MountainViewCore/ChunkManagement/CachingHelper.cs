@@ -142,6 +142,8 @@ namespace MountainView
 
         public NearestInterpolatingChunk<T> GetLazySimpleInterpolator(StandardChunkMetadata template)
         {
+            if (template == null) return null;
+
             string filename = GetShortFilename(template);
             string fullFileName = GetFullFileName(template, filename);
             while (
