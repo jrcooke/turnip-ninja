@@ -160,7 +160,7 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\packages\SBC.FreeImage.3.15.1.2\build\net40\freeimage\x86\FreeImage.dll">
+    <Content Include="packages\SBC.FreeImage.3.15.1.2\build\net40\freeimage\x86\FreeImage.dll">
       <Link>FreeImage.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Web.Http;
 
-namespace MountainViewWeb.Controllers
+namespace MountainViewApi.Controllers
 {
     public class ImageController : ApiController
     {

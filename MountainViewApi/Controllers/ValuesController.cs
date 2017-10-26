@@ -1,13 +1,10 @@
 ﻿using MountainView.Base;
-using MountainView.ChunkManagement;
-using MountainView.Imaging;
 using MountainViewCore.Base;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Web.Http;
 
-namespace MountainViewWeb.Controllers
+namespace MountainViewApi.Controllers
 {
     public class LatLonPoint
     {
