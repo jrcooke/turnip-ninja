@@ -13,6 +13,38 @@
         public Angle AngularResolution { get; set; }
         public string Name { get; private set; }
 
+        private bool hasNumTheta;
+        private int numTheta;
+        public int NumTheta
+        {
+            get
+            {
+                if (!hasNumTheta)
+                {
+                    numTheta = Angle.FloorDivide(MaxAngle, AngularResolution) - Angle.FloorDivide(MinAngle, AngularResolution);
+                    hasNumTheta = true;
+                }
+
+                return numTheta;
+            }
+        }
+
+        private bool hasIThetaMin;
+        private int iThetaMin;
+        public int IThetaMin
+        {
+            get
+            {
+                if (!hasIThetaMin)
+                {
+                    iThetaMin = Angle.FloorDivide(MinAngle, AngularResolution);
+                    hasIThetaMin = true;
+                }
+
+                return iThetaMin;
+            }
+        }
+
         public static Config Juaneta()
         {
             return new Config()

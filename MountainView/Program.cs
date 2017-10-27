@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using static MountainViewCore.Base.View;
 
 namespace MountainView
 {
@@ -33,7 +34,6 @@ namespace MountainView
             bool isClient = true;
             try
             {
-                //Task.WaitAll(Foo());
                 //Tests.Test12();
 
                 //Task.WaitAll(Tests.Test3(     outputPath,
@@ -55,9 +55,37 @@ namespace MountainView
                 else if (isClient)
                 {
                     BlobHelper.CacheLocally = true;
-                    Config c = Config.Juaneta();
-                    var ret = GetPolarData(c);
-                    ProcessOutput(outputPath, c, ret);
+                    //Config c = Config.Rainer();
+                    Config config = Config.JuanetaAll();
+                    //                    Config c = Config.Juaneta();
+
+                    var chunks = View.GetRelevantChunkKeys(config);
+
+                    int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
+                    ColorHeight[][] view = new ColorHeight[config.NumTheta][];
+                    for (int i = 0; i < view.Length; i++)
+                    {
+                        view[i] = new ColorHeight[numParts];
+                    }
+
+                    int counter = 0;
+                    foreach (var chunk in chunks)
+                    {
+                        var view2 = View.GetPolarData(config, chunk);
+                        foreach (var elem in view2)
+                        {
+                            view[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
+                        }
+
+                        var www = View.ProcessImage(view);
+                        Utils.WriteImageFile(www, Path.Combine(outputPath, counter + ".jpg"), a => a, OutputType.JPEG);
+
+                        counter++;
+                        Console.WriteLine(counter);
+                    }
+
+                    //var xxx = View.ProcessImage(view);
+                    //Utils.WriteImageFile(xxx, Path.Combine(outputPath, imageFile), a => a, OutputType.JPEG);
                 }
             }
             catch (Exception ex)

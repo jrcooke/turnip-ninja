@@ -5,27 +5,25 @@ using MountainView.Imaging;
 using MountainViewCore.Landmarks;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MountainViewCore.Base
 {
     public static class View
     {
-        public static ColorHeight[][] GetPolarData(Config config)
+        public static long[] GetRelevantChunkKeys(Config config)
         {
-            float eyeHeight = 5;
-
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
 
-            int iThetaMin = Angle.FloorDivide(config.MinAngle, config.AngularResolution);
-            int iThetaMax = Angle.FloorDivide(config.MaxAngle, config.AngularResolution);
             HashSet<long> chunkKeys = new HashSet<long>();
-            var distToNearestPointInChunk = new Dictionary<long, int>();
-            for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
+            var distToFarthestPointInChunk = new Dictionary<long, int>();
+            var chunkZoom = new Dictionary<long, int>();
+            for (int iTheta = 0; iTheta < config.NumTheta; iTheta++)
             {
                 // Use this angle to compute a heading.
-                Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
+                Angle theta = Angle.Multiply(config.AngularResolution, iTheta + config.IThetaMin);
                 var endRLat = Utils.DeltaMetersLat(theta, config.R);
                 var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
@@ -43,101 +41,94 @@ namespace MountainViewCore.Base
                     var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
                     chunkKeys.Add(chunkKey);
 
-                    if (distToNearestPointInChunk.TryGetValue(chunkKey, out int val))
-                    {
-                        if (val > iR) distToNearestPointInChunk[chunkKey] = iR;
-                    }
-                    else
-                    {
-                        distToNearestPointInChunk.Add(chunkKey, iR);
-                    }
+                    chunkZoom[chunkKey] = zoomLevel;
 
                     StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                    if (chunk.TryGetIntersectLine(
+                    if (!chunk.TryGetIntersectLine(
                         config.Lat.DecimalDegree, endRLat.DecimalDegree,
                         config.Lon.DecimalDegree, endRLon.DecimalDegree,
                         out double loX, out double hiX))
                     {
-                        iR = Math.Max(iR, Math.Min(numR, (int)(hiX * numR)) - 1);
+                        continue;
                     }
+
+                    if (!distToFarthestPointInChunk.TryGetValue(chunkKey, out int val) || val < (int)(hiX * numR))
+                    {
+                        distToFarthestPointInChunk[chunkKey] = (int)(hiX * numR);
+                    }
+
+                    iR = Math.Max(iR, Math.Min(numR, (int)(hiX * numR)) - 1);
                 }
             }
 
+            return chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p]).ToArray();
+        }
+
+        public static IEnumerable<SparseColorHeight> GetPolarData(Config config, long chunkKey)
+        {
+            float eyeHeight = 5;
+            List<SparseColorHeight> ret = new List<SparseColorHeight>();
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
-            int[] j = new int[iThetaMax - iThetaMin];
-            ColorHeight[][] ret = new ColorHeight[iThetaMax - iThetaMin][];
             float? heightOffset = null;
-            for (int i = 0; i < ret.Length; i++)
-            {
-                ret[i] = new ColorHeight[numParts];
-            }
+            double cosLat = Math.Cos(config.Lat.Radians);
+            int numR = (int)(config.R / config.DeltaR);
+            int[] viewElev = new int[config.NumTheta];
+            NearestInterpolatingChunk<float> interpChunkH = null;
 
-            int counter = 0;
-            foreach (var chunkKey in chunkKeys.OrderBy(p => distToNearestPointInChunk[p]))
+            StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+            Debug.WriteLine(chunk);
+
+            using (interpChunkH = Heights.Current.GetLazySimpleInterpolator(chunk))
             {
-                Console.WriteLine(distToNearestPointInChunk[chunkKey]);
-                NearestInterpolatingChunk<float> interpChunkH = null;
-                try
+                // Now do that again, but do the rendering per chunk.
+                for (int iTheta = 0; iTheta < config.NumTheta; iTheta++)
                 {
-                    StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                    interpChunkH = Heights.Current.GetLazySimpleInterpolator(chunk);
+                    Angle theta = Angle.Multiply(config.AngularResolution, iTheta + config.IThetaMin);
+                    var endRLat = Utils.DeltaMetersLat(theta, config.R);
+                    var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
 
-                    // Now do that again, but do the rendering per chunk.
-                    for (int iTheta = iThetaMin; iTheta < iThetaMax; iTheta++)
+                    // Get intersection between the chunk and the line we are going along.
+                    // See which range of R intersects with chunk.
+                    if (!chunk.TryGetIntersectLine(
+                        config.Lat.DecimalDegree, endRLat.DecimalDegree,
+                        config.Lon.DecimalDegree, endRLon.DecimalDegree,
+                        out double loX, out double hiX))
                     {
-                        Angle theta = Angle.Multiply(config.AngularResolution, iTheta);
-                        var endRLat = Utils.DeltaMetersLat(theta, config.R);
-                        var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
+                        continue;
+                    }
 
-                        // Get intersection between the chunk and the line we are going along.
-                        // See which range of R intersects with chunk.
-                        if (chunk.TryGetIntersectLine(
-                            config.Lat.DecimalDegree, endRLat.DecimalDegree,
-                            config.Lon.DecimalDegree, endRLon.DecimalDegree,
-                            out double loX, out double hiX))
+                    int loR = Math.Max(1, (int)(loX * numR) + 1);
+                    int hiR = Math.Min(numR, (int)(hiX * numR));
+                    for (int iR = loR; iR < hiR; iR++)
+                    {
+                        var mult = iR * config.DeltaR / config.R;
+                        var latDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
+                        var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
+                        if (!interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, out float height)) continue;
+
+                        if (!heightOffset.HasValue) heightOffset = height + eyeHeight;
+
+                        double distance = iR * config.DeltaR;
+                        double curTheta = Math.Atan2(height - heightOffset.Value, distance);
+                        var delta = curTheta - config.ElevationViewMin.Radians;
+                        var norm = delta / config.AngularResolution.Radians;
+                        while (viewElev[iTheta] < norm)
                         {
-                            int loR = Math.Max(1, (int)(loX * numR) + 1);
-                            int hiR = Math.Min(numR, (int)(hiX * numR));
-                            for (int iR = loR; iR < hiR; iR++)
+                            if (viewElev[iTheta] == numParts) break;
+                            ret.Add(new SparseColorHeight()
                             {
-                                var mult = iR * config.DeltaR / config.R;
-                                var latDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-                                var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                                if (interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, out float height))
-                                {
-                                    if (!heightOffset.HasValue) heightOffset = height + eyeHeight;
-
-                                    double distance = iR * config.DeltaR;
-                                    double curTheta = Math.Atan2(height - heightOffset.Value, distance);
-                                    var delta = curTheta - config.ElevationViewMin.Radians;
-                                    var norm = delta / config.AngularResolution.Radians;
-                                    while (j[iTheta - iThetaMin] < norm)
-                                    {
-                                        if (j[iTheta - iThetaMin] == numParts) break;
-                                        ret[iTheta - iThetaMin][j[iTheta - iThetaMin]++] = new ColorHeight()
-                                        {
-                                            ChunkKey = chunkKey,
-                                            LatDegrees = latDegrees,
-                                            LonDegrees = lonDegrees,
-                                            Distance = distance,
-                                            Height = height,
-                                        };
-                                    }
-                                }
-                            }
+                                iTheta = iTheta,
+                                iViewElev = viewElev[iTheta]++,
+                                ChunkKey = chunkKey,
+                                LatDegrees = latDegrees,
+                                LonDegrees = lonDegrees,
+                                Distance = distance,
+                                Height = height,
+                            });
                         }
                     }
-
-                    interpChunkH.Dispose();
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-
-                counter++;
-                Console.WriteLine(counter + " of " + chunkKeys.Count);
-            };
+            }
 
             return ret;
         }
@@ -269,6 +260,29 @@ namespace MountainViewCore.Base
             public double LatDegrees;
             public double LonDegrees;
             public long ChunkKey;
+        }
+
+        public struct SparseColorHeight
+        {
+            public int iTheta;
+            public int iViewElev;
+            public float Height;
+            public double Distance;
+            public double LatDegrees;
+            public double LonDegrees;
+            public long ChunkKey;
+
+            public ColorHeight ToColorHeight()
+            {
+                return new ColorHeight
+                {
+                    Height = Height,
+                    Distance = Distance,
+                    LatDegrees = LatDegrees,
+                    LonDegrees = LonDegrees,
+                    ChunkKey = ChunkKey,
+                };
+            }
         }
     }
 }
