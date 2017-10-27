@@ -38,6 +38,9 @@ namespace MountainViewApi.Controllers
             var config = Config.JuanetaAll();
             config.Lat = homeLat;
             config.Lon = homeLon;
+            config.MinAngle = Angle.FromDecimalDegrees(89.0);
+            config.MaxAngle = Angle.FromDecimalDegrees(91.0);
+
             var imageFile = config.Name + ".jpg";
 
             var view = View.GetPolarData(config);

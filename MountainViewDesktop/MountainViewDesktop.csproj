@@ -35,39 +35,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FreeImageNET, Version=3.15.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>packages\SBC.FreeImage.3.15.1.2\build\net40\lib\FreeImageNET.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.Data.Edm.5.8.2\lib\net40\Microsoft.Data.Edm.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Data.OData, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.Data.OData.5.8.2\lib\net40\Microsoft.Data.OData.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Data.Services.Client, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\Microsoft.Data.Services.Client.5.8.2\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Storage, Version=8.4.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\WindowsAzure.Storage.8.4.0\lib\net45\Microsoft.WindowsAzure.Storage.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="SkiaSharp, Version=1.59.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <HintPath>packages\SkiaSharp.1.59.1\lib\net45\SkiaSharp.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression.FileSystem" />
-    <Reference Include="System.Spatial, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>packages\System.Spatial.5.8.2\lib\net40\System.Spatial.dll</HintPath>
-    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -76,75 +48,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\MountainViewCore\Base\Angle.cs">
-      <Link>Base\Angle.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\BlobHelper.cs">
-      <Link>Base\BlobHelper.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\Config.cs">
-      <Link>Base\Config.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\ConfigurationManager.cs">
-      <Link>Base\ConfigurationManager.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\KDNode.cs">
-      <Link>Base\KDNode.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\MyColor.cs">
-      <Link>Base\MyColor.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\Polygon.cs">
-      <Link>Base\Polygon.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\Utils.cs">
-      <Link>Base\Utils.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Base\View.cs">
-      <Link>Base\View.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\ChunkManagement\CachingHelper.cs">
-      <Link>ChunkManagement\CachingHelper.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\ChunkManagement\ChunkHolder.cs">
-      <Link>ChunkManagement\ChunkHolder.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\ChunkManagement\ChunkMetadata.cs">
-      <Link>ChunkManagement\ChunkMetadata.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\ChunkManagement\InterpolatingChunk.cs">
-      <Link>ChunkManagement\InterpolatingChunk.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\ChunkManagement\StandardChunkMetadata.cs">
-      <Link>ChunkManagement\StandardChunkMetadata.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Elevation\AdfReaderWorker.cs">
-      <Link>Elevation\AdfReaderWorker.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Elevation\Heights.cs">
-      <Link>Elevation\Heights.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Elevation\UsgsRawChunks.cs">
-      <Link>Elevation\UsgsRawChunks.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Imaging\Images.cs">
-      <Link>Imaging\Images.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Imaging\UsgsRawImageChunks.cs">
-      <Link>Imaging\UsgsRawImageChunks.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Interpolation\InterpolatonType.cs">
-      <Link>Interpolation\InterpolatonType.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Interpolation\OneDInterpolator.cs">
-      <Link>Interpolation\OneDInterpolator.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Interpolation\TwoDInterpolator.cs">
-      <Link>Interpolation\TwoDInterpolator.cs</Link>
-    </Compile>
-    <Compile Include="..\MountainViewCore\Landmarks\UsgsRawFeatures.cs">
-      <Link>NewFolder1\UsgsRawFeatures.cs</Link>
-    </Compile>
     <Compile Include="..\MountainView\Program.cs">
       <Link>Program.cs</Link>
     </Compile>
@@ -154,25 +57,30 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="packages\SBC.FreeImage.3.15.1.2\build\net40\freeimage\x86\FreeImage.dll">
+    <Content Include="..\packages\SBC.FreeImage.3.15.1.2\build\net40\freeimage\x86\FreeImage.dll">
       <Link>FreeImage.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MountainViewDesktopCore\MountainViewDesktopCore.csproj">
+      <Project>{475507e8-c7be-4b07-a098-615bf92c4177}</Project>
+      <Name>MountainViewDesktopCore</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets" Condition="Exists('packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" />
+  <Import Project="..\packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets" Condition="Exists('..\packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets'))" />
-    <Error Condition="!Exists('packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets'))" />
+    <Error Condition="!Exists('..\packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SkiaSharp.1.59.1\build\net45\SkiaSharp.targets'))" />
+    <Error Condition="!Exists('..\packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets'))" />
   </Target>
-  <Import Project="packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets" Condition="Exists('packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets')" />
+  <Import Project="..\packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets" Condition="Exists('..\packages\SBC.FreeImage.3.15.1.2\build\net40\SBC.FreeImage.targets')" />
 </Project>
