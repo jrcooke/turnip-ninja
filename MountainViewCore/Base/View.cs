@@ -61,7 +61,7 @@ namespace MountainViewCore.Base
                 }
             }
 
-            return chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p]).ToArray();
+            return (new long[] { 0 }).Union(chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p])).ToArray();
         }
 
         public static IEnumerable<SparseColorHeight> GetPolarData(Config config, long chunkKey)
@@ -158,7 +158,7 @@ namespace MountainViewCore.Base
                             if (p.ChunkKey != chunkKey) continue;
                             if (chunkKey == 0)
                             {
-                                ret[i][j] = skyColor;
+                                ret[i][j] = new MyColor();
                             }
                             else
                             {

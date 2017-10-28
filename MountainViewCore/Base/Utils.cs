@@ -189,7 +189,7 @@ namespace MountainView.Base
                 bits[offset++] = color.B;
                 bits[offset++] = color.G;
                 bits[offset++] = color.R;
-                bits[offset++] = 255;
+                bits[offset++] = color.A;
             }
 
             public void WriteFile(string fileName, OutputType outputType)

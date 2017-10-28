@@ -18,8 +18,8 @@ namespace MountainView
         static void Main(string[] args)
         {
             DateTime start = DateTime.Now;
-            int serverLat = 47;
-            int serverLon = -123;
+            int serverLat = 48;
+            int serverLon = -120;
 
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
