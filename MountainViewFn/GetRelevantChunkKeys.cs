@@ -37,7 +37,6 @@ namespace MountainViewFn
 
             //string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             //BlobHelper.SetConnectionString(cs);
-            //BlobHelper.CacheLocally = true;
 
             var config = Config.Juaneta();
             //config.Lat = Angle.FromDecimalDegrees(value.Lat);

@@ -26,7 +26,6 @@ namespace MountainViewApi.Controllers
         public string Get(long id)
         {
             BlobHelper.SetConnectionString(System.Configuration.ConfigurationManager.AppSettings["ConnectionString"]);
-            BlobHelper.CacheLocally = true;
 
             var config = Config.Juaneta();
             //var config = Config.JuanetaAll();

@@ -54,7 +54,6 @@ namespace MountainView
                 }
                 else if (isClient)
                 {
-                    BlobHelper.CacheLocally = true;
                     //Config c = Config.Rainer();
                     Config config = Config.JuanetaAll();
                     //                    Config c = Config.Juaneta();

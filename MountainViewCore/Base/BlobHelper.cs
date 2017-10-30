@@ -9,8 +9,6 @@ namespace MountainView.Base
 {
     public static class BlobHelper
     {
-        public static bool CacheLocally { get; set; }
-
         private static object locker = new object();
         private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
 
@@ -46,7 +44,6 @@ namespace MountainView.Base
 
         public static FileStream TryGetStream(string containerName, string fileName)
         {
-            if (CacheLocally)
             {
                 var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(localFileName))
@@ -54,12 +51,13 @@ namespace MountainView.Base
                     try
                     {
                         CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                        var tmpName = Path.Combine(Path.GetTempPath(), System.Guid.NewGuid().ToString() + ".tmp");
+                        var tmpName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
 #if !JDESKTOP
                         System.Threading.Tasks.Task.WaitAll(blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew));
 #else
                         blockBlob.DownloadToFile(tmpName, FileMode.CreateNew);
 #endif
+
                         if (!File.Exists(localFileName))
                         {
                             File.Move(tmpName, localFileName);
@@ -71,50 +69,23 @@ namespace MountainView.Base
                     }
                     catch
                     {
-                        System.Console.WriteLine("Missing blob: " + fileName);
+                        Console.WriteLine("Missing blob: " + fileName);
                         return null;
                     }
                 }
 
-                var stream = new MemoryStream();
                 var fs = File.OpenRead(localFileName);
                 fs.Position = 0;
                 return fs;
-                //fs.CopyTo(stream);
-                //stream.Position = 0;
-                //return stream;
-            }
-            else
-            {
-                try
-                {
-                    CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-                    var stream = new MemoryStream();
-#if !JDESKTOP
-                    System.Threading.Tasks.Task.WaitAll(blockBlob.DownloadToStreamAsync(stream));
-#else
-                    blockBlob.DownloadToStream(stream);
-#endif
-                    stream.Position = 0;
-                    // return stream;
-                    throw new NotImplementedException();
-                }
-                catch
-                {
-                    return null;
-                }
             }
         }
 
         public static bool BlobExists(string containerName, string fileName)
         {
-            if (CacheLocally)
+            var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(localFileName))
             {
-                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
-                if (File.Exists(localFileName))
-                {
-                    return true;
-                }
+                return true;
             }
 
             CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);

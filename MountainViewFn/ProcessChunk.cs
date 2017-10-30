@@ -17,6 +17,7 @@ namespace MountainViewFn
         [FunctionName("ProcessChunk")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
+            await Task.Delay(0);
             log.Info("C# HTTP trigger function processed a request.");
 
             // parse query parameter
@@ -36,7 +37,6 @@ namespace MountainViewFn
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs);
-            BlobHelper.CacheLocally = true;
 
             var config = Config.Juaneta();
             //var config = Config.JuanetaAll();
