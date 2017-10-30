@@ -226,7 +226,7 @@ namespace MountainView
             }
         }
 
-        private ChunkHolder<T> ReadChunk(MemoryStream stream, StandardChunkMetadata template)
+        private ChunkHolder<T> ReadChunk(FileStream stream, StandardChunkMetadata template)
         {
             byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
             stream.Read(buffer, 0, 4);
@@ -251,6 +251,6 @@ namespace MountainView
 
         protected abstract ChunkHolder<T> GenerateData(StandardChunkMetadata template);
         protected abstract void WritePixel(MemoryStream stream, T pixel);
-        protected abstract T ReadPixel(MemoryStream stream, byte[] buffer);
+        protected abstract T ReadPixel(FileStream stream, byte[] buffer);
     }
 }

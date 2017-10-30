@@ -11,6 +11,7 @@ namespace MountainView.Base
     {
         JPEG,
         Bitmap,
+        PNG,
     }
 
     public static class Utils
@@ -206,6 +207,11 @@ namespace MountainView.Base
                                 bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
                                     FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
                                     FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
+                                break;
+                            case OutputType.PNG:
+                                // JPEG_QUALITYGOOD is 75 JPEG.
+                                // JPEG_BASELINE strips metadata (EXIF, etc.)
+                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_PNG);
                                 break;
                             case OutputType.Bitmap:
                                 // JPEG_QUALITYGOOD is 75 JPEG.

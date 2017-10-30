@@ -80,8 +80,8 @@ namespace MountainView.ChunkManagement
         private double scaleLon;
         private string container;
         private string fullFileName;
-        private Func<MemoryStream, int, int, T> readPixel;
-        private MemoryStream ms;
+        private Func<FileStream, int, int, T> readPixel;
+        private FileStream ms;
         private bool triedToGetMS;
 
         public NearestInterpolatingChunk(
@@ -89,7 +89,7 @@ namespace MountainView.ChunkManagement
             double latHi, double lonHi,
             int numLat, int numLon,
             string container, string fullFileName,
-            Func<MemoryStream, int, int, T> readPixel)
+            Func<FileStream, int, int, T> readPixel)
         {
             this.latLo = latLo;
             this.lonLo = lonLo;

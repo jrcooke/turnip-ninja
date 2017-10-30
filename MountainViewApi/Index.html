@@ -4,25 +4,49 @@
     <meta charset="utf-8" />
     <title>Title</title>
     <script src="Scripts/jquery-3.2.1.min.js"></script>
+    <style>
+        .containerdiv {
+            float: left;
+            position: relative;
+        }
+
+        .cornerimage {
+            position: absolute;
+            /*top: 0;
+            right: 0;*/
+        }
+    </style>
 </head>
 <body>
-
     <div id="demo">
     </div>
-
     <script>
         var x = document.getElementById("demo");
 
         function getImageUrl(lat, lon) {
+
             var val = { Lat: lat, Lon: lon };
             $.ajax({
-                url: 'api/Values',
+                url: 'https://mountainviewbackend.azurewebsites.net/api/GetRelevantChunkKeys',
+                //url: 'http://localhost:7071/api/GetRelevantChunkKeys',
                 type: 'POST',
                 dataType: 'json',
                 contentType: 'application/json; charset=utf-8',
                 data: JSON.stringify(val),
                 success: function (data) {
-                    x.innerHTML = data;
+                    JSON.parse(data).forEach(function (element) {
+                        var $div = $("<div  class='containerdiv'>");
+                        $("#demo").append($div);
+                        $.ajax({
+                            url: 'https://mountainviewbackend.azurewebsites.net/api/ProcessChunk?id=' + element,
+                            //url: 'http://localhost:7071/api/ProcessChunk?id=' + element,
+                            type: 'GET',
+                            success: function (data) {
+                                $div.append(data);
+                            }
+                        });
+
+                    });
                 }
             });
         }
@@ -32,7 +56,7 @@
                 position.coords.latitude,
                 position.coords.longitude);
             x.innerHTML = "Latitude: " + position.coords.latitude +
-                "<br>Longitude: " + position.coords.longitude + 
+                "<br>Longitude: " + position.coords.longitude +
                 "<br>Loading image data...";
         }
 
@@ -46,6 +70,5 @@
 
         getLocation();
     </script>
-
 </body>
 </html>

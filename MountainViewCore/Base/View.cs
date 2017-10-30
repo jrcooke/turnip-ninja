@@ -12,6 +12,9 @@ namespace MountainViewCore.Base
 {
     public static class View
     {
+        // Haze adds bluish overlay to colors
+        private static MyColor skyColor = new MyColor(195, 240, 247);
+
         public static long[] GetRelevantChunkKeys(Config config)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
@@ -135,8 +138,6 @@ namespace MountainViewCore.Base
 
         public static MyColor[][] ProcessImage(ColorHeight[][] view)
         {
-            // Haze adds bluish overlay to colors
-            MyColor skyColor = new MyColor(195, 240, 247);
             var chunkKeys = view.SelectMany(p => p).Select(p => p.ChunkKey).Distinct();
 
             var ret = new MyColor[view.Length][];
@@ -177,6 +178,21 @@ namespace MountainViewCore.Base
             return ret;
         }
 
+        public static MyColor[][] ProcessImageBackdrop(int width, int height)
+        {
+            var ret = new MyColor[width][];
+            for (int i = 0; i < width; i++)
+            {
+                ret[i] = new MyColor[height];
+                for (int j = 0; j < height; j++)
+                {
+                    ret[i][j] = skyColor;
+                }
+            }
+
+            return ret;
+        }
+
         public static string ProcessImageMap(ColorHeight[][] view, string imageName)
         {
             var features = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
@@ -192,12 +208,19 @@ namespace MountainViewCore.Base
                 .Select(p => "<area href='" + p.alt + "' title='" + p.alt + "' alt='" + p.alt + "' shape='poly' coords='" + p.coords + "' >")
                 .ToArray();
             var mapId = Guid.NewGuid().ToString();
-            var mapText = "<div>" +
-                "<map name='" + mapId + "'>" + string.Join("\r\n", polymap) + "</map>" +
-                "<img src='" + imageName + "' usemap='#" + mapId + "' >" +
-                "</div>";
 
-            return mapText;
+            return "<img class='cornerimage' src='" + imageName + "'>";
+
+            //var mapText = "<div>" +
+            //    "<map name='" + mapId + "'>" + string.Join("\r\n", polymap) + "</map>" +
+            //    "<img src='" + imageName + "' usemap='#" + mapId + "' >" +
+            //    "</div>";
+            //            return mapText;
+        }
+
+        public static string ProcessImageMapBackdrop(string imageName)
+        {
+            return "<img class='cornerimage' src='" + imageName + "'>";
         }
 
         private static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : class

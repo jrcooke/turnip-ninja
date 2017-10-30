@@ -56,7 +56,7 @@ namespace MountainView.Elevation
             stream.Write(BitConverter.GetBytes(pixel), 0, 4);
         }
 
-        protected override float ReadPixel(MemoryStream stream, byte[] buffer)
+        protected override float ReadPixel(FileStream stream, byte[] buffer)
         {
             stream.Read(buffer, 0, 4);
             return BitConverter.ToSingle(buffer, 0);

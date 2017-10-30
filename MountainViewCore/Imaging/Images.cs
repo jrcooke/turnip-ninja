@@ -77,7 +77,7 @@ namespace MountainView.Imaging
             stream.WriteByte(pixel.B);
         }
 
-        protected override MyColor ReadPixel(MemoryStream stream, byte[] buffer)
+        protected override MyColor ReadPixel(FileStream stream, byte[] buffer)
         {
             return new MyColor(
                 (byte)stream.ReadByte(),

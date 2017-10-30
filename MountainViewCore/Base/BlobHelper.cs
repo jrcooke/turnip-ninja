@@ -1,5 +1,6 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,7 +44,7 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static MemoryStream TryGetStream(string containerName, string fileName)
+        public static FileStream TryGetStream(string containerName, string fileName)
         {
             if (CacheLocally)
             {
@@ -78,9 +79,10 @@ namespace MountainView.Base
                 var stream = new MemoryStream();
                 var fs = File.OpenRead(localFileName);
                 fs.Position = 0;
-                fs.CopyTo(stream);
-                stream.Position = 0;
-                return stream;
+                return fs;
+                //fs.CopyTo(stream);
+                //stream.Position = 0;
+                //return stream;
             }
             else
             {
@@ -94,7 +96,8 @@ namespace MountainView.Base
                     blockBlob.DownloadToStream(stream);
 #endif
                     stream.Position = 0;
-                    return stream;
+                    // return stream;
+                    throw new NotImplementedException();
                 }
                 catch
                 {
@@ -148,6 +151,17 @@ namespace MountainView.Base
 #else
             blockBlob.UploadFromStream(stream);
 #endif
+        }
+
+        public static string WriteStream(string containerName, string fileName, string sourceName)
+        {
+            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+#if !JDESKTOP
+            System.Threading.Tasks.Task.WaitAll(blockBlob.UploadFromFileAsync(sourceName));
+#else
+            blockBlob.UploadFromFile(sourceName);
+#endif
+            return blockBlob.Uri.ToString();
         }
 
         public static IEnumerable<string> GetDirectories(string containerName, string directoryPrefix)
