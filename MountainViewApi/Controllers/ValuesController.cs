@@ -85,9 +85,6 @@ namespace MountainViewApi.Controllers
         // POST api/values
         public string[] Post([FromBody]LatLonPoint value)
         {
-            BlobHelper.SetConnectionString(System.Configuration.ConfigurationManager.AppSettings["ConnectionString"]);
-            BlobHelper.CacheLocally = true;
-
             var config = Config.Juaneta();
             //config.Lat = Angle.FromDecimalDegrees(value.Lat);
             //config.Lon = Angle.FromDecimalDegrees(value.Lon);
