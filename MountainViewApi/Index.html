@@ -25,22 +25,28 @@
 
         function getProcessedChunks(sessionId, count, $div) {
             $.ajax({
-                url: 'http://localhost:7071/api/HttpTriggerCSharp/sessionId/' + sessionId,
+                url: 'https://mountainviewbackend.azurewebsites.net/api/HttpTriggerCSharp/sessionId/' + sessionId,
+                // url: 'http://localhost:7071/api/HttpTriggerCSharp/sessionId/' + sessionId,
                 type: 'GET',
                 success: function (data) {
                     var data2 = JSON.parse(data);
                     data2.forEach(function (element) {
                         $div.append("<img class='cornerimage' src='" + element.ImageUrl + "'>");
-                        //                    { "Order": 19, "ImageUrl": "https://jcookestorage.blob.core.windows.net/share/Juaneta.417161583580803.png", "ImageMap": "" },
                     });
-                 //   $div.append("<br>" + data);
 
                     if (data2.length < count) {
-                        //alert("Need more!");
                         setTimeout(function () {
                             getProcessedChunks(sessionId, count, $div);
                         }, 5000);
+                    } else {
+                        alert("Complete!");
                     }
+                },
+                error: function (xhr) {
+                    alert("An error occured: " + xhr.status + " " + xhr.statusText + "\r\nWill try again after this is dismissed");
+                    setTimeout(function () {
+                        getProcessedChunks(sessionId, count, $div);
+                    }, 1);
                 }
             });
 
@@ -50,8 +56,8 @@
 
             var val = { Lat: lat, Lon: lon };
             $.ajax({
-                //                url: 'https://mountainviewbackend.azurewebsites.net/api/QueueRelevantChunkKeys',
-                url: 'http://localhost:7071/api/QueueRelevantChunkKeys',
+                url: 'https://mountainviewbackend.azurewebsites.net/api/QueueRelevantChunkKeys',
+                // url: 'http://localhost:7071/api/QueueRelevantChunkKeys',
                 type: 'POST',
                 dataType: 'json',
                 contentType: 'application/json; charset=utf-8',
