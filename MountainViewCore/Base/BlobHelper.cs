@@ -26,6 +26,11 @@ namespace MountainView.Base
                 {
                     if (!singleton.TryGetValue(containerName, out ret))
                     {
+                        if (string.IsNullOrEmpty(connectionString))
+                        {
+                            throw new System.InvalidOperationException("Must set the 'connectionString' property prior to use");
+                        }
+
                         CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                         CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
                         CloudBlobContainer container = blobClient.GetContainerReference(containerName);

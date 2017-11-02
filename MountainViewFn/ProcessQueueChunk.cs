@@ -1,39 +1,29 @@
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
 using MountainViewCore.Base;
-using System.IO;
+using MountainViewDesktopCore.Base;
+using Newtonsoft.Json;
 using System;
+using System.IO;
 
 namespace MountainViewFn
 {
-    public static class ProcessChunk
+    public static class Constants
     {
-        [FunctionName("ProcessChunk")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+        public const string ChunkQueueName = "chunkqueue";
+        public const string FanOutQueue = "fanoutqueue";
+    }
+
+    public static class ProcessQueueChunk
+    {
+        [FunctionName("ProcessQueueChunk")]
+        [Singleton(Mode = SingletonMode.Listener)]
+        public static void Run([QueueTrigger(Constants.ChunkQueueName, Connection = "ConnectionString2")]string myQueueItem, TraceWriter log)
         {
-            await Task.Delay(0);
-            log.Info("C# HTTP trigger function processed a request.");
+            log.Info($"C# Queue trigger function processed: {myQueueItem}");
 
-            // parse query parameter
-            string ids = req.GetQueryNameValuePairs()
-                .FirstOrDefault(q => string.Compare(q.Key, "id", true) == 0)
-                .Value;
-
-            if (string.IsNullOrEmpty(ids))
-            {
-                return req.CreateResponse(HttpStatusCode.BadRequest, "Please pass an id on the query string");
-            }
-
-            if (!long.TryParse(ids, out long id))
-            {
-                return req.CreateResponse(HttpStatusCode.BadRequest, "id must be a long int");
-            }
+            var data = JsonConvert.DeserializeObject<QueueRelevantChunkKeys.ChunkMetadata>(myQueueItem);
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs);
@@ -45,14 +35,14 @@ namespace MountainViewFn
             //config.MinAngle = Angle.FromDecimalDegrees(89.0);
             //config.MaxAngle = Angle.FromDecimalDegrees(91.0);
 
-            var imageFile = config.Name + "." + id + ".png";
+            var imageFile = config.Name + "." + data.ChunkKey + ".png";
 
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
 
             MyColor[][] www3 = null;
             View.ColorHeight[][] view3 = null;
             string maptxt = "";
-            if (id == 0)
+            if (data.ChunkKey == 0)
             {
                 www3 = View.ProcessImageBackdrop(config.NumTheta, numParts);
             }
@@ -64,7 +54,7 @@ namespace MountainViewFn
                     view3[i] = new View.ColorHeight[numParts];
                 }
 
-                var view2 = View.GetPolarData(config, id);
+                var view2 = View.GetPolarData(config, data.ChunkKey);
                 foreach (var elem in view2)
                 {
                     view3[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
@@ -76,16 +66,29 @@ namespace MountainViewFn
             Utils.WriteImageFile(www3, Path.Combine(Path.GetTempPath(), imageFile), a => a, OutputType.PNG);
             string location = BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile));
 
-            if (id == 0)
+            ////    id = 0;
+            //    if (id == 0)
+            //    {
+            //        maptxt = View.ProcessImageMapBackdrop(location);
+            //    }
+            //    else
+            //    {
+            //        maptxt = View.ProcessImageMap(view3, location);
+            //    }
+
+            string cs2 = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
+            TableHelper.SetConnectionString(cs2);
+            try
             {
-                maptxt = View.ProcessImageMapBackdrop(location);
+                TableHelper.Insert(data.SessionId, data.Order, location, maptxt);
             }
-            else
+            catch (Exception ex)
             {
-                maptxt = View.ProcessImageMap(view3, location);
+                log.Error(ex.ToString());
             }
 
-            return req.CreateResponse(HttpStatusCode.OK, maptxt);
+            // return req.CreateResponse(HttpStatusCode.OK, maptxt);
         }
     }
 }
+

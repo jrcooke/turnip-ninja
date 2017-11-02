@@ -1,20 +1,22 @@
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
 using MountainViewCore.Base;
+using MountainViewDesktopCore.Base;
+using Newtonsoft.Json;
 using System;
-using System.Text;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+
 
 namespace MountainViewFn
 {
-    public static class GetRelevantChunkKeys
+    public static class QueueRelevantChunkKeys
     {
-        [FunctionName("GetRelevantChunkKeys")]
+        [FunctionName("QueueRelevantChunkKeys")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             await Task.Delay(0);
@@ -46,8 +48,28 @@ namespace MountainViewFn
 
             var chunks = View.GetRelevantChunkKeys(config);
 
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(chunks.Select(p => p.ToString()).ToArray());
-            return req.CreateResponse(HttpStatusCode.OK, json, "application/json");
+            string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
+            QueueHelper.SetConnectionString(cs);
+
+            ChunkProcess ret = new ChunkProcess() { SessionId = Guid.NewGuid().ToString(), Count = chunks.Length };
+            ChunkMetadata[] chunksToProcess = chunks.Select((p, i) => new ChunkMetadata() { Order = i, SessionId = ret.SessionId, ChunkKey = chunks[i] }).ToArray();
+            var json = JsonConvert.SerializeObject(chunksToProcess);
+            QueueHelper.Enqueue(Constants.FanOutQueue, json);
+
+            return req.CreateResponse(HttpStatusCode.OK, JsonConvert.SerializeObject(ret), "application/json");
+        }
+
+        internal class ChunkMetadata
+        {
+            public int Order;
+            public string SessionId;
+            public long ChunkKey;
+        }
+
+        private class ChunkProcess
+        {
+            public int Count;
+            public string SessionId;
         }
     }
 }
