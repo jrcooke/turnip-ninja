@@ -2,6 +2,7 @@
 using MountainViewDesktop.Interpolation;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MountainView.ChunkManagement
@@ -36,7 +37,7 @@ namespace MountainView.ChunkManagement
             }
         }
 
-        public void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate)
+        public void RenderChunksInto(IEnumerable<ChunkHolder<T>> chunks, Func<int, T, T, T> aggregate, TraceListener log)
         {
             double[] buffer = new double[toDouble.Length];
             int[][] counter = new int[this.LatSteps][];
@@ -47,7 +48,7 @@ namespace MountainView.ChunkManagement
 
             foreach (var loopChunk in chunks.Where(p => p != null))
             {
-                Console.WriteLine("Processing " + loopChunk);
+                log.WriteLine("Processing " + loopChunk);
                 InterpolatingChunk<T> chunk2 = null;
                 if (loopChunk.PixelSizeLatDeg > this.PixelSizeLatDeg ||
                     loopChunk.PixelSizeLonDeg > this.PixelSizeLonDeg)
@@ -105,7 +106,7 @@ namespace MountainView.ChunkManagement
                 }
             }
 
-bool missingArea = false;
+            bool missingArea = false;
             for (int i = 0; i < counter.Length; i++)
             {
                 for (int j = 0; j < counter[i].Length; j++)
@@ -113,13 +114,14 @@ bool missingArea = false;
                     if (counter[i][j] == 0)
                     {
                         missingArea = true;
-//                        throw new InvalidOperationException("The chunks do not cover the area of this chunk: " + this.ToString());
+                        //                        throw new InvalidOperationException("The chunks do not cover the area of this chunk: " + this.ToString());
                     }
                 }
             }
 
-            if (missingArea) {
-            System.Console.WriteLine("The chunks do not cover the area of this chunk: " + this.ToString());
+            if (missingArea)
+            {
+                log.WriteLine("The chunks do not cover the area of this chunk: " + this.ToString());
             }
         }
 

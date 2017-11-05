@@ -16,12 +16,12 @@ namespace MountainViewCore.Base
         // Haze adds bluish overlay to colors
         private static MyColor skyColor = new MyColor(195, 240, 247);
 
-        public static async Task<float> GetHeightAtPoint(Config config, long chunkKey)
+        public static async Task<float> GetHeightAtPoint(Config config, long chunkKey, TraceListener log)
         {
             StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-            using (var interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk))
+            using (var interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))
             {
-                var result = await interpChunkH.TryGetDataAtPoint(config.Lat.DecimalDegree, config.Lon.DecimalDegree);
+                var result = await interpChunkH.TryGetDataAtPoint(config.Lat.DecimalDegree, config.Lon.DecimalDegree, log);
                 if (!result.Success)
                 {
                     throw new InvalidOperationException();
@@ -83,7 +83,7 @@ namespace MountainViewCore.Base
             return (new long[] { 0 }).Union(chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p])).ToArray();
         }
 
-        public static async Task<IEnumerable<SparseColorHeight>> GetPolarData(Config config, long chunkKey, float heightOffset)
+        public static async Task<IEnumerable<SparseColorHeight>> GetPolarData(Config config, long chunkKey, float heightOffset, TraceListener log)
         {
             List<SparseColorHeight> ret = new List<SparseColorHeight>();
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
@@ -93,9 +93,9 @@ namespace MountainViewCore.Base
             NearestInterpolatingChunk<float> interpChunkH = null;
 
             StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-            Debug.WriteLine(chunk);
+            log.WriteLine(chunk);
 
-            using (interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk))
+            using (interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))
             {
                 // Now do that again, but do the rendering per chunk.
                 for (int iTheta = 0; iTheta < config.NumTheta; iTheta++)
@@ -121,7 +121,7 @@ namespace MountainViewCore.Base
                         var mult = iR * config.DeltaR / config.R;
                         var latDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
                         var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-                        var heightResult = await interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees);
+                        var heightResult = await interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, log);
                         if (!heightResult.Success) continue;
                         var height = heightResult.Data;
 
@@ -150,7 +150,7 @@ namespace MountainViewCore.Base
             return ret;
         }
 
-        public static async Task<MyColor[][]> ProcessImage(ColorHeight[][] view)
+        public static async Task<MyColor[][]> ProcessImage(ColorHeight[][] view, TraceListener log)
         {
             var chunkKeys = view.SelectMany(p => p).Select(p => p.ChunkKey).Distinct();
 
@@ -163,7 +163,7 @@ namespace MountainViewCore.Base
             foreach (var chunkKey in chunkKeys)
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                using (var image = await Images.Current.GetLazySimpleInterpolator(chunk))
+                using (var image = await Images.Current.GetLazySimpleInterpolator(chunk, log))
                 {
                     for (int i = 0; i < view.Length; i++)
                     {
@@ -177,7 +177,7 @@ namespace MountainViewCore.Base
                             }
                             else
                             {
-                                var imageResult = await image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees);
+                                var imageResult = await image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees, log);
                                 MyColor color = imageResult.Data;
                                 double clearWeight = 0.2 + 0.8 / (1.0 + p.Distance * p.Distance * 1.0e-8);
                                 ret[i][j] = new MyColor(

@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,7 +12,6 @@ namespace MountainView.Base
 {
     public static class BlobHelper
     {
-        private static object locker = new object();
         private static ConcurrentDictionary<string, CloudBlobContainer> singleton = new ConcurrentDictionary<string, CloudBlobContainer>();
 
         private static string connectionString;
@@ -20,61 +20,121 @@ namespace MountainView.Base
             BlobHelper.connectionString = connectionString;
         }
 
-        private static async Task<CloudBlobContainer> GetContainerAsync(string containerName)
+        private static async Task<CloudBlobContainer> GetContainerAsync(string containerName, TraceListener log)
         {
             if (!singleton.TryGetValue(containerName, out CloudBlobContainer ret))
             {
                 if (string.IsNullOrEmpty(connectionString))
                 {
-                    throw new System.InvalidOperationException("Must set the 'connectionString' property prior to use");
+                    log.WriteLine("Must set the 'connectionString' property prior to use");
+                    throw new InvalidOperationException("Must set the 'connectionString' property prior to use");
                 }
 
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                 CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-                CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-                await container.CreateIfNotExistsAsync();
-                ret = container;
+                ret = blobClient.GetContainerReference(containerName);
+                await ret.CreateIfNotExistsAsync();
                 singleton.AddOrUpdate(containerName, ret, (a, b) => b);
             }
 
             return ret;
         }
 
-        public static async Task<FileStream> TryGetStreamAsync(string containerName, string fileName)
+        public static async Task<DeletableFileStream> TryGetStreamAsync(string containerName, string fileName, TraceListener log)
         {
+            var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(localFileName))
             {
-                var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
-                if (!File.Exists(localFileName))
+                try
                 {
-                    try
+                    CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
+                    var tmpName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
+                    await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
+                    if (!File.Exists(localFileName))
                     {
-                        CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
-                        var tmpName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
-                        await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
-
-                        if (!File.Exists(localFileName))
-                        {
-                            File.Move(tmpName, localFileName);
-                        }
-                        else
-                        {
-                            File.Delete(tmpName);
-                        }
+                        File.Move(tmpName, localFileName);
                     }
-                    catch
+                    else
                     {
-                        Console.WriteLine("Missing blob: " + fileName);
-                        return null;
+                        File.Delete(tmpName);
                     }
                 }
-
-                var fs = File.OpenRead(localFileName);
-                fs.Position = 0;
-                return fs;
+                catch (IOException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    log.WriteLine("Missing blob: " + fileName);
+                    log.WriteLine("Error was:" + ex.ToString());
+                    return null;
+                }
             }
+
+            var fs = File.OpenRead(localFileName);
+            fs.Position = 0;
+
+            var ret = new DeletableFileStream(localFileName, fs);
+            return ret;
         }
 
-        public static async Task<bool> BlobExists(string containerName, string fileName)
+        public class DeletableFileStream : IDisposable
+        {
+            private string localFileName;
+            public FileStream Stream { get; private set; }
+
+            public DeletableFileStream(string localFileName, FileStream fs)
+            {
+                this.localFileName = localFileName;
+                Stream = fs;
+            }
+
+            public void Seek(long offset, SeekOrigin origin)
+            {
+                Stream.Seek(offset, origin);
+            }
+
+            internal void Read(byte[] array, int offset, int count)
+            {
+                Stream.Read(array, offset, count);
+            }
+
+            internal int ReadByte()
+            {
+                return Stream.ReadByte();
+            }
+
+            #region IDisposable Support
+            private bool disposedValue = false; // To detect redundant calls
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!disposedValue)
+                {
+                    if (disposing)
+                    {
+                        Stream.Dispose();
+                    }
+
+                    File.Delete(localFileName);
+                    disposedValue = true;
+                }
+            }
+
+            ~DeletableFileStream()
+            {
+                Dispose(false);
+            }
+
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+            #endregion
+        }
+
+        public static async Task<bool> BlobExists(string containerName, string fileName, TraceListener log)
         {
             var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(localFileName))
@@ -82,16 +142,16 @@ namespace MountainView.Base
                 return true;
             }
 
-            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
             return await blockBlob.ExistsAsync();
         }
 
-        public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)
+        public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName, TraceListener log)
         {
             List<string> ret = new List<string>();
-            using (var stream = await TryGetStreamAsync(containerName, fileName))
+            using (var stream = await TryGetStreamAsync(containerName, fileName, log))
             {
-                using (var reader = new StreamReader(stream))
+                using (var reader = new StreamReader(stream.Stream))
                 {
                     string line;
                     while ((line = reader.ReadLine()) != null)
@@ -104,31 +164,31 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static async Task WriteStream(string containerName, string fileName, MemoryStream stream)
+        public static async Task WriteStream(string containerName, string fileName, MemoryStream stream, TraceListener log)
         {
-            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
             await blockBlob.UploadFromStreamAsync(stream);
         }
 
-        public static async Task<string> WriteStream(string containerName, string fileName, string sourceName)
+        public static async Task<string> WriteStream(string containerName, string fileName, string sourceName, TraceListener log)
         {
-            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
             await blockBlob.UploadFromFileAsync(sourceName);
             return blockBlob.Uri.ToString();
         }
 
-        public static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix)
+        public static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix, TraceListener log)
         {
-            var blobList = await (await GetContainerAsync(containerName))
+            var blobList = await (await GetContainerAsync(containerName, log))
                 .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
             var x = blobList.Results.OfType<CloudBlobDirectory>().Select(p => p.Prefix.TrimEnd('/')).ToArray();
             return x;
         }
 
-        public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
+        public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory, TraceListener log)
         {
             List<string> ret = new List<string>();
-            var dir = (await GetContainerAsync(containerName)).GetDirectoryReference(directory);
+            var dir = (await GetContainerAsync(containerName, log)).GetDirectoryReference(directory);
             BlobContinuationToken bcc = null;
             while (true)
             {

@@ -3,9 +3,11 @@ using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
 using MountainViewCore.Base;
 using MountainViewDesktopCore.Base;
+using MountainViewFn.Core;
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace MountainViewFn
@@ -16,12 +18,13 @@ namespace MountainViewFn
         [Singleton(Mode = SingletonMode.Listener)]
         public static async Task Run([QueueTrigger(Constants.ChunkQueueName, Connection = "ConnectionString2")]string myQueueItem, TraceWriter log)
         {
-            log.Info($"C# Queue trigger function processed: {myQueueItem}");
+            log.Info($"ProcessQueueChunk processed: {myQueueItem}");
 
             var chunkMetadata = JsonConvert.DeserializeObject<ChunkMetadata>(myQueueItem);
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs);
+            var log2 = new MyTraceLister(log);
 
             var config = Config.Juaneta();
             //var config = Config.JuanetaAll();
@@ -42,23 +45,33 @@ namespace MountainViewFn
             }
             else
             {
+                var chunkView = await View.GetPolarData(config, chunkMetadata.ChunkKey, chunkMetadata.HeightOffset, log2);
+                if (chunkView.Count() == 0)
+                {
+                    log.Error($"ERROR: No pixels from GetPolarData");
+                }
+
                 view = new View.ColorHeight[config.NumTheta][];
                 for (int i = 0; i < view.Length; i++)
                 {
                     view[i] = new View.ColorHeight[numParts];
                 }
 
-                var chunkView = await View.GetPolarData(config, chunkMetadata.ChunkKey, chunkMetadata.HeightOffset);
                 foreach (var pixel in chunkView)
                 {
                     view[pixel.iTheta][pixel.iViewElev] = pixel.ToColorHeight();
                 }
 
-                resultImage = await View.ProcessImage(view);
+                resultImage = await View.ProcessImage(view, log2);
+
+                if (resultImage.SelectMany(p => p).Count(p => p.R != 0 || p.G != 0 || p.B != 0) == 0)
+                {
+                    log.Error($"ERROR: Only a black pixels in result image");
+                }
             }
 
             Utils.WriteImageFile(resultImage, Path.Combine(Path.GetTempPath(), imageFile), a => a, OutputType.PNG);
-            string location = await BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile));
+            string location = await BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile), log2);
 
             string maptxt = "";
             ////    id = 0;
@@ -86,4 +99,3 @@ namespace MountainViewFn
         }
     }
 }
-

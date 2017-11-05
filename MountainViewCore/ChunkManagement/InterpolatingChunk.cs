@@ -1,9 +1,11 @@
 ﻿using MountainView.Base;
 using MountainViewDesktop.Interpolation;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static MountainView.Base.BlobHelper;
 
 namespace MountainView.ChunkManagement
 {
@@ -81,8 +83,8 @@ namespace MountainView.ChunkManagement
         private double scaleLon;
         private string container;
         private string fullFileName;
-        private Func<FileStream, int, int, T> readPixel;
-        private FileStream ms;
+        private Func<DeletableFileStream, int, int, T> readPixel;
+        private DeletableFileStream ms;
         private bool triedToGetMS;
 
         public NearestInterpolatingChunk(
@@ -90,7 +92,7 @@ namespace MountainView.ChunkManagement
             double latHi, double lonHi,
             int numLat, int numLon,
             string container, string fullFileName,
-            Func<FileStream, int, int, T> readPixel)
+            Func<DeletableFileStream, int, int, T> readPixel)
         {
             this.latLo = latLo;
             this.lonLo = lonLo;
@@ -115,11 +117,11 @@ namespace MountainView.ChunkManagement
             return lonLo <= lonDegree && lonDegree <= lonHi;
         }
 
-        public async Task<GetDataResult> TryGetDataAtPoint(double latDegree, double lonDegree)
+        public async Task<GetDataResult> TryGetDataAtPoint(double latDegree, double lonDegree, TraceListener log)
         {
             if (!triedToGetMS)
             {
-                ms = await BlobHelper.TryGetStreamAsync(container, fullFileName);
+                ms = await BlobHelper.TryGetStreamAsync(container, fullFileName, log);
                 triedToGetMS = true;
             }
 

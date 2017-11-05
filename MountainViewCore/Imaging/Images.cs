@@ -2,9 +2,11 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using static MountainView.Base.BlobHelper;
 
 namespace MountainView.Imaging
 {
@@ -30,7 +32,7 @@ namespace MountainView.Imaging
             }
         }
 
-        protected override async Task< ChunkHolder<MyColor>> GenerateData(StandardChunkMetadata template)
+        protected override async Task< ChunkHolder<MyColor>> GenerateData(StandardChunkMetadata template, TraceListener log)
         {
             var ret = new ChunkHolder<MyColor>(
                 template.LatSteps, template.LonSteps,
@@ -40,7 +42,7 @@ namespace MountainView.Imaging
                 toDouble,
                 fromDouble);
 
-            var targetChunks = (await UsgsRawImageChunks.GetChunkMetadata())
+            var targetChunks = (await UsgsRawImageChunks.GetChunkMetadata(log))
                 .Select(p => new
                 {
                     p = p,
@@ -56,10 +58,10 @@ namespace MountainView.Imaging
             var chunks = new List<ChunkHolder<MyColor>>();
             foreach (var tmp in targetChunks)
             {
-                Console.WriteLine(tmp.Chunk);
+                log.WriteLine(tmp.Chunk);
                 var col = await UsgsRawImageChunks.GetRawColors(
                     Angle.Add(tmp.Chunk.LatLo, Angle.Divide(tmp.Chunk.LatDelta, 2)),
-                    Angle.Add(tmp.Chunk.LonLo, Angle.Divide(tmp.Chunk.LonDelta, 2)));
+                    Angle.Add(tmp.Chunk.LonLo, Angle.Divide(tmp.Chunk.LonDelta, 2)), log);
 
                 if (col != null)
                 {
@@ -67,7 +69,7 @@ namespace MountainView.Imaging
                 }
             }
 
-            ret.RenderChunksInto(chunks, aggregate);
+            ret.RenderChunksInto(chunks, aggregate, log);
             return ret;
         }
 
@@ -78,7 +80,7 @@ namespace MountainView.Imaging
             stream.WriteByte(pixel.B);
         }
 
-        protected override MyColor ReadPixel(FileStream stream, byte[] buffer)
+        protected override MyColor ReadPixel(DeletableFileStream stream, byte[] buffer)
         {
             return new MyColor(
                 (byte)stream.ReadByte(),

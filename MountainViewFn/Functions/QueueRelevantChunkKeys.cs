@@ -6,6 +6,7 @@ using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainViewCore.Base;
 using MountainViewDesktopCore.Base;
+using MountainViewFn.Core;
 using Newtonsoft.Json;
 using System;
 using System.Linq;
@@ -21,6 +22,8 @@ namespace MountainViewFn
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
+
+            var log2 = new MyTraceLister(log);
 
             //// parse query parameter
             //string name = req.GetQueryNameValuePairs()
@@ -50,7 +53,7 @@ namespace MountainViewFn
             float eyeHeight = 5;
             string cs1 = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs1);
-            float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last())) + eyeHeight;
+            float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last(), log2)) + eyeHeight;
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             QueueHelper.SetConnectionString(cs);

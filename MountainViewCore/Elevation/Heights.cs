@@ -2,8 +2,10 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using static MountainView.Base.BlobHelper;
 
 namespace MountainView.Elevation
 {
@@ -25,7 +27,7 @@ namespace MountainView.Elevation
             }
         }
 
-        protected override async Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template)
+        protected override async Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template, TraceListener log)
         {
             var ret = new ChunkHolder<float>(
                 template.LatSteps, template.LonSteps,
@@ -44,11 +46,11 @@ namespace MountainView.Elevation
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
                 {
-                    chunks.Add(await UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
+                    chunks.Add(await UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt, log));
                 }
             }
 
-            ret.RenderChunksInto(chunks, aggregate);
+            ret.RenderChunksInto(chunks, aggregate, log);
             return ret;
         }
 
@@ -57,8 +59,10 @@ namespace MountainView.Elevation
             stream.Write(BitConverter.GetBytes(pixel), 0, 4);
         }
 
-        protected override float ReadPixel(FileStream stream, byte[] buffer)
+//        protected override async Task<float> ReadPixel(DeletableFileStream stream, byte[] buffer)
+        protected override float ReadPixel(DeletableFileStream stream, byte[] buffer)
         {
+            //await stream.ReadAsync(buffer, 0, 4);
             stream.Read(buffer, 0, 4);
             return BitConverter.ToSingle(buffer, 0);
         }

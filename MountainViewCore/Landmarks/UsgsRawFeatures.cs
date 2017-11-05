@@ -93,7 +93,7 @@ namespace MountainViewCore.Landmarks
 
         private static Lazy<KDNode<FeatureInfo>> featureInfos = new Lazy<KDNode<FeatureInfo>>(() =>
         {
-            var metadataLines = BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt").Result;
+            var metadataLines = BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt", null).Result;
             string[] header = metadataLines.First().Split('|');
             string[] header2 = metadataLines.Skip(1).First().Split('|');
             var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);

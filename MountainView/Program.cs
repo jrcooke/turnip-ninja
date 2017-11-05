@@ -4,6 +4,7 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using MountainViewCore.Base;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -31,6 +32,7 @@ namespace MountainView
             bool isServerUpload = false;
             bool isServerCompute = false;
             bool isClient = true;
+            TraceListener log = null;
             try
             {
                 //Tests.Test12();
@@ -42,14 +44,14 @@ namespace MountainView
                 if (isServerUpload)
                 {
                     string uploadPath = "/home/mcuser/turnip-ninja/MountainView/bin/Debug/netcoreapp2.0";
-                    Task.WaitAll(UsgsRawChunks.Uploader(uploadPath, serverLat, serverLon));
-                    Task.WaitAll(UsgsRawImageChunks.Uploader(uploadPath, serverLat, serverLon));
+                    Task.WaitAll(UsgsRawChunks.Uploader(uploadPath, serverLat, serverLon, log));
+                    Task.WaitAll(UsgsRawImageChunks.Uploader(uploadPath, serverLat, serverLon, log));
                 }
                 else if (isServerCompute)
                 {
                     Task.WaitAll(ProcessRawData(
                         Angle.FromDecimalDegrees(serverLat + 0.5),
-                        Angle.FromDecimalDegrees(serverLon - 0.5)));
+                        Angle.FromDecimalDegrees(serverLon - 0.5), log));
                 }
                 else if (isClient)
                 {
@@ -67,18 +69,18 @@ namespace MountainView
                     }
 
                     float eyeHeight = 5;
-                    float heightOffset = View.GetHeightAtPoint(config, chunks.Last()).Result + eyeHeight;
+                    float heightOffset = View.GetHeightAtPoint(config, chunks.Last(), log).Result + eyeHeight;
 
                     int counter = 0;
                     foreach (var chunk in chunks)
                     {
-                        var view2 = View.GetPolarData(config, chunk, heightOffset).Result;
+                        var view2 = View.GetPolarData(config, chunk, heightOffset, log).Result;
                         foreach (var elem in view2)
                         {
                             view[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
                         }
 
-                        var www = View.ProcessImage(view).Result;
+                        var www = View.ProcessImage(view, log).Result;
                         Utils.WriteImageFile(www, Path.Combine(outputPath, counter + ".jpg"), a => a, OutputType.JPEG);
 
                         counter++;
@@ -100,9 +102,9 @@ namespace MountainView
             Console.WriteLine(end - start);
         }
 
-        public static async Task ImagesForTopChunks(string outputFolder)
+        public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)
         {
-            var x = await BlobHelper.GetFiles("mapv8", "");
+            var x = await BlobHelper.GetFiles("mapv8", "", log);
             var top = new Regex(@"\d\d\dDn\d\d\dDw03[.]v8.*");
             var t = x.Where(p => top.IsMatch(p)).ToArray();
             foreach (var f in t)
@@ -114,37 +116,37 @@ namespace MountainView
 
                 if (f.EndsWith(".idata"))
                 {
-                    var xxx = await Images.Current.GetData(scm);
+                    var xxx = await Images.Current.GetData(scm, log);
                     Utils.WriteImageFile(xxx, Path.Combine(outputFolder, f + ".jpg"), a => a, OutputType.JPEG);
                 }
                 else
                 {
-                    var yyy = await Heights.Current.GetData(scm);
+                    var yyy = await Heights.Current.GetData(scm, log);
                     Utils.WriteImageFile(yyy, Path.Combine(outputFolder, f + ".jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
                 }
             }
         }
 
-        public static async Task ProcessRawData(Angle lat, Angle lon)
+        public static async Task ProcessRawData(Angle lat, Angle lon, TraceListener log)
         {
             // Generate for a 1 degree square region.
             StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
-            await ProcessRawData(template);
+            await ProcessRawData(template, log);
         }
 
-        public static async Task ProcessRawData(StandardChunkMetadata template)
+        public static async Task ProcessRawData(StandardChunkMetadata template, TraceListener log)
         {
             bool doMore = false;
             if (template.ZoomLevel <= Heights.Current.SourceDataZoom)
             {
-                var ok = await Heights.Current.ExistsComputedChunk(template);
+                var ok = await Heights.Current.ExistsComputedChunk(template, log);
                 Console.Write(ok ? "." : ("Heights:" + Heights.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
 
             if (template.ZoomLevel <= Images.Current.SourceDataZoom)
             {
-                var ok = await Images.Current.ExistsComputedChunk(template);
+                var ok = await Images.Current.ExistsComputedChunk(template, log);
                 Console.Write(ok ? "." : ("Images:" + Images.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
@@ -153,11 +155,11 @@ namespace MountainView
 
             foreach (var c in template.GetChildChunks())
             {
-                await ProcessRawData(c);
+                await ProcessRawData(c, log);
             }
         }
 
-        private static async Task ProcessOutput(string outputFolder, Config config, View.ColorHeight[][] view)
+        private static async Task ProcessOutput(string outputFolder, Config config, View.ColorHeight[][] view, TraceListener log)
         {
             if (!Directory.Exists(outputFolder))
             {
@@ -165,7 +167,7 @@ namespace MountainView
             }
 
             var imageFile = config.Name + ".jpg";
-            var xxx = await View.ProcessImage(view);
+            var xxx = await View.ProcessImage(view, log);
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, imageFile), a => a, OutputType.JPEG);
 
             var maptxt = View.ProcessImageMap(view, imageFile);

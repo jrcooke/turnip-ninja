@@ -3,6 +3,7 @@ using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,9 +36,9 @@ namespace MountainView.Imaging
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static async Task<ChunkHolder<MyColor>> GetRawColors(Angle lat, Angle lon)
+        public static async Task<ChunkHolder<MyColor>> GetRawColors(Angle lat, Angle lon, TraceListener log)
         {
-            ImageFileMetadata fileInfo = (await GetChunkMetadata())
+            ImageFileMetadata fileInfo = (await GetChunkMetadata(log))
                 .Where(p => Utils.Contains(p.Points, lat.DecimalDegree, lon.DecimalDegree))
                 .FirstOrDefault();
 
@@ -48,19 +49,19 @@ namespace MountainView.Imaging
 
             if (!File.Exists(Path.Combine(Path.GetTempPath(), fileInfo.LocalName)))
             {
-                using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, fileInfo.FileName))
+                using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, fileInfo.FileName, log))
                 {
                     if (ms == null)
                     {
-                        Console.WriteLine("File should exist: '" + fileInfo.FileName + "'");
-                        System.Console.WriteLine("Assuming the tile is empty");
+                        log.WriteLine("File should exist: '" + fileInfo.FileName + "'");
+                        log.WriteLine("Assuming the tile is empty");
                         return null;
                     }
 
                     using (var fileStream = File.Create(Path.Combine(Path.GetTempPath(), fileInfo.LocalName)))
                     {
-                        ms.Position = 0;
-                        ms.CopyTo(fileStream);
+                        ms.Stream.Position = 0;
+                        ms.Stream.CopyTo(fileStream);
                     }
                 }
             }
@@ -91,7 +92,7 @@ namespace MountainView.Imaging
                 }
 
                 // Now the real compute starts
-                Console.WriteLine("Reading into cache: " + fileName);
+                log.WriteLine("Reading into cache: " + fileName);
                 FIBITMAP sdib = FreeImage.LoadEx(Path.Combine(Path.GetTempPath(), fileName));
                 try
                 {
@@ -142,16 +143,16 @@ namespace MountainView.Imaging
             }
         }
 
-        public static async Task<IEnumerable<ImageFileMetadata>> GetChunkMetadata()
+        public static async Task<IEnumerable<ImageFileMetadata>> GetChunkMetadata(TraceListener log)
         {
             List<ImageFileMetadata> ret = new List<ImageFileMetadata>();
 
-            foreach (var di in await BlobHelper.GetDirectories(cachedFileContainer, "NAIP"))
+            foreach (var di in await BlobHelper.GetDirectories(cachedFileContainer, "NAIP", log))
             {
-                var files = await BlobHelper.GetFiles(cachedFileContainer, di);
+                var files = await BlobHelper.GetFiles(cachedFileContainer, di, log);
                 foreach (var metadata in files.Where(p => p.EndsWith(".csv")))
                 {
-                    var metadataLines = await BlobHelper.ReadAllLines(cachedFileContainer, metadata);
+                    var metadataLines = await BlobHelper.ReadAllLines(cachedFileContainer, metadata, log);
                     string[] header = metadataLines.First().Split(',');
                     var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
                     var fileInfo = metadataLines
@@ -175,19 +176,19 @@ namespace MountainView.Imaging
             return ret;
         }
 
-        public static async Task Uploader(string sourcePath, int lat, int lon)
+        public static async Task Uploader(string sourcePath, int lat, int lon, TraceListener log)
         {
             string folder = "NAIP_n" + lat + "w" + (-lon);
             foreach (var x in Directory.GetFiles(Path.Combine(sourcePath, folder)).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
             {
-                Console.WriteLine(x);
+                log.WriteLine(x);
                 using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))
                     {
                         fs.CopyTo(ms);
                         ms.Position = 0;
-                        await BlobHelper.WriteStream("sources", folder + "/" + x.Split(Path.DirectorySeparatorChar).Last(), ms);
+                        await BlobHelper.WriteStream("sources", folder + "/" + x.Split(Path.DirectorySeparatorChar).Last(), ms, log);
                     }
                 }
             }

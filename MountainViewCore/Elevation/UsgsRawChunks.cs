@@ -2,6 +2,7 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace MountainView.Elevation
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static async Task< ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
+        public static async Task< ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon, TraceListener log)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -35,7 +36,7 @@ namespace MountainView.Elevation
             var zipFile = string.Format(sourceZipFileTemplate, fileName);
             if (!File.Exists(Path.Combine(Path.GetTempPath(), zipFile)))
             {
-                using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, zipFile))
+                using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, zipFile, log))
                 {
                     if (ms == null)
                     {
@@ -44,8 +45,8 @@ namespace MountainView.Elevation
 
                     using (var fileStream = File.Create(Path.Combine(Path.GetTempPath(), zipFile)))
                     {
-                        ms.Position = 0;
-                        ms.CopyTo(fileStream);
+                        ms.Stream.Position = 0;
+                        ms.Stream.CopyTo(fileStream);
                     }
                 }
             }
@@ -78,21 +79,21 @@ namespace MountainView.Elevation
                 string inputFile = string.Format(Path.Combine(inputFileTemplate), shortWebFile);
                 if (!File.Exists(Path.Combine(Path.GetTempPath(), inputFile)))
                 {
-                    Console.WriteLine("Missing " + description + " data file: " + inputFile);
-                    Console.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
+                    log.WriteLine("Missing " + description + " data file: " + inputFile);
+                    log.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
                     ZipFile.ExtractToDirectory(zipFile, Path.Combine(Path.GetTempPath(), shortWebFile));
-                    Console.WriteLine("Extracted raw " + description + " data from zip file.");
+                    log.WriteLine("Extracted raw " + description + " data from zip file.");
                 }
 
                 ret = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
-                Console.WriteLine("Loaded raw " + description + " data: " + fileName);
+                log.WriteLine("Loaded raw " + description + " data: " + fileName);
                 cache.Add(fileName, ret);
             }
 
             return ret;
         }
 
-        public static async Task Uploader(string path, int lat, int lon)
+        public static async Task Uploader(string path, int lat, int lon, TraceListener log)
         {
             var shortWebFile =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
@@ -100,7 +101,7 @@ namespace MountainView.Elevation
 
             foreach (var x in Directory.GetFiles(path).Where(p => p.Split(Path.DirectorySeparatorChar).Last() == shortWebFile + ".zip"))
             {
-                Console.WriteLine(x);
+                log.WriteLine(x);
                 using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))
@@ -108,7 +109,7 @@ namespace MountainView.Elevation
                         fs.CopyTo(ms);
                         ms.Position = 0;
                         var blobFile = string.Format(sourceZipFileTemplate, shortWebFile);
-                        await BlobHelper.WriteStream("sources", blobFile, ms);
+                        await BlobHelper.WriteStream("sources", blobFile, ms, log);
                     }
                 }
             }
