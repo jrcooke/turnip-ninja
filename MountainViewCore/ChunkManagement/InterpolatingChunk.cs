@@ -3,6 +3,7 @@ using MountainViewDesktop.Interpolation;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainView.ChunkManagement
 {
@@ -114,24 +115,29 @@ namespace MountainView.ChunkManagement
             return lonLo <= lonDegree && lonDegree <= lonHi;
         }
 
-        public bool TryGetDataAtPoint(double latDegree, double lonDegree, out T data)
+        public async Task<GetDataResult> TryGetDataAtPoint(double latDegree, double lonDegree)
         {
             if (!triedToGetMS)
             {
-                ms = BlobHelper.TryGetStream(container, fullFileName);
+                ms = await BlobHelper.TryGetStreamAsync(container, fullFileName);
                 triedToGetMS = true;
             }
 
             if (ms == null || !HasDataAtLat(latDegree) || !HasDataAtLon(lonDegree))
             {
-                data = default(T);
-                return false;
+                return new GetDataResult() { Success = false, Data = default(T) };
             }
 
             int i = (int)Math.Round(scaleLat * (latDegree - latLo));
             int j = numLon - 1 - (int)Math.Round(scaleLon * (lonDegree - lonLo));
-            data = readPixel(ms, i, j);
-            return true;
+            var data = readPixel(ms, i, j);
+            return new GetDataResult() { Success = true, Data = data };
+        }
+
+        public class GetDataResult
+        {
+            public T Data;
+            public bool Success;
         }
 
         #region IDisposable Support

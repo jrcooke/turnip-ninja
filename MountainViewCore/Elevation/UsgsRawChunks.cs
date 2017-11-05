@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
@@ -25,7 +26,7 @@ namespace MountainView.Elevation
         private static object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
-        public static ChunkHolder<float> GetRawHeightsInMeters(int lat, int lon)
+        public static async Task< ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon)
         {
             string fileName =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString() +
@@ -34,7 +35,7 @@ namespace MountainView.Elevation
             var zipFile = string.Format(sourceZipFileTemplate, fileName);
             if (!File.Exists(Path.Combine(Path.GetTempPath(), zipFile)))
             {
-                using (var ms = BlobHelper.TryGetStream(cachedFileContainer, zipFile))
+                using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, zipFile))
                 {
                     if (ms == null)
                     {
@@ -91,7 +92,7 @@ namespace MountainView.Elevation
             return ret;
         }
 
-        public static void Uploader(string path, int lat, int lon)
+        public static async Task Uploader(string path, int lat, int lon)
         {
             var shortWebFile =
                 (lat > 0 ? 'n' : 's') + ((int)Math.Abs(lat) + 1).ToString("D2") +
@@ -107,7 +108,7 @@ namespace MountainView.Elevation
                         fs.CopyTo(ms);
                         ms.Position = 0;
                         var blobFile = string.Format(sourceZipFileTemplate, shortWebFile);
-                        BlobHelper.WriteStream("sources", blobFile, ms);
+                        await BlobHelper.WriteStream("sources", blobFile, ms);
                     }
                 }
             }

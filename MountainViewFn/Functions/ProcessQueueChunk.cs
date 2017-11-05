@@ -6,6 +6,7 @@ using MountainViewDesktopCore.Base;
 using Newtonsoft.Json;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainViewFn
 {
@@ -13,7 +14,7 @@ namespace MountainViewFn
     {
         [FunctionName("ProcessQueueChunk")]
         [Singleton(Mode = SingletonMode.Listener)]
-        public static void Run([QueueTrigger(Constants.ChunkQueueName, Connection = "ConnectionString2")]string myQueueItem, TraceWriter log)
+        public static async Task Run([QueueTrigger(Constants.ChunkQueueName, Connection = "ConnectionString2")]string myQueueItem, TraceWriter log)
         {
             log.Info($"C# Queue trigger function processed: {myQueueItem}");
 
@@ -47,17 +48,17 @@ namespace MountainViewFn
                     view[i] = new View.ColorHeight[numParts];
                 }
 
-                var chunkView = View.GetPolarData(config, chunkMetadata.ChunkKey, chunkMetadata.HeightOffset);
+                var chunkView = await View.GetPolarData(config, chunkMetadata.ChunkKey, chunkMetadata.HeightOffset);
                 foreach (var pixel in chunkView)
                 {
                     view[pixel.iTheta][pixel.iViewElev] = pixel.ToColorHeight();
                 }
 
-                resultImage = View.ProcessImage(view);
+                resultImage = await View.ProcessImage(view);
             }
 
             Utils.WriteImageFile(resultImage, Path.Combine(Path.GetTempPath(), imageFile), a => a, OutputType.PNG);
-            string location = BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile));
+            string location = await BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile));
 
             string maptxt = "";
             ////    id = 0;

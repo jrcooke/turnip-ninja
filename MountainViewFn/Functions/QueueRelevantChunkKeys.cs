@@ -11,13 +11,14 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace MountainViewFn
 {
     public static class QueueRelevantChunkKeys
     {
         [FunctionName("QueueRelevantChunkKeys")]
-        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
             log.Info("C# HTTP trigger function processed a request.");
 
@@ -49,7 +50,7 @@ namespace MountainViewFn
             float eyeHeight = 5;
             string cs1 = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs1);
-            float heightOffset = View.GetHeightAtPoint(config, chunks.Last()) + eyeHeight;
+            float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last())) + eyeHeight;
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             QueueHelper.SetConnectionString(cs);

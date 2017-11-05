@@ -4,21 +4,22 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainView
 {
     class Tests
     {
-        public static void Test1(string outputFolder)
+        public static async Task Test1(string outputFolder)
         {
             var homeLat = Angle.FromDecimalDegrees(47.6867797);
             var homeLon = Angle.FromDecimalDegrees(-122.2907541);
 
             var scm = StandardChunkMetadata.GetRangeContaingPoint(homeLat, homeLon, 4);
-            var xxx = Images.Current.GetData(scm);
+            var xxx = await Images.Current.GetData(scm);
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, "xxx.jpg"), a => a, OutputType.JPEG);
 
-            var yyy = Heights.Current.GetData(scm);
+            var yyy = await Heights.Current.GetData(scm);
             Utils.WriteImageFile(yyy, Path.Combine(outputFolder, "yyy.jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
 
             //var newONe = AdfReaderWorker.GetChunk(@"C:\Users\jrcoo\Desktop\Map\n48w123\grdn48w123_13");

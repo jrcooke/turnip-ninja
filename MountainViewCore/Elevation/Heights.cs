@@ -3,6 +3,7 @@ using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace MountainView.Elevation
 {
@@ -24,7 +25,7 @@ namespace MountainView.Elevation
             }
         }
 
-        protected override ChunkHolder<float> GenerateData(StandardChunkMetadata template)
+        protected override async Task<ChunkHolder<float>> GenerateData(StandardChunkMetadata template)
         {
             var ret = new ChunkHolder<float>(
                 template.LatSteps, template.LonSteps,
@@ -43,7 +44,7 @@ namespace MountainView.Elevation
             {
                 for (int lonInt = lonMin; lonInt <= lonMax; lonInt++)
                 {
-                    chunks.Add(UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
+                    chunks.Add(await UsgsRawChunks.GetRawHeightsInMeters(latInt, lonInt));
                 }
             }
 

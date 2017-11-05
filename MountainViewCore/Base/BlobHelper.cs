@@ -1,16 +1,18 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace MountainView.Base
 {
     public static class BlobHelper
     {
         private static object locker = new object();
-        private static Dictionary<string, CloudBlobContainer> singleton = new Dictionary<string, CloudBlobContainer>();
+        private static ConcurrentDictionary<string, CloudBlobContainer> singleton = new ConcurrentDictionary<string, CloudBlobContainer>();
 
         private static string connectionString;
         public static void SetConnectionString(string connectionString)
@@ -18,36 +20,27 @@ namespace MountainView.Base
             BlobHelper.connectionString = connectionString;
         }
 
-        private static CloudBlobContainer Container(string containerName)
+        private static async Task<CloudBlobContainer> GetContainerAsync(string containerName)
         {
             if (!singleton.TryGetValue(containerName, out CloudBlobContainer ret))
             {
-                lock (locker)
+                if (string.IsNullOrEmpty(connectionString))
                 {
-                    if (!singleton.TryGetValue(containerName, out ret))
-                    {
-                        if (string.IsNullOrEmpty(connectionString))
-                        {
-                            throw new System.InvalidOperationException("Must set the 'connectionString' property prior to use");
-                        }
-
-                        CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-                        CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-                        CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-#if !JDESKTOP
-                        System.Threading.Tasks.Task.WaitAll(container.CreateIfNotExistsAsync());
-#else
-                        container.CreateIfNotExists();
-#endif
-                        ret = container;
-                    }
+                    throw new System.InvalidOperationException("Must set the 'connectionString' property prior to use");
                 }
+
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+                CloudBlobContainer container = blobClient.GetContainerReference(containerName);
+                await container.CreateIfNotExistsAsync();
+                ret = container;
+                singleton.AddOrUpdate(containerName, ret, (a, b) => b);
             }
 
             return ret;
         }
 
-        public static FileStream TryGetStream(string containerName, string fileName)
+        public static async Task<FileStream> TryGetStreamAsync(string containerName, string fileName)
         {
             {
                 var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
@@ -55,13 +48,9 @@ namespace MountainView.Base
                 {
                     try
                     {
-                        CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
+                        CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
                         var tmpName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
-#if !JDESKTOP
-                        System.Threading.Tasks.Task.WaitAll(blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew));
-#else
-                        blockBlob.DownloadToFile(tmpName, FileMode.CreateNew);
-#endif
+                        await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
 
                         if (!File.Exists(localFileName))
                         {
@@ -85,7 +74,7 @@ namespace MountainView.Base
             }
         }
 
-        public static bool BlobExists(string containerName, string fileName)
+        public static async Task<bool> BlobExists(string containerName, string fileName)
         {
             var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(localFileName))
@@ -93,18 +82,14 @@ namespace MountainView.Base
                 return true;
             }
 
-            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-#if !JDESKTOP
-            return blockBlob.ExistsAsync().Result;
-#else
-            return blockBlob.Exists();
-#endif
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            return await blockBlob.ExistsAsync();
         }
 
-        public static IEnumerable<string> ReadAllLines(string containerName, string fileName)
+        public static async Task<IEnumerable<string>> ReadAllLines(string containerName, string fileName)
         {
             List<string> ret = new List<string>();
-            using (var stream = TryGetStream(containerName, fileName))
+            using (var stream = await TryGetStreamAsync(containerName, fileName))
             {
                 using (var reader = new StreamReader(stream))
                 {
@@ -119,61 +104,41 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static void WriteStream(string containerName, string fileName, MemoryStream stream)
+        public static async Task WriteStream(string containerName, string fileName, MemoryStream stream)
         {
-            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-#if !JDESKTOP
-            System.Threading.Tasks.Task.WaitAll(blockBlob.UploadFromStreamAsync(stream));
-#else
-            blockBlob.UploadFromStream(stream);
-#endif
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            await blockBlob.UploadFromStreamAsync(stream);
         }
 
-        public static string WriteStream(string containerName, string fileName, string sourceName)
+        public static async Task<string> WriteStream(string containerName, string fileName, string sourceName)
         {
-            CloudBlockBlob blockBlob = Container(containerName).GetBlockBlobReference(fileName);
-#if !JDESKTOP
-            System.Threading.Tasks.Task.WaitAll(blockBlob.UploadFromFileAsync(sourceName));
-#else
-            blockBlob.UploadFromFile(sourceName);
-#endif
+            CloudBlockBlob blockBlob = (await GetContainerAsync(containerName)).GetBlockBlobReference(fileName);
+            await blockBlob.UploadFromFileAsync(sourceName);
             return blockBlob.Uri.ToString();
         }
 
-        public static IEnumerable<string> GetDirectories(string containerName, string directoryPrefix)
+        public static async Task<IEnumerable<string>> GetDirectories(string containerName, string directoryPrefix)
         {
-            var blobList = Container(containerName)
-#if !JDESKTOP
-                .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null).Result;
-#else
-                .ListBlobsSegmented(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
-#endif
+            var blobList = await (await GetContainerAsync(containerName))
+                .ListBlobsSegmentedAsync(directoryPrefix, false, BlobListingDetails.None, int.MaxValue, null, null, null);
             var x = blobList.Results.OfType<CloudBlobDirectory>().Select(p => p.Prefix.TrimEnd('/')).ToArray();
             return x;
         }
 
-        public static IEnumerable<string> GetFiles(string containerName, string directory)
+        public static async Task<IEnumerable<string>> GetFiles(string containerName, string directory)
         {
             List<string> ret = new List<string>();
-            var dir = Container(containerName).GetDirectoryReference(directory);
+            var dir = (await GetContainerAsync(containerName)).GetDirectoryReference(directory);
             BlobContinuationToken bcc = null;
             while (true)
             {
-#if !JDESKTOP
-                var blobList = dir.ListBlobsSegmentedAsync(
-#else
-                var blobList = dir.ListBlobsSegmented(
-#endif
+                var blobList = await dir.ListBlobsSegmentedAsync(
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.None,
                     maxResults: int.MaxValue,
                     currentToken: bcc,
                     options: null,
-                    operationContext: null)
-#if !JDESKTOP
-                    .Result
-#endif
-                    ;
+                    operationContext: null);
                 bcc = blobList.ContinuationToken;
                 ret.AddRange(blobList.Results.OfType<CloudBlockBlob>().Select(p => p.Name));
                 if (bcc == null)
