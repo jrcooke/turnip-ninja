@@ -21,12 +21,14 @@
     <div id="demo">
     </div>
     <script>
+        // var host = 'https://mountainviewbackend.azurewebsites.net/';
+        var host = 'http://localhost:7071/';
+
         var x = document.getElementById("demo");
 
         function getProcessedChunks(sessionId, count, $div) {
             $.ajax({
-                url: 'https://mountainviewbackend.azurewebsites.net/api/HttpTriggerCSharp/sessionId/' + sessionId,
-                // url: 'http://localhost:7071/api/HttpTriggerCSharp/sessionId/' + sessionId,
+                url: host + 'api/GetProcessedChunks/sessionId/' + sessionId,
                 type: 'GET',
                 success: function (data) {
                     var data2 = JSON.parse(data);
@@ -56,8 +58,7 @@
 
             var val = { Lat: lat, Lon: lon };
             $.ajax({
-                url: 'https://mountainviewbackend.azurewebsites.net/api/QueueRelevantChunkKeys',
-                // url: 'http://localhost:7071/api/QueueRelevantChunkKeys',
+                url: host + 'api/QueueRelevantChunkKeys',
                 type: 'POST',
                 dataType: 'json',
                 contentType: 'application/json; charset=utf-8',

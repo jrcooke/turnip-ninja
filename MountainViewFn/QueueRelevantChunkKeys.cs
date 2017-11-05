@@ -9,17 +9,14 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
-
 
 namespace MountainViewFn
 {
     public static class QueueRelevantChunkKeys
     {
         [FunctionName("QueueRelevantChunkKeys")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
-            await Task.Delay(0);
             log.Info("C# HTTP trigger function processed a request.");
 
             //// parse query parameter
@@ -52,18 +49,18 @@ namespace MountainViewFn
             QueueHelper.SetConnectionString(cs);
 
             ChunkProcess ret = new ChunkProcess() { SessionId = Guid.NewGuid().ToString(), Count = chunks.Length };
-            ChunkMetadata[] chunksToProcess = chunks.Select((p, i) => new ChunkMetadata() { Order = i, SessionId = ret.SessionId, ChunkKey = chunks[i] }).ToArray();
+            ChunkMetadata[] chunksToProcess = chunks
+                .Select((p, i) => new ChunkMetadata()
+                {
+                    Order = i,
+                    SessionId = ret.SessionId,
+                    ChunkKey = chunks[i]
+                })
+                .ToArray();
             var json = JsonConvert.SerializeObject(chunksToProcess);
             QueueHelper.Enqueue(Constants.FanOutQueue, json);
 
             return req.CreateResponse(HttpStatusCode.OK, JsonConvert.SerializeObject(ret), "application/json");
-        }
-
-        internal class ChunkMetadata
-        {
-            public int Order;
-            public string SessionId;
-            public long ChunkKey;
         }
 
         private class ChunkProcess

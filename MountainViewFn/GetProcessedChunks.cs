@@ -13,10 +13,8 @@ namespace MountainViewFn
     public static class GetProcessedChunks
     {
         [FunctionName("GetProcessedChunks")]
-        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "HttpTriggerCSharp/sessionId/{sessionId}")]HttpRequestMessage req, string sessionId, TraceWriter log)
+        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "GetProcessedChunks/sessionId/{sessionId}")]HttpRequestMessage req, string sessionId, TraceWriter log)
         {
-            log.Info("C# HTTP trigger function processed a request.");
-
             string cs2 = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             TableHelper.SetConnectionString(cs2);
 

@@ -9,12 +9,6 @@ using System.IO;
 
 namespace MountainViewFn
 {
-    public static class Constants
-    {
-        public const string ChunkQueueName = "chunkqueue";
-        public const string FanOutQueue = "fanoutqueue";
-    }
-
     public static class ProcessQueueChunk
     {
         [FunctionName("ProcessQueueChunk")]
@@ -23,7 +17,7 @@ namespace MountainViewFn
         {
             log.Info($"C# Queue trigger function processed: {myQueueItem}");
 
-            var data = JsonConvert.DeserializeObject<QueueRelevantChunkKeys.ChunkMetadata>(myQueueItem);
+            var chunkMetadata = JsonConvert.DeserializeObject<ChunkMetadata>(myQueueItem);
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs);
@@ -35,37 +29,37 @@ namespace MountainViewFn
             //config.MinAngle = Angle.FromDecimalDegrees(89.0);
             //config.MaxAngle = Angle.FromDecimalDegrees(91.0);
 
-            var imageFile = config.Name + "." + data.ChunkKey + ".png";
+            var imageFile = config.Name + "." + chunkMetadata.ChunkKey + ".png";
 
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
 
-            MyColor[][] www3 = null;
-            View.ColorHeight[][] view3 = null;
-            string maptxt = "";
-            if (data.ChunkKey == 0)
+            MyColor[][] resultImage = null;
+            View.ColorHeight[][] view = null;
+            if (chunkMetadata.ChunkKey == 0)
             {
-                www3 = View.ProcessImageBackdrop(config.NumTheta, numParts);
+                resultImage = View.ProcessImageBackdrop(config.NumTheta, numParts);
             }
             else
             {
-                view3 = new View.ColorHeight[config.NumTheta][];
-                for (int i = 0; i < view3.Length; i++)
+                view = new View.ColorHeight[config.NumTheta][];
+                for (int i = 0; i < view.Length; i++)
                 {
-                    view3[i] = new View.ColorHeight[numParts];
+                    view[i] = new View.ColorHeight[numParts];
                 }
 
-                var view2 = View.GetPolarData(config, data.ChunkKey);
-                foreach (var elem in view2)
+                var chunkView = View.GetPolarData(config, chunkMetadata.ChunkKey);
+                foreach (var pixel in chunkView)
                 {
-                    view3[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
+                    view[pixel.iTheta][pixel.iViewElev] = pixel.ToColorHeight();
                 }
 
-                www3 = View.ProcessImage(view3);
+                resultImage = View.ProcessImage(view);
             }
 
-            Utils.WriteImageFile(www3, Path.Combine(Path.GetTempPath(), imageFile), a => a, OutputType.PNG);
+            Utils.WriteImageFile(resultImage, Path.Combine(Path.GetTempPath(), imageFile), a => a, OutputType.PNG);
             string location = BlobHelper.WriteStream("share", imageFile, Path.Combine(Path.GetTempPath(), imageFile));
 
+            string maptxt = "";
             ////    id = 0;
             //    if (id == 0)
             //    {
@@ -80,7 +74,7 @@ namespace MountainViewFn
             TableHelper.SetConnectionString(cs2);
             try
             {
-                TableHelper.Insert(data.SessionId, data.Order, location, maptxt);
+                TableHelper.Insert(chunkMetadata.SessionId, chunkMetadata.Order, location, maptxt);
             }
             catch (Exception ex)
             {

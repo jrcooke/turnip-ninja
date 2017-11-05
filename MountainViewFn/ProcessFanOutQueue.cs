@@ -11,18 +11,15 @@ namespace MountainViewFn
         [FunctionName("ProcessFanOutQueue")]
         public static void Run([QueueTrigger(Constants.FanOutQueue, Connection = "ConnectionString2")]string myQueueItem, TraceWriter log)
         {
-            log.Info($"C# Queue trigger function processed: {myQueueItem}");
-
             string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             QueueHelper.SetConnectionString(cs);
 
-            var chunks = JsonConvert.DeserializeObject<QueueRelevantChunkKeys.ChunkMetadata[]>(myQueueItem);
-            foreach (var data in chunks)
+            var chunkMetadatas = JsonConvert.DeserializeObject<ChunkMetadata[]>(myQueueItem);
+            foreach (var chunkMetadata in chunkMetadatas)
             {
-                var json = JsonConvert.SerializeObject(data);
+                var json = JsonConvert.SerializeObject(chunkMetadata);
                 QueueHelper.Enqueue(Constants.ChunkQueueName, json);
             }
         }
     }
 }
-
