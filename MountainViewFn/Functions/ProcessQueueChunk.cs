@@ -47,7 +47,7 @@ namespace MountainViewFn
                     view[i] = new View.ColorHeight[numParts];
                 }
 
-                var chunkView = View.GetPolarData(config, chunkMetadata.ChunkKey);
+                var chunkView = View.GetPolarData(config, chunkMetadata.ChunkKey, chunkMetadata.HeightOffset);
                 foreach (var pixel in chunkView)
                 {
                     view[pixel.iTheta][pixel.iViewElev] = pixel.ToColorHeight();

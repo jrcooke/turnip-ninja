@@ -65,10 +65,13 @@ namespace MountainView
                         view[i] = new ColorHeight[numParts];
                     }
 
+                    float eyeHeight = 5;
+                    float heightOffset = View.GetHeightAtPoint(config, chunks.Last()) + eyeHeight;
+
                     int counter = 0;
                     foreach (var chunk in chunks)
                     {
-                        var view2 = View.GetPolarData(config, chunk);
+                        var view2 = View.GetPolarData(config, chunk, heightOffset);
                         foreach (var elem in view2)
                         {
                             view[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();

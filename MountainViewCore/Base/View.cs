@@ -15,6 +15,20 @@ namespace MountainViewCore.Base
         // Haze adds bluish overlay to colors
         private static MyColor skyColor = new MyColor(195, 240, 247);
 
+        public static float GetHeightAtPoint(Config config, long chunkKey)
+        {
+            StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+            using (var interpChunkH = Heights.Current.GetLazySimpleInterpolator(chunk))
+            {
+                if (!interpChunkH.TryGetDataAtPoint(config.Lat.DecimalDegree, config.Lon.DecimalDegree, out float height))
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return height;
+            }
+        }
+
         public static long[] GetRelevantChunkKeys(Config config)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
@@ -67,12 +81,10 @@ namespace MountainViewCore.Base
             return (new long[] { 0 }).Union(chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p])).ToArray();
         }
 
-        public static IEnumerable<SparseColorHeight> GetPolarData(Config config, long chunkKey)
+        public static IEnumerable<SparseColorHeight> GetPolarData(Config config, long chunkKey, float heightOffset)
         {
-            float eyeHeight = 5;
             List<SparseColorHeight> ret = new List<SparseColorHeight>();
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
-            float? heightOffset = null;
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
             int[] viewElev = new int[config.NumTheta];
@@ -109,10 +121,8 @@ namespace MountainViewCore.Base
                         var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
                         if (!interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, out float height)) continue;
 
-                        if (!heightOffset.HasValue) heightOffset = height + eyeHeight;
-
                         double distance = iR * config.DeltaR;
-                        double curTheta = Math.Atan2(height - heightOffset.Value, distance);
+                        double curTheta = Math.Atan2(height - heightOffset, distance);
                         var delta = curTheta - config.ElevationViewMin.Radians;
                         var norm = delta / config.AngularResolution.Radians;
                         while (viewElev[iTheta] < norm)

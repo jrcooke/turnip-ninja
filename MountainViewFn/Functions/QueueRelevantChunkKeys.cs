@@ -2,6 +2,8 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
+using MountainView.ChunkManagement;
+using MountainView.Elevation;
 using MountainViewCore.Base;
 using MountainViewDesktopCore.Base;
 using Newtonsoft.Json;
@@ -44,6 +46,10 @@ namespace MountainViewFn
             //config.MaxAngle = Angle.FromDecimalDegrees(91.0);
 
             var chunks = View.GetRelevantChunkKeys(config);
+            float eyeHeight = 5;
+            string cs1 = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
+            BlobHelper.SetConnectionString(cs1);
+            float heightOffset = View.GetHeightAtPoint(config, chunks.Last()) + eyeHeight;
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             QueueHelper.SetConnectionString(cs);
@@ -54,7 +60,8 @@ namespace MountainViewFn
                 {
                     Order = i,
                     SessionId = ret.SessionId,
-                    ChunkKey = chunks[i]
+                    ChunkKey = chunks[i],
+                    HeightOffset = heightOffset,
                 })
                 .ToArray();
             var json = JsonConvert.SerializeObject(chunksToProcess);

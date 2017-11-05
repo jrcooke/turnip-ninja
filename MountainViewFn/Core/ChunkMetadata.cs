@@ -5,5 +5,6 @@
         public int Order;
         public string SessionId;
         public long ChunkKey;
+        public float HeightOffset;
     }
 }
