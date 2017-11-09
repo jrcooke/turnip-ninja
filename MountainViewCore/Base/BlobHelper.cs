@@ -42,33 +42,26 @@ namespace MountainView.Base
 
         public static async Task<DeletableFileStream> TryGetStreamAsync(string containerName, string fileName, TraceListener log)
         {
-            var localFileName = Path.Combine(Path.GetTempPath(), fileName.Replace('/', Path.DirectorySeparatorChar));
-            if (!File.Exists(localFileName))
+            var localFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
+            foreach (DriveInfo d in DriveInfo.GetDrives().Where(p => p.Name.ToLower()[0] == localFileName.ToLower()[0] && p.IsReady))
             {
-                try
-                {
-                    CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
-                    var tmpName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
-                    await blockBlob.DownloadToFileAsync(tmpName, FileMode.CreateNew);
-                    if (!File.Exists(localFileName))
-                    {
-                        File.Move(tmpName, localFileName);
-                    }
-                    else
-                    {
-                        File.Delete(tmpName);
-                    }
-                }
-                catch (IOException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    log.WriteLine("Missing blob: " + fileName);
-                    log.WriteLine("Error was:" + ex.ToString());
-                    return null;
-                }
+                log.WriteLine(string.Format("{0} has {1, 15} bytes available", d.Name, d.AvailableFreeSpace));
+            }
+
+            try
+            {
+                CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
+                await blockBlob.DownloadToFileAsync(localFileName, FileMode.CreateNew);
+            }
+            catch (StorageException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                log.WriteLine("Missing blob: " + fileName);
+                log.WriteLine("Error was:" + ex.ToString());
+                return null;
             }
 
             var fs = File.OpenRead(localFileName);
