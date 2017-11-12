@@ -55,8 +55,16 @@
         }
 
         function getImageUrl(lat, lon) {
+            var val = {
+                Lat: 47.695736,
+                Lon: -122.232330,
+                MinAngle: 85.0,
+                MaxAngle: 95.0,
+                ElevationViewMin: -1.0,
+                ElevationViewMax: 2.0,
+                AngularResolution: 0.01,
+            };
 
-            var val = { Lat: lat, Lon: lon };
             $.ajax({
                 url: host + 'api/QueueRelevantChunkKeys',
                 type: 'POST',
@@ -69,6 +77,12 @@
                     var $div = $("<div  class='containerdiv'>");
                     $("#demo").append($div);
                     getProcessedChunks(dataobj.SessionId, dataobj.Count, $div);
+                },
+                error: function (xhr) {
+                    alert("An error occured: " + xhr.status + " " + xhr.statusText + "\r\nWill try again after this is dismissed");
+                    setTimeout(function () {
+                        getImageUrl(lat, lon);
+                    }, 1);
                 }
             });
         }

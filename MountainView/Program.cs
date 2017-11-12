@@ -159,20 +159,20 @@ namespace MountainView
             }
         }
 
-        private static async Task ProcessOutput(string outputFolder, Config config, View.ColorHeight[][] view, TraceListener log)
+        private static async Task ProcessOutput(string outputFolder, string name, Config config, View.ColorHeight[][] view, TraceListener log)
         {
             if (!Directory.Exists(outputFolder))
             {
                 Directory.CreateDirectory(outputFolder);
             }
 
-            var imageFile = config.Name + ".jpg";
+            var imageFile = name + ".jpg";
             var xxx = await View.ProcessImage(view, log);
             Utils.WriteImageFile(xxx, Path.Combine(outputFolder, imageFile), a => a, OutputType.JPEG);
 
             var maptxt = View.ProcessImageMap(view, imageFile);
             var htmltxt = "<HTML><HEAD><TITLE>title of page</TITLE></HEAD><BODY>" + maptxt + "</BODY></HTML>";
-            File.WriteAllText(Path.Combine(outputFolder, config.Name + ".html"), htmltxt);
+            File.WriteAllText(Path.Combine(outputFolder, name + ".html"), htmltxt);
         }
     }
 }

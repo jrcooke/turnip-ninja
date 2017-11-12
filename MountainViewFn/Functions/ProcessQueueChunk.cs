@@ -21,19 +21,13 @@ namespace MountainViewFn
             log.Info($"ProcessQueueChunk processed: {myQueueItem}");
 
             var chunkMetadata = JsonConvert.DeserializeObject<ChunkMetadata>(myQueueItem);
+            var config = chunkMetadata.Config.GetConfig();
 
             string cs = Environment.GetEnvironmentVariable("ConnectionString", EnvironmentVariableTarget.Process);
             BlobHelper.SetConnectionString(cs);
             var log2 = new MyTraceLister(log);
 
-            var config = Config.Juaneta();
-            //var config = Config.JuanetaAll();
-            ////config.Lat = homeLat;
-            ////config.Lon = homeLon;
-            //config.MinAngle = Angle.FromDecimalDegrees(89.0);
-            //config.MaxAngle = Angle.FromDecimalDegrees(91.0);
-
-            var imageFile = config.Name + "." + chunkMetadata.ChunkKey + ".png";
+            var imageFile = chunkMetadata.SessionId + "." + chunkMetadata.ChunkKey + ".png";
 
             int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
 

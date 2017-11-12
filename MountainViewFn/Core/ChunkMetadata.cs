@@ -1,4 +1,6 @@
-﻿namespace MountainViewFn
+﻿using MountainViewFn.Core;
+
+namespace MountainViewFn
 {
     public class ChunkMetadata
     {
@@ -6,5 +8,6 @@
         public string SessionId;
         public long ChunkKey;
         public float HeightOffset;
+        public DecConfig Config;
     }
 }
