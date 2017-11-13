@@ -20,6 +20,9 @@ namespace MountainViewFn
         {
             log.Info($"ProcessQueueChunk processed: {myQueueItem}");
 
+            string computerName = Environment.GetEnvironmentVariable("ComputerName", EnvironmentVariableTarget.Process);
+            log.Info($"Computer name: {computerName}");
+
             var chunkMetadata = JsonConvert.DeserializeObject<ChunkMetadata>(myQueueItem);
             var config = chunkMetadata.Config.GetConfig();
 
@@ -60,7 +63,7 @@ namespace MountainViewFn
 
                 if (resultImage.SelectMany(p => p).Count(p => p.R != 0 || p.G != 0 || p.B != 0) == 0)
                 {
-                    log.Error($"ERROR: Only a black pixels in result image");
+                    log.Error($"ERROR: Only black pixels in result image");
                 }
             }
 
