@@ -26,7 +26,7 @@ namespace MountainView.Base
             {
                 if (string.IsNullOrEmpty(connectionString))
                 {
-                    log.WriteLine("Must set the 'connectionString' property prior to use");
+                    log?.WriteLine("Must set the 'connectionString' property prior to use");
                     throw new InvalidOperationException("Must set the 'connectionString' property prior to use");
                 }
 
@@ -45,7 +45,7 @@ namespace MountainView.Base
             var localFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
             foreach (DriveInfo d in DriveInfo.GetDrives().Where(p => p.Name.ToLower()[0] == localFileName.ToLower()[0] && p.IsReady))
             {
-                log.WriteLine(string.Format("{0} has {1, 15} bytes available", d.Name, d.AvailableFreeSpace));
+                log?.WriteLine(string.Format("{0} has {1, 15} bytes available", d.Name, d.AvailableFreeSpace));
             }
 
             try
@@ -59,8 +59,8 @@ namespace MountainView.Base
             }
             catch (Exception ex)
             {
-                log.WriteLine("Missing blob: " + fileName);
-                log.WriteLine("Error was:" + ex.ToString());
+                log?.WriteLine("Missing blob: " + fileName);
+                log?.WriteLine("Error was:" + ex.ToString());
                 return null;
             }
 

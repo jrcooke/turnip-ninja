@@ -58,7 +58,7 @@ namespace MountainView.Imaging
             var chunks = new List<ChunkHolder<MyColor>>();
             foreach (var tmp in targetChunks)
             {
-                log.WriteLine(tmp.Chunk);
+                log?.WriteLine(tmp.Chunk);
                 var col = await UsgsRawImageChunks.GetRawColors(
                     Angle.Add(tmp.Chunk.LatLo, Angle.Divide(tmp.Chunk.LatDelta, 2)),
                     Angle.Add(tmp.Chunk.LonLo, Angle.Divide(tmp.Chunk.LonDelta, 2)), log);

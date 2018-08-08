@@ -93,7 +93,7 @@ namespace MountainViewCore.Base
             NearestInterpolatingChunk<float> interpChunkH = null;
 
             StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-            log.WriteLine(chunk);
+            log?.WriteLine(chunk);
 
             using (interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))
             {

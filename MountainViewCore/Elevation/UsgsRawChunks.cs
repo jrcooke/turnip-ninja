@@ -79,14 +79,14 @@ namespace MountainView.Elevation
                 string inputFile = string.Format(Path.Combine(inputFileTemplate), shortWebFile);
                 if (!File.Exists(Path.Combine(Path.GetTempPath(), inputFile)))
                 {
-                    log.WriteLine("Missing " + description + " data file: " + inputFile);
-                    log.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
+                    log?.WriteLine("Missing " + description + " data file: " + inputFile);
+                    log?.WriteLine("Extracting raw " + description + " data from zip file '" + zipFile + "'...");
                     ZipFile.ExtractToDirectory(zipFile, Path.Combine(Path.GetTempPath(), shortWebFile));
-                    log.WriteLine("Extracted raw " + description + " data from zip file.");
+                    log?.WriteLine("Extracted raw " + description + " data from zip file.");
                 }
 
                 ret = AdfReaderWorker.GetChunk(new FileInfo(inputFile).Directory.ToString());
-                log.WriteLine("Loaded raw " + description + " data: " + fileName);
+                log?.WriteLine("Loaded raw " + description + " data: " + fileName);
                 cache.Add(fileName, ret);
             }
 
@@ -101,7 +101,7 @@ namespace MountainView.Elevation
 
             foreach (var x in Directory.GetFiles(path).Where(p => p.Split(Path.DirectorySeparatorChar).Last() == shortWebFile + ".zip"))
             {
-                log.WriteLine(x);
+                log?.WriteLine(x);
                 using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))

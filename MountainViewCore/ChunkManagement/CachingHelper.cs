@@ -58,11 +58,11 @@ namespace MountainView
             ChunkHolder<T> ret = computedChunk.Item2;
             if (computedChunk.Item2 != null)
             {
-                log.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
                 return computedChunk.Item2;
             }
 
-            log.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
 
             if (template.ZoomLevel > this.SourceDataZoom)
             {
@@ -71,19 +71,19 @@ namespace MountainView
             }
             else if (template.ZoomLevel == this.SourceDataZoom)
             {
-                log.WriteLine("Starting generation...");
+                log?.WriteLine("Starting generation...");
                 ret = await GenerateData(template, log);
                 await WriteChunk(ret, fileName, log);
-                log.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
                 return ret;
             }
 
-            log.WriteLine("Need to aggregate up from higher zoom data");
+            log?.WriteLine("Need to aggregate up from higher zoom data");
             var children = template.GetChildChunks();
             List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
             foreach (var child in children)
             {
-                log.WriteLine(child);
+                log?.WriteLine(child);
                 chunks.Add(await ProcessRawData(child, log));
             }
 
@@ -97,7 +97,7 @@ namespace MountainView
 
             ret.RenderChunksInto(chunks, aggregate, log);
             await WriteChunk(ret, fileName, log);
-            log.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
 
             return ret;
         }
@@ -109,24 +109,24 @@ namespace MountainView
             ChunkHolder<T> ret = computedChunk.Item2;
             if (computedChunk.Item2 != null)
             {
-                log.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
                 return computedChunk.Item2;
             }
 
-            log.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
 
             if (template.ZoomLevel <= this.SourceDataZoom)
             {
                 throw new InvalidOperationException("Source data is missing for chunk " + template.ToString());
 
-                //log.WriteLine("Starting generation...");
+                //log?.WriteLine("Starting generation...");
                 //ret = await GenerateData(template);
                 //await WriteChunk(ret, fileName);
-                //log.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+                //log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
                 //return ret;
             }
 
-            log.WriteLine("Need to interpolate from lower zoom data");
+            log?.WriteLine("Need to interpolate from lower zoom data");
             var parent = template.GetParentChunk();
             var chunks = new ChunkHolder<T>[] { await GetData(parent, log) };
 
@@ -139,7 +139,7 @@ namespace MountainView
                  fromDouble);
             ret.RenderChunksInto(chunks, aggregate, log);
             await WriteChunk(ret, fileName, log);
-            log.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
             return ret;
         }
 

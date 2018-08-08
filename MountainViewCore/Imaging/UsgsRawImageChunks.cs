@@ -53,8 +53,8 @@ namespace MountainView.Imaging
                 {
                     if (ms == null)
                     {
-                        log.WriteLine("File should exist: '" + fileInfo.FileName + "'");
-                        log.WriteLine("Assuming the tile is empty");
+                        log?.WriteLine("File should exist: '" + fileInfo.FileName + "'");
+                        log?.WriteLine("Assuming the tile is empty");
                         return null;
                     }
 
@@ -92,7 +92,7 @@ namespace MountainView.Imaging
                 }
 
                 // Now the real compute starts
-                log.WriteLine("Reading into cache: " + fileName);
+                log?.WriteLine("Reading into cache: " + fileName);
                 FIBITMAP sdib = FreeImage.LoadEx(Path.Combine(Path.GetTempPath(), fileName));
                 try
                 {
@@ -181,7 +181,7 @@ namespace MountainView.Imaging
             string folder = "NAIP_n" + lat + "w" + (-lon);
             foreach (var x in Directory.GetFiles(Path.Combine(sourcePath, folder)).Where(p => p.EndsWith(".csv") || p.EndsWith(".jp2")))
             {
-                log.WriteLine(x);
+                log?.WriteLine(x);
                 using (var ms = new MemoryStream())
                 {
                     using (var fs = File.OpenRead(x))
