@@ -1,6 +1,7 @@
 ﻿using FreeImageAPI;
 using MountainView.ChunkManagement;
 using System;
+using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -39,12 +40,22 @@ namespace MountainView.Base
             return Angle.FromDecimalDegrees(dist * Math.Sin(heading.Radians) / LengthOfLatDegree / cosLat);
         }
 
+        private static Dictionary<int, MyColor> heightCache = new Dictionary<int, MyColor>();
+
         public static MyColor GetColorForHeight(float a)
         {
-            return new MyColor(
-                (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
-                (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
-                (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
+            int i = (int)a;
+            MyColor value;
+            if (!heightCache.TryGetValue(i, out value))
+            {
+                value = new MyColor(
+                    (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 30.000) + 1.0) * 128.0),
+                    (byte)((Math.Sin(a / 70.000) + 1.0) * 128.0));
+                heightCache.Add(i, value);
+            };
+
+            return value;
         }
 
         public static MyColor WeightedColorAverage(int prevAveraged, MyColor prevAverage, MyColor toAdd)
@@ -97,6 +108,31 @@ namespace MountainView.Base
                 (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2]));
         }
 
+        public static MemoryStream GetBitmap<T>(
+            ChunkHolder<T> colorBuff,
+            Func<T, MyColor> transform,
+            OutputType outputType)
+        {
+            using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
+            {
+                for (int i = 0; i < colorBuff.LatSteps; i++)
+                {
+                    var col = colorBuff.Data[i];
+                    for (int j = 0; j < colorBuff.LonSteps; j++)
+                    {
+                        bm.SetPixel(j, i, transform(col[colorBuff.LonSteps - 1 - j]));
+                    }
+                }
+
+                MemoryStream stream = new MemoryStream();
+                bm.WriteFile(outputType, stream);
+                // Rewind the stream...
+                stream.Seek(0, SeekOrigin.Begin);
+
+                return stream;
+            }
+        }
+
         public static void WriteImageFile<T>(
             ChunkHolder<T> colorBuff,
             string fileName,
@@ -115,7 +151,10 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName, outputType);
+                using (FileStream stream = File.OpenWrite(fileName))
+                {
+                    bm.WriteFile(outputType, stream);
+                }
             }
         }
 
@@ -141,7 +180,10 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName, outputType);
+                using (FileStream stream = File.OpenWrite(fileName))
+                {
+                    bm.WriteFile(outputType, stream);
+                }
             }
         }
 
@@ -163,7 +205,10 @@ namespace MountainView.Base
                 }
 
                 File.Delete(fileName);
-                bm.WriteFile(fileName, outputType);
+                using (FileStream stream = File.OpenWrite(fileName))
+                {
+                    bm.WriteFile(outputType, stream);
+                }
             }
         }
 
@@ -174,6 +219,7 @@ namespace MountainView.Base
             private byte[] bits;
             private bool disposed;
             private GCHandle bitsHandle;
+            private IntPtr arrayPtr;
 
             public DirectBitmap(int width, int height)
             {
@@ -181,47 +227,55 @@ namespace MountainView.Base
                 this.height = height;
                 bits = new byte[width * height * 4];
                 bitsHandle = GCHandle.Alloc(bits, GCHandleType.Pinned);
-
+                arrayPtr = bitsHandle.AddrOfPinnedObject();
             }
 
             public void SetPixel(int i, int j, MyColor color)
             {
-                int offset = 4 * ((height - 1 - j) * width + i);
-                bits[offset++] = color.B;
-                bits[offset++] = color.G;
-                bits[offset++] = color.R;
-                bits[offset++] = color.A;
+                unsafe
+                {
+                    byte* dst = (byte*)arrayPtr.ToPointer();
+                    dst += 4 * ((height - 1 - j) * width + i);
+                    *dst++ = color.B;
+                    *dst++ = color.G;
+                    *dst++ = color.R;
+                    *dst++ = color.A;
+                }
             }
 
-            public void WriteFile(string fileName, OutputType outputType)
+            public System.Drawing.Bitmap GetBitmap()
             {
                 using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
                 {
-                    using (FileStream stream = File.OpenWrite(fileName))
-                    {
-                        switch (outputType)
-                        {
-                            case OutputType.JPEG:
-                                // JPEG_QUALITYGOOD is 75 JPEG.
-                                // JPEG_BASELINE strips metadata (EXIF, etc.)
-                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
-                                    FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
-                                    FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
-                                break;
-                            case OutputType.PNG:
-                                // JPEG_QUALITYGOOD is 75 JPEG.
-                                // JPEG_BASELINE strips metadata (EXIF, etc.)
-                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_PNG);
-                                break;
-                            case OutputType.Bitmap:
-                                // JPEG_QUALITYGOOD is 75 JPEG.
-                                // JPEG_BASELINE strips metadata (EXIF, etc.)
-                                bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_BMP);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException("outputType");
-                        }
+                    return bitmap.ToBitmap();
+                }
+            }
 
+            public void WriteFile(OutputType outputType, Stream stream)
+            {
+                using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
+                {
+                    switch (outputType)
+                    {
+                        case OutputType.JPEG:
+                            // JPEG_QUALITYGOOD is 75 JPEG.
+                            // JPEG_BASELINE strips metadata (EXIF, etc.)
+                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
+                                FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
+                                FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
+                            break;
+                        case OutputType.PNG:
+                            // JPEG_QUALITYGOOD is 75 JPEG.
+                            // JPEG_BASELINE strips metadata (EXIF, etc.)
+                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_PNG);
+                            break;
+                        case OutputType.Bitmap:
+                            // JPEG_QUALITYGOOD is 75 JPEG.
+                            // JPEG_BASELINE strips metadata (EXIF, etc.)
+                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_BMP);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException("outputType");
                     }
                 }
             }

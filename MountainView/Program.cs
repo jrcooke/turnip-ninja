@@ -5,6 +5,7 @@ using MountainView.Imaging;
 using MountainViewCore.Base;
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -13,9 +14,14 @@ using static MountainViewCore.Base.View;
 
 namespace MountainView
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
+        {
+            Task.WaitAll(Foo(null));
+        }
+
+        public static async Task Foo(TraceListener log, Action<MemoryStream> getBitmap = null)
         {
             DateTime start = DateTime.Now;
             int serverLat = 48;
@@ -32,14 +38,14 @@ namespace MountainView
             bool isServerUpload = false;
             bool isServerCompute = false;
             bool isClient = true;
-            TraceListener log = null;
             try
             {
-                //Tests.Test12();
+                await Tests.Test12(outputPath, log, getBitmap);
 
-                //Task.WaitAll(Tests.Test3(     outputPath,
+                //await Tests.Test3(outputPath,
                 //    Angle.FromDecimalDegrees(47.6867797),
-                //    Angle.FromDecimalDegrees(-122.2907541)));
+                //    Angle.FromDecimalDegrees(-122.2907541),
+                //    log);
 
                 if (isServerUpload)
                 {
@@ -56,10 +62,10 @@ namespace MountainView
                 else if (isClient)
                 {
                     //Config c = Config.Rainer();
-                    Config config = Config.JuanetaAll();
-                    //                    Config c = Config.Juaneta();
+                    //Config config = Config.JuanetaAll();
+                    Config config = Config.Juaneta();
 
-                    var chunks = View.GetRelevantChunkKeys(config);
+                    var chunks = View.GetRelevantChunkKeys(config, log);
 
                     int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
                     ColorHeight[][] view = new ColorHeight[config.NumTheta][];
@@ -69,18 +75,27 @@ namespace MountainView
                     }
 
                     float eyeHeight = 5;
-                    float heightOffset = View.GetHeightAtPoint(config, chunks.Last(), log).Result + eyeHeight;
+                    float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last(), log)) + eyeHeight;
 
                     int counter = 0;
                     foreach (var chunk in chunks)
                     {
-                        var view2 = View.GetPolarData(config, chunk, heightOffset, log).Result;
-                        foreach (var elem in view2)
+                        var view2 = await View.GetPolarData(config, chunk, heightOffset, log);
+                        ColorHeight[][] view3 = new ColorHeight[config.NumTheta][];
+                        for (int i = 0; i < view3.Length; i++)
                         {
-                            view[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
+                            view3[i] = new ColorHeight[numParts];
                         }
 
-                        var www = View.ProcessImage(view, log).Result;
+                        if (view2 != null)
+                        {
+                            foreach (var elem in view2)
+                            {
+                                view3[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
+                            }
+                        }
+
+                        var www = await View.ProcessImage(view3, log);
                         Utils.WriteImageFile(www, Path.Combine(outputPath, counter + ".jpg"), a => a, OutputType.JPEG);
 
                         counter++;
@@ -100,6 +115,62 @@ namespace MountainView
             Console.WriteLine(start);
             Console.WriteLine(end);
             Console.WriteLine(end - start);
+        }
+
+
+        public static async Task Foo2(TraceListener log, double latD, double lonD, Action<MemoryStream> getBitmap = null)
+        {
+            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+            var lat = Angle.FromDecimalDegrees(latD);
+            var lon = Angle.FromDecimalDegrees(lonD);
+
+            log.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+
+            //for(      
+            int zoomLevel = 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
+            {
+                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
+                var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
+
+                var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+                if (cc == null)
+                {
+                    log.WriteLine("Chunk is null");
+                }
+                else
+                {
+                    log.Write(zoomLevel + "\t" + cc.LatDelta);
+                    log.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
+
+                    var template = cc;
+                    try
+                    {
+                        var pixels2 = await Heights.Current.GetData(template, log);
+                        if (pixels2 != null)
+                        {
+                            getBitmap?.Invoke(Utils.GetBitmap(pixels2, a => Utils.GetColorForHeight(a), OutputType.JPEG));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log.WriteLine(ex.Message);
+                    }
+
+                    try
+                    {
+                        var pixels = await Images.Current.GetData(template, log);
+                        if (pixels != null)
+                        {
+                            getBitmap?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log.WriteLine(ex.Message);
+                    }
+                }
+            }
         }
 
         public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)

@@ -4,6 +4,7 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -40,54 +41,97 @@ namespace MountainView
             ////Utils.WriteImageFile(ddd2, Path.Combine(outputFolder, "ddd2.png"), a => a);
         }
 
-        public static void Test12()
+        public static async Task Test12(string outputFolder, TraceListener log, Action<MemoryStream> getBitmap = null)
         {
+            var lat = Angle.FromDecimalDegrees(47.6867797);
+            var lon = Angle.FromDecimalDegrees(-122.2907541);
+
             for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
             {
-                var lat = Angle.FromDecimalDegrees(47.6867797);
-                var lon = Angle.FromDecimalDegrees(-122.2907541);
                 var k1 = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, i);
-                Console.WriteLine(i + ", 1: " + k1);
+                log.WriteLine(i + ", 1: " + k1);
             }
 
-            //var lat = Angle.FromDecimalDegrees(47.6867797);
-            //var lon = Angle.FromDecimalDegrees(-122.2907541);
 
-            //Console.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+            log.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
-            //    for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
-            //    {
-            //        var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
-            //        var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
+            for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
+            {
+                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
+                var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
 
-            //        var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-            //        Console.Write(zoomLevel + "\t" + cc.LatDelta);
-            //        Console.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
-            //    }
+                var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+                if (cc == null)
+                {
+                    log.WriteLine("Chunk is null");
+                }
+                else
+                {
+                    log.Write(zoomLevel + "\t" + cc.LatDelta);
+                    log.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
+
+                    var template = cc;
+                    try
+                    {
+                        var pixels2 = await Heights.Current.GetData(template, log);
+                        if (pixels2 != null)
+                        {
+                            Utils.WriteImageFile(pixels2,
+                                Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
+                                a => Utils.GetColorForHeight(a),
+                                OutputType.JPEG);
+                            getBitmap?.Invoke(Utils.GetBitmap(pixels2, a => Utils.GetColorForHeight(a), OutputType.JPEG));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log.WriteLine(ex.Message);
+                    }
+
+                    try
+                    {
+                        var pixels = await Images.Current.GetData(template, log);
+                        if (pixels != null)
+                        {
+                            Utils.WriteImageFile(pixels,
+                                Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                                a => a,
+                                OutputType.JPEG);
+                            getBitmap?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log.WriteLine(ex.Message);
+                    }
+                }
+            }
         }
 
-        public static void Test3(string outputFolder, Angle lat, Angle lon)
+        public static async Task Test3(string outputFolder, Angle lat, Angle lon, TraceListener log)
         {
             for (int zoomLevel = 5; zoomLevel >= 3; zoomLevel--)
             {
                 StandardChunkMetadata template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-                //var pixels2 = await Heights.Current.GetData(template);
-                //if (pixels2 != null)
-                //{
-                //    Utils.WriteImageFile(pixels2,
-                //        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
-                //        a => Utils.GetColorForHeight(a));
-                //}
+                var pixels2 = await Heights.Current.GetData(template, log);
+                if (pixels2 != null)
+                {
+                    Utils.WriteImageFile(pixels2,
+                        Path.Combine(outputFolder, "AChunkH" + zoomLevel + ".png"),
+                        a => Utils.GetColorForHeight(a),
+                        OutputType.JPEG);
+                }
 
-                //var pixels = await Images.Current.GetData(template);
-                //if (pixels != null)
-                //{
-                //    Utils.WriteImageFile(pixels,
-                //        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
-                //        a => a);
-                //}
+                var pixels = await Images.Current.GetData(template, log);
+                if (pixels != null)
+                {
+                    Utils.WriteImageFile(pixels,
+                        Path.Combine(outputFolder, "AChunkC" + zoomLevel + ".png"),
+                        a => a,
+                        OutputType.JPEG);
+                }
 
-                //var pixels3 = await Features.Current.GetData(template);
+                //var pixels3 = await Features.Current.GetData(template, log);
                 //if (pixels3 != null)
                 //{
                 //    Utils.WriteImageFile(pixels3,

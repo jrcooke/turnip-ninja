@@ -31,7 +31,7 @@ namespace MountainViewCore.Base
             }
         }
 
-        public static long[] GetRelevantChunkKeys(Config config)
+        public static long[] GetRelevantChunkKeys(Config config, TraceListener log)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
@@ -58,11 +58,15 @@ namespace MountainViewCore.Base
                     var zoomLevel = StandardChunkMetadata.GetZoomLevel(decimalDegreesPerElement);
                     zoomLevel = Math.Max(3, zoomLevel);
                     var chunkKey = StandardChunkMetadata.GetKey(point.Item1, point.Item2, zoomLevel);
-                    chunkKeys.Add(chunkKey);
-
-                    chunkZoom[chunkKey] = zoomLevel;
-
                     StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+
+                    if (!chunkKeys.Contains(chunkKey))
+                    {
+                        chunkKeys.Add(chunkKey);
+                        chunkZoom[chunkKey] = zoomLevel;
+                        log.WriteLine("Chunk is " + chunk.ToString());
+                    }
+
                     if (!chunk.TryGetIntersectLine(
                         config.Lat.DecimalDegree, endRLat.DecimalDegree,
                         config.Lon.DecimalDegree, endRLon.DecimalDegree,
@@ -76,11 +80,15 @@ namespace MountainViewCore.Base
                         distToFarthestPointInChunk[chunkKey] = (int)(hiX * numR);
                     }
 
+
                     iR = Math.Max(iR, Math.Min(numR, (int)(hiX * numR)) - 1);
                 }
             }
 
-            return (new long[] { 0 }).Union(chunkKeys.OrderBy(p => chunkZoom[p]).ThenByDescending(p => distToFarthestPointInChunk[p])).ToArray();
+            return (new long[] { 0 }).Union(chunkKeys
+                .OrderBy(p => chunkZoom[p])
+                .ThenByDescending(p => distToFarthestPointInChunk[p])
+                ).ToArray();
         }
 
         public static async Task<IEnumerable<SparseColorHeight>> GetPolarData(Config config, long chunkKey, float heightOffset, TraceListener log)
@@ -93,6 +101,11 @@ namespace MountainViewCore.Base
             NearestInterpolatingChunk<float> interpChunkH = null;
 
             StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+            if (chunk == null)
+            {
+                return null;
+            }
+
             log?.WriteLine(chunk);
 
             using (interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))

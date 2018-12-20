@@ -2,8 +2,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
-using MountainView.ChunkManagement;
-using MountainView.Elevation;
 using MountainViewCore.Base;
 using MountainViewDesktopCore.Base;
 using MountainViewFn.Core;
@@ -37,7 +35,12 @@ namespace MountainViewFn
             string cs = Environment.GetEnvironmentVariable("ConnectionString2", EnvironmentVariableTarget.Process);
             QueueHelper.SetConnectionString(cs);
 
-            ChunkProcess ret = new ChunkProcess() { SessionId = Guid.NewGuid().ToString(), Count = chunks.Length };
+            ChunkProcess ret = new ChunkProcess()
+            {
+                SessionId = Guid.NewGuid().ToString(),
+                Count = chunks.Length,
+            };
+
             ChunkMetadata[] chunksToProcess = chunks
                 .Select((p, i) => new ChunkMetadata()
                 {

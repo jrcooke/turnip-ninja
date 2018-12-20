@@ -43,25 +43,41 @@ namespace MountainView.Base
         public static async Task<DeletableFileStream> TryGetStreamAsync(string containerName, string fileName, TraceListener log)
         {
             var localFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".tmp");
+            var cacheFileName = Path.Combine(Path.GetTempPath(), fileName);
+
             foreach (DriveInfo d in DriveInfo.GetDrives().Where(p => p.Name.ToLower()[0] == localFileName.ToLower()[0] && p.IsReady))
             {
                 log?.WriteLine(string.Format("{0} has {1, 15} bytes available", d.Name, d.AvailableFreeSpace));
             }
 
-            try
+            if (!File.Exists(cacheFileName))
             {
-                CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
-                await blockBlob.DownloadToFileAsync(localFileName, FileMode.CreateNew);
+                try
+                {
+                    CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
+                    await blockBlob.DownloadToFileAsync(localFileName, FileMode.CreateNew);
+                }
+                catch (StorageException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    log?.WriteLine("Missing blob: " + fileName);
+                    log?.WriteLine("Error was:" + ex.ToString());
+                    return null;
+                }
+
+                var fi = new FileInfo(localFileName);
+                if (!File.Exists(cacheFileName))
+                {
+                    fi.CopyTo(cacheFileName);
+                }
             }
-            catch (StorageException)
+            else
             {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                log?.WriteLine("Missing blob: " + fileName);
-                log?.WriteLine("Error was:" + ex.ToString());
-                return null;
+                var fi = new FileInfo(cacheFileName);
+                fi.CopyTo(localFileName);
             }
 
             var fs = File.OpenRead(localFileName);
