@@ -7,15 +7,15 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <ListBox>
+        <ListBox Background="Transparent" >
             <Button Name="getCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>
+            <Image Name="mainImage" HorizontalAlignment="Left" VerticalAlignment="Top" />
+            <!--<Button Name="zoomOutgetCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>-->
         </ListBox>
-        <Image Name="mainImage" HorizontalAlignment="Left" Height="350" Margin="0,81,0,0" VerticalAlignment="Top" Width="350"/>
-        <ScrollViewer Margin="340,0,0,0" >
+        <!--<ScrollViewer Margin="340,0,0,0" >
             <TextBlock Name="output"
                    TextWrapping="Wrap"
                    Text="{Binding Path=Text}"/>
-        </ScrollViewer>
-        
+        </ScrollViewer>-->
     </Grid>
 </Window>

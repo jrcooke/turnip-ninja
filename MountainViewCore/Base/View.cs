@@ -64,7 +64,7 @@ namespace MountainViewCore.Base
                     {
                         chunkKeys.Add(chunkKey);
                         chunkZoom[chunkKey] = zoomLevel;
-                        log.WriteLine("Chunk is " + chunk.ToString());
+                        log?.WriteLine("Chunk is " + chunk.ToString());
                     }
 
                     if (!chunk.TryGetIntersectLine(

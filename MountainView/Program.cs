@@ -125,9 +125,9 @@ namespace MountainView
             var lat = Angle.FromDecimalDegrees(latD);
             var lon = Angle.FromDecimalDegrees(lonD);
 
-            log.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+            log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
-            //for(      
+            //for(
             int zoomLevel = 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
                 var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
@@ -136,12 +136,12 @@ namespace MountainView
                 var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
                 if (cc == null)
                 {
-                    log.WriteLine("Chunk is null");
+                    log?.WriteLine("Chunk is null");
                 }
                 else
                 {
-                    log.Write(zoomLevel + "\t" + cc.LatDelta);
-                    log.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
+                    log?.Write(zoomLevel + "\t" + cc.LatDelta);
+                    log?.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
 
                     var template = cc;
                     try
@@ -154,7 +154,7 @@ namespace MountainView
                     }
                     catch (Exception ex)
                     {
-                        log.WriteLine(ex.Message);
+                        log?.WriteLine(ex.Message);
                     }
 
                     try
@@ -167,7 +167,7 @@ namespace MountainView
                     }
                     catch (Exception ex)
                     {
-                        log.WriteLine(ex.Message);
+                        log?.WriteLine(ex.Message);
                     }
                 }
             }

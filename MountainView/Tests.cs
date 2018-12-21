@@ -49,11 +49,11 @@ namespace MountainView
             for (int i = 0; i <= StandardChunkMetadata.MaxZoomLevel; i++)
             {
                 var k1 = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, i);
-                log.WriteLine(i + ", 1: " + k1);
+                log?.WriteLine(i + ", 1: " + k1);
             }
 
 
-            log.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+            log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
             for (int zoomLevel = StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
@@ -63,12 +63,12 @@ namespace MountainView
                 var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
                 if (cc == null)
                 {
-                    log.WriteLine("Chunk is null");
+                    log?.WriteLine("Chunk is null");
                 }
                 else
                 {
-                    log.Write(zoomLevel + "\t" + cc.LatDelta);
-                    log.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
+                    log?.Write(zoomLevel + "\t" + cc.LatDelta);
+                    log?.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
 
                     var template = cc;
                     try
@@ -85,7 +85,7 @@ namespace MountainView
                     }
                     catch (Exception ex)
                     {
-                        log.WriteLine(ex.Message);
+                        log?.WriteLine(ex.Message);
                     }
 
                     try
@@ -102,7 +102,7 @@ namespace MountainView
                     }
                     catch (Exception ex)
                     {
-                        log.WriteLine(ex.Message);
+                        log?.WriteLine(ex.Message);
                     }
                 }
             }
