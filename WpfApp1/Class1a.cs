@@ -139,17 +139,17 @@ namespace MeshDecimator.Algorithms2
     /// <typeparam name="T">The item type.</typeparam>
     internal sealed class ResizableArray<T>
     {
-        private static T[] emptyArr = new T[0];
+        private T[] data;
 
         /// <summary>
         /// Gets the length of this array.
         /// </summary>
-        public int Length { get; private set; } = 0;
+        public int Length { get; private set; }
 
         /// <summary>
         /// Gets the internal data buffer for this array.
         /// </summary>
-        public T[] Data { get; private set; } = null;
+        public T[] Data { get { return data; } }
 
         /// <summary>
         /// Gets or sets the element value at a specific index.
@@ -167,35 +167,9 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         /// <param name="capacity">The initial array capacity.</param>
         public ResizableArray(int capacity)
-            : this(capacity, 0)
         {
-        }
-
-        /// <summary>
-        /// Creates a new resizable array.
-        /// </summary>
-        /// <param name="capacity">The initial array capacity.</param>
-        /// <param name="length">The initial length of the array.</param>
-        public ResizableArray(int capacity, int length)
-        {
-            if (capacity < 0)
-                throw new ArgumentOutOfRangeException("capacity");
-            else if (length < 0 || length > capacity)
-                throw new ArgumentOutOfRangeException("length");
-
-            if (capacity > 0)
-                Data = new T[capacity];
-            else
-                Data = emptyArr;
-
-            Length = length;
-        }
-
-        private void IncreaseCapacity(int capacity)
-        {
-            T[] newItems = new T[capacity];
-            Array.Copy(Data, 0, newItems, 0, Math.Min(Length, capacity));
-            Data = newItems;
+            data = new T[capacity];
+            Length = capacity;
         }
 
         /// <summary>
@@ -203,39 +177,16 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         /// <param name="length">The new length.</param>
         /// <param name="trimExess">If exess memory should be trimmed.</param>
-        public void Resize(int length, bool trimExess = false)
+        public void Resize(int length)
         {
-            if (length < 0)
-                throw new ArgumentOutOfRangeException("capacity");
-
             if (length > Data.Length)
             {
-                IncreaseCapacity(length);
-            }
-            else if (length < this.Length)
-            {
-                //Array.Clear(items, capacity, length - capacity);
+                Array.Resize(ref data, length);
             }
 
-            this.Length = length;
+            // Don't worry about conserving memory?
 
-            if (trimExess)
-            {
-                TrimExcess();
-            }
-        }
-
-        /// <summary>
-        /// Trims any excess memory for this array.
-        /// </summary>
-        public void TrimExcess()
-        {
-            if (Data.Length == Length) // Nothing to do
-                return;
-
-            T[] newItems = new T[Length];
-            Array.Copy(Data, 0, newItems, 0, Length);
-            Data = newItems;
+            Length = length;
         }
 
         /// <summary>
@@ -246,7 +197,7 @@ namespace MeshDecimator.Algorithms2
         {
             if (Length >= Data.Length)
             {
-                IncreaseCapacity(Data.Length << 1);
+                Array.Resize(ref data, Length * 2);
             }
 
             Data[Length++] = item;
@@ -459,13 +410,13 @@ namespace MeshDecimator.Algorithms2
                 this.v1 = v1;
                 this.v2 = v2;
 
-                this.err0 = 0;
-                this.err1 = 0;
-                this.err2 = 0;
-                this.err3 = 0;
+                err0 = 0;
+                err1 = 0;
+                err2 = 0;
+                err3 = 0;
 
-                this.deleted = false;
-                this.dirty = false;
+                deleted = false;
+                dirty = false;
 
                 n = new Vector3d();
             }
@@ -489,10 +440,10 @@ namespace MeshDecimator.Algorithms2
             public Vertex(Vector3d p)
             {
                 this.p = p;
-                this.tstart = 0;
-                this.tcount = 0;
-                this.q = new SymmetricMatrix();
-                this.border = true;
+                tstart = 0;
+                tcount = 0;
+                q = new SymmetricMatrix();
+                border = true;
             }
         }
 
@@ -514,8 +465,6 @@ namespace MeshDecimator.Algorithms2
         private ResizableArray<Vertex> vertices = new ResizableArray<Vertex>(0);
         private ResizableArray<Ref> refs = new ResizableArray<Ref>(0);
 
-        private int remainingVertices = 0;
-
         // Pre-allocated buffers
         private double[] errArr = new double[3];
 
@@ -529,14 +478,15 @@ namespace MeshDecimator.Algorithms2
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
             var triangles = this.triangles.Data;
-            int triangleCount = this.triangles.Length;
-            int startTrisCount = triangleCount;
             var vertices = this.vertices.Data;
+
+            int triangleCount = this.triangles.Length;
+            int initialCount = triangleCount;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
-                ReportStatus(iteration, startTrisCount, (startTrisCount - deletedTriangles), targetCount);
-                if ((startTrisCount - deletedTriangles) <= targetCount)
+                ReportStatus(iteration, initialCount, (initialCount - deletedTriangles), targetCount);
+                if ((initialCount - deletedTriangles) <= targetCount)
                 {
                     break;
                 }
@@ -565,11 +515,11 @@ namespace MeshDecimator.Algorithms2
                 // target number of triangles reached ? Then break
                 if (verbose && (iteration % 5) == 0)
                 {
-                    Debug.WriteLine("iteration {0} - triangles {1} threshold {2}", iteration, startTrisCount - deletedTriangles, threshold);
+                    Debug.WriteLine("iteration {0} - triangles {1} threshold {2}", iteration, initialCount - deletedTriangles, threshold);
                 }
 
                 // Remove vertices & mark deleted triangles
-                RemoveVertexPass(startTrisCount, targetCount, threshold, deleted0, deleted1, ref deletedTriangles);
+                RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref deletedTriangles);
             }
 
             CompactMesh();
@@ -580,13 +530,14 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         public void SimplifyMeshLossless(bool verbose = false)
         {
-            int deletedTris = 0;
+            int deletedTriangles = 0;
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
             var triangles = this.triangles.Data;
-            int triangleCount = this.triangles.Length;
-            int startTrisCount = triangleCount;
             var vertices = this.vertices.Data;
+
+            int triangleCount = this.triangles.Length;
+            int initialCount = triangleCount;
 
             for (int iteration = 0; iteration < 9999; iteration++)
             {
@@ -599,7 +550,7 @@ namespace MeshDecimator.Algorithms2
                 triangleCount = this.triangles.Length;
                 vertices = this.vertices.Data;
 
-                ReportStatus(iteration, startTrisCount, triangleCount, -1);
+                ReportStatus(iteration, initialCount, triangleCount, -1);
 
                 // Clear dirty flag
                 for (int i = 0; i < triangleCount; i++)
@@ -618,14 +569,14 @@ namespace MeshDecimator.Algorithms2
                 }
 
                 // Remove vertices & mark deleted triangles
-                RemoveVertexPass(startTrisCount, 0, threshold, deleted0, deleted1, ref deletedTris);
+                RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref deletedTriangles);
 
-                if (deletedTris <= 0)
+                if (deletedTriangles <= 0)
                 {
                     break;
                 }
 
-                deletedTris = 0;
+                deletedTriangles = 0;
             }
 
             CompactMesh();
@@ -801,7 +752,6 @@ namespace MeshDecimator.Algorithms2
                     }
 
                     vertices[i0].tcount = tcount;
-                    --remainingVertices;
                     break;
                 }
             }
@@ -910,7 +860,6 @@ namespace MeshDecimator.Algorithms2
 
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts, part 2");
             int tstartX = 0;
-            remainingVertices = 0;
             for (int i = 0; i < vertexCount; i++)
             {
                 vertices[i].tstart = tstartX;
@@ -918,7 +867,6 @@ namespace MeshDecimator.Algorithms2
                 {
                     tstartX += vertices[i].tcount;
                     vertices[i].tcount = 0;
-                    ++remainingVertices;
                 }
             }
             Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts, part 2");
