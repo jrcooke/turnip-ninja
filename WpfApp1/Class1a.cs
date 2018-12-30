@@ -624,13 +624,10 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles)
         {
-            Vector3d p;
-            int tcount = v.tcount;
-            for (int k = 0; k < tcount; k++)
+            for (int k = 0; k < v.tcount; k++)
             {
                 Ref r = refs[v.tstart + k];
-                int tid = r.tid;
-                Triangle t = triangles[tid];
+                Triangle t = triangles[r.tid];
                 if (t.deleted)
                 {
                     continue;
@@ -639,17 +636,17 @@ namespace MeshDecimator.Algorithms2
                 if (deleted[k])
                 {
                     triangles[tid].deleted = true;
-                    ++deletedTriangles;
+                    deletedTriangles++;
                     continue;
                 }
 
                 t[r.tvertex] = i0;
                 t.dirty = true;
-                t.err0 = CalculateError(ref vertices[t.v0], ref vertices[t.v1], out p);
-                t.err1 = CalculateError(ref vertices[t.v1], ref vertices[t.v2], out p);
-                t.err2 = CalculateError(ref vertices[t.v2], ref vertices[t.v0], out p);
+                t.err0 = CalculateError(t.v0, t.v1);
+                t.err1 = CalculateError(t.v1, t.v2);
+                t.err2 = CalculateError(t.v2, t.v0);
                 t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
-                triangles[tid] = t;
+                triangles[r.tid] = t;
                 refsRA.Add(r);
             }
         }
@@ -665,27 +662,24 @@ namespace MeshDecimator.Algorithms2
             ResizableArray<bool> deleted1,
             ref int deletedTriangles)
         {
-            int triangleCount = this.trianglesRA.Length;
-
-            Vector3d p;
-            for (int tid = 0; tid < triangleCount; tid++)
+            for (int tid = 0; tid < trianglesRA.Length; tid++)
             {
-                if (triangles[tid].dirty || triangles[tid].deleted || triangles[tid].err3 > threshold)
+                var t = triangles[tid];
+                if (t.dirty || t.deleted || t.err3 > threshold)
                 {
                     continue;
                 }
 
-                triangles[tid].GetErrors(errArr);
-                for (int edgeIndex = 0; edgeIndex < 3; edgeIndex++)
+                t.GetErrors(errArr);
+                for (int j = 0; j < 3; j++)
                 {
-                    if (errArr[edgeIndex] > threshold)
+                    if (errArr[j] > threshold)
                     {
                         continue;
                     }
 
-                    int nextEdgeIndex = ((edgeIndex + 1) % 3);
-                    int i0 = triangles[tid][edgeIndex];
-                    int i1 = triangles[tid][nextEdgeIndex];
+                    int i0 = t[j];
+                    int i1 = t[(j + 1) % 3];
 
                     // Border check
                     if (vertices[i0].border != vertices[i1].border)
@@ -694,7 +688,8 @@ namespace MeshDecimator.Algorithms2
                     }
 
                     // Compute vertex to collapse to
-                    CalculateError(ref vertices[i0], ref vertices[i1], out p);
+                    Vector3d p;
+                    CalculateError(i0, i1, out p);
                     deleted0.Resize(vertices[i0].tcount); // normals temporarily
                     deleted1.Resize(vertices[i1].tcount); // normals temporarily
 
@@ -802,12 +797,12 @@ namespace MeshDecimator.Algorithms2
                 for (int i = 0; i < trianglesRA.Length; i++)
                 {
                     // Calc Edge Error
-                    var triangle = triangles[i];
-                    Vector3d dummy;
-                    triangles[i].err0 = CalculateError(ref vertices[triangle.v0], ref vertices[triangle.v1], out dummy);
-                    triangles[i].err1 = CalculateError(ref vertices[triangle.v1], ref vertices[triangle.v2], out dummy);
-                    triangles[i].err2 = CalculateError(ref vertices[triangle.v2], ref vertices[triangle.v0], out dummy);
-                    triangles[i].err3 = Math.Min(triangles[i].err0, Math.Min(triangles[i].err1, triangles[i].err2));
+                    var t = triangles[i];
+                    t.err0 = CalculateError(t.v0, t.v1);
+                    t.err1 = CalculateError(t.v1, t.v2);
+                    t.err2 = CalculateError(t.v2, t.v0);
+                    t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
+                    triangles[i] = t;
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.calc edge error");
             }
@@ -1010,11 +1005,17 @@ namespace MeshDecimator.Algorithms2
                 1 * q.m9;
         }
 
-        private double CalculateError(ref Vertex vert0, ref Vertex vert1, out Vector3d result)
+        // Error for one edge
+        private double CalculateError(int id_v1, int id_v2)
+        {
+            return CalculateError(id_v1, id_v2, out Vector3d result);
+        }
+
+        private double CalculateError(int id_v1, int id_v2, out Vector3d result)
         {
             // compute interpolated vertex
-            SymmetricMatrix q = vert0.q + vert1.q;
-            bool border = vert0.border & vert1.border;
+            SymmetricMatrix q = vertices[id_v1].q + vertices[id_v2].q;
+            bool border = vertices[id_v1].border & vertices[id_v2].border;
             double error = 0;
             double det = q.Determinant1();
             if (det != 0 && !border)
@@ -1029,8 +1030,8 @@ namespace MeshDecimator.Algorithms2
             else
             {
                 // det = 0 -> try to find best result
-                Vector3d p1 = vert0.p;
-                Vector3d p2 = vert1.p;
+                Vector3d p1 = vertices[id_v1].p;
+                Vector3d p2 = vertices[id_v2].p;
                 Vector3d p3 = (p1 + p2) * 0.5;
                 double error1 = VertexError(ref q, p1.x, p1.y, p1.z);
                 double error2 = VertexError(ref q, p2.x, p2.y, p2.z);
