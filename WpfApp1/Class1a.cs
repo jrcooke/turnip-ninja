@@ -478,18 +478,15 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         public void SimplifyMesh(int targetCount, double agressiveness = 7.0, bool verbose = false)
         {
-
             int deletedTriangles = 0;
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
-
-            int triangleCount = trianglesRA.Length;
-            int initialCount = triangleCount;
+            int initialCount = trianglesRA.Length;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
-                ReportStatus(iteration, initialCount, (initialCount - deletedTriangles), targetCount);
-                if ((initialCount - deletedTriangles) <= targetCount)
+                ReportStatus(iteration, initialCount, initialCount - deletedTriangles, targetCount);
+                if (initialCount - deletedTriangles <= targetCount)
                 {
                     break;
                 }
@@ -498,11 +495,10 @@ namespace MeshDecimator.Algorithms2
                 if (iteration % 5 == 0)
                 {
                     UpdateMesh(iteration);
-                    triangleCount = trianglesRA.Length;
                 }
 
                 // Clear dirty flag
-                for (int i = 0; i < triangleCount; i++)
+                for (int i = 0; i < trianglesRA.Length; i++)
                 {
                     triangles[i].dirty = false;
                 }
@@ -534,9 +530,7 @@ namespace MeshDecimator.Algorithms2
             int deletedTriangles = 0;
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
-
-            int triangleCount = this.trianglesRA.Length;
-            int initialCount = triangleCount;
+            int initialCount = trianglesRA.Length;
 
             for (int iteration = 0; iteration < 9999; iteration++)
             {
@@ -545,12 +539,10 @@ namespace MeshDecimator.Algorithms2
                 UpdateMesh(iteration);
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
-                triangleCount = this.trianglesRA.Length;
-
-                ReportStatus(iteration, initialCount, triangleCount, -1);
+                ReportStatus(iteration, initialCount, trianglesRA.Length, -1);
 
                 // Clear dirty flag
-                for (int i = 0; i < triangleCount; i++)
+                for (int i = 0; i < trianglesRA.Length; i++)
                 {
                     triangles[i].dirty = false;
                 }
@@ -767,6 +759,7 @@ namespace MeshDecimator.Algorithms2
                         dst++;
                     }
                 }
+
                 trianglesRA.Resize(dst);
             }
             Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.compactTri");
@@ -783,25 +776,22 @@ namespace MeshDecimator.Algorithms2
                     vertices[i].q = new SymmetricMatrix();
                 }
 
-                int v0, v1, v2;
-                Vector3d n, p0, p1, p2, p10, p20, dummy;
-                SymmetricMatrix sm;
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.update Tri");
                 for (int i = 0; i < trianglesRA.Length; i++)
                 {
-                    v0 = triangles[i].v0;
-                    v1 = triangles[i].v1;
-                    v2 = triangles[i].v2;
+                    int v0 = triangles[i].v0;
+                    int v1 = triangles[i].v1;
+                    int v2 = triangles[i].v2;
 
-                    p0 = vertices[v0].p;
-                    p1 = vertices[v1].p;
-                    p2 = vertices[v2].p;
-                    p10 = p1 - p0;
-                    p20 = p2 - p0;
-                    n = Vector3d.Cross(ref p10, ref p20).Normalized;
+                    Vector3d p0 = vertices[v0].p;
+                    Vector3d p1 = vertices[v1].p;
+                    Vector3d p2 = vertices[v2].p;
+                    Vector3d p10 = p1 - p0;
+                    Vector3d p20 = p2 - p0;
+                    Vector3d n = Vector3d.Cross(ref p10, ref p20).Normalized;
                     triangles[i].n = n;
 
-                    sm = new SymmetricMatrix(n.x, n.y, n.z, -Vector3d.Dot(ref n, ref p0));
+                    var sm = new SymmetricMatrix(n.x, n.y, n.z, -Vector3d.Dot(ref n, ref p0));
                     vertices[v0].q += sm;
                     vertices[v1].q += sm;
                     vertices[v2].q += sm;
@@ -813,6 +803,7 @@ namespace MeshDecimator.Algorithms2
                 {
                     // Calc Edge Error
                     var triangle = triangles[i];
+                    Vector3d dummy;
                     triangles[i].err0 = CalculateError(ref vertices[triangle.v0], ref vertices[triangle.v1], out dummy);
                     triangles[i].err1 = CalculateError(ref vertices[triangle.v1], ref vertices[triangle.v2], out dummy);
                     triangles[i].err2 = CalculateError(ref vertices[triangle.v2], ref vertices[triangle.v0], out dummy);
@@ -855,6 +846,7 @@ namespace MeshDecimator.Algorithms2
 
             // Write References
             refsRA.Resize(tstartX);
+
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts, with Ref");
             for (int i = 0; i < trianglesRA.Length; i++)
             {
@@ -928,7 +920,7 @@ namespace MeshDecimator.Algorithms2
                             }
                             else
                             {
-                                ++vcount[ofs];
+                                vcount[ofs]++;
                             }
                         }
                     }
@@ -952,12 +944,12 @@ namespace MeshDecimator.Algorithms2
         /// </summary>
         private void CompactMesh()
         {
-            int dst = 0;
             for (int i = 0; i < verticesRA.Length; i++)
             {
                 vertices[i].tcount = 0;
             }
 
+            int dst = 0;
             for (int i = 0; i < trianglesRA.Length; i++)
             {
                 var t = triangles[i];
@@ -980,12 +972,12 @@ namespace MeshDecimator.Algorithms2
                 {
                     v.tstart = dst;
                     vertices[i] = v;
-
                     if (dst != i)
                     {
                         vertices[dst].p = v.p;
                     }
-                    ++dst;
+
+                    dst++;
                 }
             }
 
