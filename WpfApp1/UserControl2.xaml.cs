@@ -58,13 +58,10 @@ namespace WpfApp1
 
         public void Blarg(BitmapImage bi, float[][] heights, double imageWidth, double imageHeight)
         {
-            Debug.WriteLine(DateTime.Now + "\tStart blarg");
-
             ImageBrush ib = new ImageBrush() { ImageSource = bi };
             Material myMaterial = new DiffuseMaterial(ib);
             myGeometryModel.Material = myMaterial;
 
-            Debug.WriteLine(DateTime.Now + "\tStart Point3DCollection");
             Point3DCollection myPositionCollection = new Point3DCollection();
             var max = heights.Length;
             for (int i = 0; i < max; i++)
@@ -73,16 +70,14 @@ namespace WpfApp1
                 {
                     int iPrime = (max - 1 - i) * heights.Length / max;
                     int jPrime = (j) * heights[0].Length / max;
-                    double height = 1000 * heights[jPrime][iPrime];
+                    double height = 10000 * heights[jPrime][iPrime];
                     myPositionCollection.Add(new Point3D(
                         10.0 * (i - max / 2.0) * imageWidth / (max * imageHeight),
                         10.0 * (j - max / 2.0) / max,
                         10.0 * height / (max * imageHeight)));
                 }
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd Point3DCollection");
 
-            Debug.WriteLine(DateTime.Now + "\tStart Int32Collection");
             // Create a collection of triangle indices for the MeshGeometry3D.
             Int32Collection myTriangleIndicesCollection = new Int32Collection();
             for (int i = 0; i < (max - 1); i++)
@@ -97,33 +92,45 @@ namespace WpfApp1
                     myTriangleIndicesCollection.Add((i + 1) * max + (j + 0));
                 }
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd Int32Collection");
 
-            var sourceVertices = myPositionCollection.Select(p => new MeshDecimator.Algorithms2.Vector3d(p.X, p.Y, p.Z)).ToArray();
-            var sourceIndices = myTriangleIndicesCollection.ToArray();
+            SimpleMesh sm = new SimpleMesh(myPositionCollection, myTriangleIndicesCollection);
+            myPositionCollection = null;
+            myTriangleIndicesCollection = null;
+            sm.Simplify();
 
-            int currentTriangleCount = sourceIndices.Length / 3;
-
-            var md = new MeshDecimator.Algorithms2.FastQuadricMeshSimplification();
-            //            Mesh destMesh = MeshDecimation.DecimateMesh(algorithm, sourceMesh, targetTriangleCount);
-
-            Debug.WriteLine(DateTime.Now + "\tStart Initialize");
-            md.Initialize(sourceVertices, sourceIndices);
-            Debug.WriteLine(DateTime.Now + "\tEnd Initialize");
-
-            Debug.WriteLine(DateTime.Now + "\tStart SimplifyMeshLossless");
-            md.SimplifyMeshLossless(true);
-            Debug.WriteLine(DateTime.Now + "\tEnd SimplifyMeshLossless");
-
-            var newVertices = md.GetVertices();
-            var newIndices = md.GetIndices();
-
-            // Apply the mesh to the geometry model.
             MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
-            myMeshGeometry3D.Positions = new Point3DCollection(newVertices.Select(p => new Point3D(p.x, p.y, 10 * p.z)));
-            myMeshGeometry3D.TextureCoordinates = new PointCollection(newVertices.Select(p => new Point(p.x, -p.y)));
-            myMeshGeometry3D.TriangleIndices = new Int32Collection(newIndices);
+            myMeshGeometry3D.Positions = sm.Positions;
+            myMeshGeometry3D.TextureCoordinates = new PointCollection(sm.Positions.Select(p => new Point(p.X, -p.Y)));
+            myMeshGeometry3D.TriangleIndices = sm.TriangleIncides;
             myGeometryModel.Geometry = myMeshGeometry3D;
+        }
+
+        private class SimpleMesh
+        {
+            public Point3DCollection Positions { get; set; }
+            public Int32Collection TriangleIncides { get; set; }
+
+            public SimpleMesh(Point3DCollection positions, Int32Collection triangleIncides)
+            {
+                Positions = positions;
+                TriangleIncides = triangleIncides;
+            }
+
+            public void Simplify()
+            {
+
+                var sourceVertices = Positions.Select(p => new Vector3d(p.X, p.Y, p.Z)).ToArray();
+                var md = new SimplifyMesh(sourceVertices, TriangleIncides.ToArray());
+                Positions = null;
+                TriangleIncides = null;
+
+                md.SimplifyMeshLossless(1.0E-3);
+                var newVertices = md.GetVertices();
+                var newIndices = md.GetIndices();
+
+                Positions = new Point3DCollection(newVertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
+                TriangleIncides = new Int32Collection(newIndices);
+            }
         }
     }
 }

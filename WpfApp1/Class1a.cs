@@ -39,16 +39,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace MeshDecimator.Algorithms2
+namespace MeshDecimator
 {
     /// <summary>
     /// A double precision 3D vector.
     /// </summary>
     public struct Vector3d
     {
-        public double x;
-        public double y;
-        public double z;
+        public double X;
+        public double Y;
+        public double Z;
 
         /// <summary>
         /// Creates a new vector.
@@ -58,9 +58,9 @@ namespace MeshDecimator.Algorithms2
         /// <param name="z">The z value.</param>
         public Vector3d(double x, double y, double z)
         {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            X = x;
+            Y = y;
+            Z = z;
         }
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace MeshDecimator.Algorithms2
         /// <returns>The resulting vector.</returns>
         public static Vector3d operator +(Vector3d a, Vector3d b)
         {
-            return new Vector3d(a.x + b.x, a.y + b.y, a.z + b.z);
+            return new Vector3d(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace MeshDecimator.Algorithms2
         /// <returns>The resulting vector.</returns>
         public static Vector3d operator -(Vector3d a, Vector3d b)
         {
-            return new Vector3d(a.x - b.x, a.y - b.y, a.z - b.z);
+            return new Vector3d(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace MeshDecimator.Algorithms2
         /// <returns>The dot product value.</returns>
         public static double Dot(ref Vector3d a, ref Vector3d b)
         {
-            return a.x * b.x + a.y * b.y + a.z * b.z;
+            return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
         }
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace MeshDecimator.Algorithms2
         /// <returns>The resulting vector.</returns>
         public static Vector3d operator *(Vector3d a, double d)
         {
-            return new Vector3d(a.x * d, a.y * d, a.z * d);
+            return new Vector3d(a.X * d, a.Y * d, a.Z * d);
         }
 
         /// <summary>
@@ -114,8 +114,8 @@ namespace MeshDecimator.Algorithms2
         {
             get
             {
-                double square = System.Math.Sqrt(x * x + y * y + z * z);
-                return new Vector3d(x / square, y / square, z / square);
+                double square = System.Math.Sqrt(X * X + Y * Y + Z * Z);
+                return new Vector3d(X / square, Y / square, Z / square);
             }
         }
 
@@ -127,88 +127,86 @@ namespace MeshDecimator.Algorithms2
         public static Vector3d Cross(ref Vector3d a, ref Vector3d b)
         {
             return new Vector3d(
-                a.y * b.z - a.z * b.y,
-                a.z * b.x - a.x * b.z,
-                a.x * b.y - a.y * b.x);
-        }
-    }
-
-    /// <summary>
-    /// A resizable array.
-    /// </summary>
-    /// <typeparam name="T">The item type.</typeparam>
-    internal sealed class ResizableArray<T>
-    {
-        private T[] data;
-
-        /// <summary>
-        /// Gets the length of this array.
-        /// </summary>
-        public int Length { get; private set; }
-
-        /// <summary>
-        /// Gets the internal data buffer for this array.
-        /// </summary>
-        public T[] Data { get { return data; } }
-
-        /// <summary>
-        /// Gets or sets the element value at a specific index.
-        /// </summary>
-        /// <param name="index">The element index.</param>
-        /// <returns>The element value.</returns>
-        public T this[int index]
-        {
-            get { return Data[index]; }
-            set { Data[index] = value; }
-        }
-
-        /// <summary>
-        /// Creates a new resizable array.
-        /// </summary>
-        /// <param name="length">The initial array length.</param>
-        public ResizableArray(int length)
-        {
-            data = new T[length];
-            Length = length;
-        }
-
-        /// <summary>
-        /// Resizes this array.
-        /// </summary>
-        /// <param name="length">The new length.</param>
-        public void Resize(int length)
-        {
-            if (length != Data.Length)
-            {
-                Array.Resize(ref data, length);
-            }
-
-            // Don't worry about downsizing
-
-            Length = length;
-        }
-
-        /// <summary>
-        /// Adds a new item to the end of this array.
-        /// </summary>
-        /// <param name="item">The new item.</param>
-        public void Add(T item)
-        {
-            if (Length >= Data.Length)
-            {
-                Array.Resize(ref data, (int)((Length + 1) * 1.2));
-            }
-
-            Data[Length++] = item;
+                a.Y * b.Z - a.Z * b.Y,
+                a.Z * b.X - a.X * b.Z,
+                a.X * b.Y - a.Y * b.X);
         }
     }
 
     /// <summary>
     /// The fast quadric mesh simplification algorithm.
     /// </summary>
-    public class FastQuadricMeshSimplification
+    public class SimplifyMesh
     {
-        private const double DoubleEpsilon = 1.0E-3;
+        /// <summary>
+        /// A resizable array.
+        /// </summary>
+        /// <typeparam name="T">The item type.</typeparam>
+        internal sealed class ResizableArray<T>
+        {
+            private T[] data;
+
+            /// <summary>
+            /// Gets the length of this array.
+            /// </summary>
+            public int Length { get; private set; }
+
+            /// <summary>
+            /// Gets the internal data buffer for this array.
+            /// </summary>
+            public T[] Data { get { return data; } }
+
+            /// <summary>
+            /// Gets or sets the element value at a specific index.
+            /// </summary>
+            /// <param name="index">The element index.</param>
+            /// <returns>The element value.</returns>
+            public T this[int index]
+            {
+                get { return Data[index]; }
+                set { Data[index] = value; }
+            }
+
+            /// <summary>
+            /// Creates a new resizable array.
+            /// </summary>
+            /// <param name="length">The initial array length.</param>
+            public ResizableArray(int length)
+            {
+                data = new T[length];
+                Length = length;
+            }
+
+            /// <summary>
+            /// Resizes this array.
+            /// </summary>
+            /// <param name="length">The new length.</param>
+            public void Resize(int length)
+            {
+                if (length != Data.Length)
+                {
+                    Array.Resize(ref data, length);
+                }
+
+                // Don't worry about downsizing
+
+                Length = length;
+            }
+
+            /// <summary>
+            /// Adds a new item to the end of this array.
+            /// </summary>
+            /// <param name="item">The new item.</param>
+            public void Add(T item)
+            {
+                if (Length >= Data.Length)
+                {
+                    Array.Resize(ref data, (int)((Length + 1) * 1.2));
+                }
+
+                Data[Length++] = item;
+            }
+        }
 
         /// <summary>
         /// A symmetric matrix.
@@ -468,14 +466,38 @@ namespace MeshDecimator.Algorithms2
         private double[] errArr = new double[3];
 
         /// <summary>
+        /// Initializes the algorithm with the original mesh.
+        /// </summary>
+        public SimplifyMesh(Vector3d[] verticesIn, int[] indices)
+        {
+            verticesRA = new ResizableArray<Vertex>(verticesIn.Length);
+            for (int i = 0; i < verticesIn.Length; i++)
+            {
+                vertices[i] = new Vertex(verticesIn[i]);
+            }
+
+            trianglesRA = new ResizableArray<Triangle>(indices.Length / 3);
+            int triangleIndex = 0;
+
+            for (int i = 0; i < indices.Length / 3; i++)
+            {
+                int offset = i * 3;
+                int v0 = indices[offset + 0];
+                int v1 = indices[offset + 1];
+                int v2 = indices[offset + 2];
+                triangles[triangleIndex++] = new Triangle(v0, v1, v2);
+            }
+        }
+
+        /// <summary>
         /// Main simplification function
         /// </summary>
-        public void SimplifyMesh(int targetCount, double agressiveness = 7.0, bool verbose = false)
+        public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0, bool verbose = false)
         {
-            int deletedTriangles = 0;
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
             int initialCount = trianglesRA.Length;
+            int deletedTriangles = 0;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
@@ -501,7 +523,7 @@ namespace MeshDecimator.Algorithms2
                 //
                 // The following numbers works well for most models.
                 // If it does not, try to adjust the 3 parameters
-                double threshold = 0.000000001 * System.Math.Pow(iteration + 3, agressiveness);
+                double threshold = 0.000000001 * Math.Pow(iteration + 3, agressiveness);
 
                 // target number of triangles reached ? Then break
                 if (verbose && (iteration % 5) == 0)
@@ -510,7 +532,7 @@ namespace MeshDecimator.Algorithms2
                 }
 
                 // Remove vertices & mark deleted triangles
-                RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref deletedTriangles);
+                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1);
             }
 
             CompactMesh();
@@ -519,21 +541,22 @@ namespace MeshDecimator.Algorithms2
         /// <summary>
         /// Decimates the mesh without losing any quality.
         /// </summary>
-        public void SimplifyMeshLossless(bool verbose = false)
+        public void SimplifyMeshLossless(double threshold = 1.0E-3)
         {
-            int deletedTriangles = 0;
             ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
             int initialCount = trianglesRA.Length;
 
             for (int iteration = 0; iteration < 9999; iteration++)
             {
+                Debug.WriteLine("Lossless iteration {0}", iteration);
+
+                // Update mesh every loop
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh");
-                // Update mesh constantly
                 UpdateMesh(iteration);
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
-                ReportStatus(iteration, initialCount, trianglesRA.Length, -1);
+                ReportStatus(iteration, initialCount, trianglesRA.Length, threshold);
 
                 // Clear dirty flag
                 for (int i = 0; i < trianglesRA.Length; i++)
@@ -542,32 +565,19 @@ namespace MeshDecimator.Algorithms2
                 }
 
                 // All triangles with edges below the threshold will be removed
-                //
-                // The following numbers works well for most models.
-                // If it does not, try to adjust the 3 parameters
-                double threshold = DoubleEpsilon; //1.0E-3 EPS;
-                if (verbose)
-                {
-                    Debug.WriteLine("Lossless iteration {0}", iteration);
-                }
-
                 // Remove vertices & mark deleted triangles
-                RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref deletedTriangles);
-
-                if (deletedTriangles <= 0)
+                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1) <= 0)
                 {
                     break;
                 }
-
-                deletedTriangles = 0;
             }
 
             CompactMesh();
         }
 
-        private void ReportStatus(int iteration, int startTrisCount, int triangleCount, int v)
+        private void ReportStatus(int iteration, int initialCount, int triangleCount, double threshold)
         {
-            Debug.WriteLine(DateTime.Now + "Iteration: " + iteration + ", startTrisCount: " + startTrisCount + ", triangleCount:" + triangleCount + ", v:" + v);
+            Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
         }
 
         /// <summary>
@@ -648,14 +658,14 @@ namespace MeshDecimator.Algorithms2
         /// <summary>
         /// Remove vertices and mark deleted triangles
         /// </summary>
-        private void RemoveVertexPass(
+        private int RemoveVertexPass(
             int startTrisCount,
             int targetTrisCount,
             double threshold,
             ResizableArray<bool> deleted0,
-            ResizableArray<bool> deleted1,
-            ref int deletedTriangles)
+            ResizableArray<bool> deleted1)
         {
+            int deletedTriangles = 0;
             for (int tid = 0; tid < trianglesRA.Length; tid++)
             {
                 var t = triangles[tid];
@@ -725,6 +735,8 @@ namespace MeshDecimator.Algorithms2
                     break;
                 }
             }
+
+            return deletedTriangles;
         }
 
         /// <summary>
@@ -780,7 +792,7 @@ namespace MeshDecimator.Algorithms2
                     Vector3d n = Vector3d.Cross(ref p10, ref p20).Normalized;
                     triangles[i].n = n;
 
-                    var sm = new SymmetricMatrix(n.x, n.y, n.z, -Vector3d.Dot(ref n, ref p0));
+                    var sm = new SymmetricMatrix(n.X, n.Y, n.Z, -Vector3d.Dot(ref n, ref p0));
                     vertices[v0].q += sm;
                     vertices[v1].q += sm;
                     vertices[v2].q += sm;
@@ -1021,7 +1033,7 @@ namespace MeshDecimator.Algorithms2
                     -1.0 / det * q.Determinant2(),  // vx = A41/det(q_delta)
                     +1.0 / det * q.Determinant3(),  // vy = A42/det(q_delta)
                     -1.0 / det * q.Determinant4()); // vz = A43/det(q_delta)
-                error = VertexError(ref q, result.x, result.y, result.z);
+                error = VertexError(ref q, result.X, result.Y, result.Z);
             }
             else
             {
@@ -1029,9 +1041,9 @@ namespace MeshDecimator.Algorithms2
                 Vector3d p1 = vertices[id_v1].p;
                 Vector3d p2 = vertices[id_v2].p;
                 Vector3d p3 = (p1 + p2) * 0.5;
-                double error1 = VertexError(ref q, p1.x, p1.y, p1.z);
-                double error2 = VertexError(ref q, p2.x, p2.y, p2.z);
-                double error3 = VertexError(ref q, p3.x, p3.y, p3.z);
+                double error1 = VertexError(ref q, p1.X, p1.Y, p1.Z);
+                double error2 = VertexError(ref q, p2.X, p2.Y, p2.Z);
+                double error3 = VertexError(ref q, p3.X, p3.Y, p3.Z);
                 error = Math.Min(error1, Math.Min(error2, error3));
                 if (error1 == error)
                 {
@@ -1048,30 +1060,6 @@ namespace MeshDecimator.Algorithms2
             }
 
             return error;
-        }
-
-        /// <summary>
-        /// Initializes the algorithm with the original mesh.
-        /// </summary>
-        public void Initialize(Vector3d[] verticesIn, int[] indices)
-        {
-            verticesRA = new ResizableArray<Vertex>(verticesIn.Length);
-            for (int i = 0; i < verticesIn.Length; i++)
-            {
-                vertices[i] = new Vertex(verticesIn[i]);
-            }
-
-            trianglesRA = new ResizableArray<Triangle>(indices.Length / 3);
-            int triangleIndex = 0;
-
-            for (int i = 0; i < indices.Length / 3; i++)
-            {
-                int offset = i * 3;
-                int v0 = indices[offset + 0];
-                int v1 = indices[offset + 1];
-                int v2 = indices[offset + 2];
-                triangles[triangleIndex++] = new Triangle(v0, v1, v2);
-            }
         }
 
         public int[] GetIndices()
