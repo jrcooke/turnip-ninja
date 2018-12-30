@@ -196,7 +196,7 @@ namespace MeshDecimator.Algorithms2
         {
             if (Length >= Data.Length)
             {
-                Array.Resize(ref data, (int)((Length + 1)* 1.2));
+                Array.Resize(ref data, (int)((Length + 1) * 1.2));
             }
 
             Data[Length++] = item;
@@ -450,12 +450,6 @@ namespace MeshDecimator.Algorithms2
         {
             public int tid;
             public int tvertex;
-
-            public void Set(int tid, int tvertex)
-            {
-                this.tid = tid;
-                this.tvertex = tvertex;
-            }
         }
 
         private int maxIterationCount = 100;
@@ -601,16 +595,14 @@ namespace MeshDecimator.Algorithms2
 
                 Vector3d d1 = (vertices[id1].p - p).Normalized;
                 Vector3d d2 = (vertices[id2].p - p).Normalized;
-                double dot = Vector3d.Dot(ref d1, ref d2);
-                if (Math.Abs(dot) > 0.999)
+                if (Math.Abs(Vector3d.Dot(ref d1, ref d2)) > 0.999)
                 {
                     return true;
                 }
 
                 Vector3d n = Vector3d.Cross(ref d1, ref d2).Normalized;
                 deleted[k] = false;
-                dot = Vector3d.Dot(ref n, ref triangles[r.tid].n);
-                if (dot < 0.2)
+                if (Vector3d.Dot(ref n, ref triangles[r.tid].n) < 0.2)
                 {
                     return true;
                 }
@@ -640,7 +632,6 @@ namespace MeshDecimator.Algorithms2
                 }
                 else
                 {
-
                     t[r.tvertex] = i0;
                     t.dirty = true;
                     t.err0 = CalculateError(t.v0, t.v1);
@@ -852,6 +843,7 @@ namespace MeshDecimator.Algorithms2
                 int v0 = triangles[i].v0;
                 int v1 = triangles[i].v1;
                 int v2 = triangles[i].v2;
+
                 int start0 = vertices[v0].tstart;
                 int count0 = vertices[v0].tcount;
                 int start1 = vertices[v1].tstart;
@@ -859,13 +851,16 @@ namespace MeshDecimator.Algorithms2
                 int start2 = vertices[v2].tstart;
                 int count2 = vertices[v2].tcount;
 
-                refs[start0 + count0].Set(i, 0);
-                refs[start1 + count1].Set(i, 1);
-                refs[start2 + count2].Set(i, 2);
+                refs[start0 + count0].tid = i;
+                refs[start0 + count0].tvertex = 0;
+                refs[start1 + count1].tid = i;
+                refs[start1 + count1].tvertex = 1;
+                refs[start2 + count2].tid = i;
+                refs[start2 + count2].tvertex = 2;
 
-                ++vertices[v0].tcount;
-                ++vertices[v1].tcount;
-                ++vertices[v2].tcount;
+                vertices[v0].tcount++;
+                vertices[v1].tcount++;
+                vertices[v2].tcount++;
             }
             Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts, with Ref");
 
@@ -874,7 +869,7 @@ namespace MeshDecimator.Algorithms2
             {
                 var vcount = new List<int>(8);
                 var vids = new List<int>(8);
-                int vsize = 0;
+
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex is border");
                 for (int i = 0; i < verticesRA.Length; i++)
                 {
@@ -882,8 +877,6 @@ namespace MeshDecimator.Algorithms2
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex is border");
 
-                int ofs;
-                int id;
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex is border, part 2");
                 int borderVertexCount = 0;
                 for (int i = 0; i < verticesRA.Length; i++)
@@ -892,15 +885,15 @@ namespace MeshDecimator.Algorithms2
                     int tcount = vertices[i].tcount;
                     vcount.Clear();
                     vids.Clear();
-                    vsize = 0;
+                    int vsize = 0;
 
                     for (int j = 0; j < tcount; j++)
                     {
                         int tid = refs[tstart + j].tid;
                         for (int k = 0; k < 3; k++)
                         {
-                            ofs = 0;
-                            id = triangles[tid][k];
+                            int ofs = 0;
+                            int id = triangles[tid][k];
                             while (ofs < vsize)
                             {
                                 if (vids[ofs] == id)
