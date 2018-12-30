@@ -2,6 +2,7 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -106,6 +107,25 @@ namespace MountainView.Base
                 (byte)(p[0] < 0 ? 0 : p[0] > 255 ? 255 : p[0]),
                 (byte)(p[1] < 0 ? 0 : p[1] > 255 ? 255 : p[1]),
                 (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2]));
+        }
+
+        public static Bitmap GetPlainBitmap<T>(
+            ChunkHolder<T> colorBuff,
+            Func<T, MyColor> transform)
+        {
+            using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
+            {
+                for (int i = 0; i < colorBuff.LatSteps; i++)
+                {
+                    var col = colorBuff.Data[i];
+                    for (int j = 0; j < colorBuff.LonSteps; j++)
+                    {
+                        bm.SetPixel(j, i, transform(col[colorBuff.LonSteps - 1 - j]));
+                    }
+                }
+
+                return bm.GetBitmap();
+            }
         }
 
         public static MemoryStream GetBitmap<T>(

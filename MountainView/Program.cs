@@ -118,8 +118,15 @@ namespace MountainView
         }
 
 
-        public static async Task Foo2(TraceListener log, double latD, double lonD, Action<MemoryStream> getBitmap = null)
+        public static async Task<Tuple<Bitmap, float[][], double, double>> Foo2(TraceListener log, double latD, double lonD,
+            Action<MemoryStream> getBitmap = null,
+            Action<MemoryStream> getBitmap2 = null)
         {
+            Bitmap bm = null;
+            float[][] heig = null;
+            double imageHeight = 0.0;
+            double imageWidth = 0.0;
+
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
             var lat = Angle.FromDecimalDegrees(latD);
@@ -128,7 +135,7 @@ namespace MountainView
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
             //for(
-            int zoomLevel = 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
+            int zoomLevel = 5; // 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
                 var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
                 var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
@@ -140,6 +147,9 @@ namespace MountainView
                 }
                 else
                 {
+                    imageHeight = Utils.LengthOfLatDegree * cc.LatDelta.DecimalDegree;
+                    imageWidth = imageHeight * Math.Cos(cc.LatMid.DecimalDegree * Math.PI / 180);
+
                     log?.Write(zoomLevel + "\t" + cc.LatDelta);
                     log?.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
 
@@ -150,6 +160,7 @@ namespace MountainView
                         if (pixels2 != null)
                         {
                             getBitmap?.Invoke(Utils.GetBitmap(pixels2, a => Utils.GetColorForHeight(a), OutputType.JPEG));
+                            heig = pixels2.Data;
                         }
                     }
                     catch (Exception ex)
@@ -162,7 +173,8 @@ namespace MountainView
                         var pixels = await Images.Current.GetData(template, log);
                         if (pixels != null)
                         {
-                            getBitmap?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
+                            getBitmap2?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
+                            bm = Utils.GetPlainBitmap(pixels, a => a);
                         }
                     }
                     catch (Exception ex)
@@ -171,6 +183,8 @@ namespace MountainView
                     }
                 }
             }
+
+            return new Tuple<Bitmap, float[][], double, double>(bm, heig, imageWidth, imageHeight);
         }
 
         public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)

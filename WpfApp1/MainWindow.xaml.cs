@@ -1,7 +1,10 @@
-﻿using System.Device.Location;
+﻿using System;
+using System.Device.Location;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 
 namespace WpfApp1
 {
@@ -25,6 +28,20 @@ namespace WpfApp1
             Watcher.Start();
         }
 
+
+        private void S_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (s1 != null && s3 != null && uc?.myCamera != null)
+            {
+                var theta = s1.Value * 2.0 * Math.PI;
+                var x = (s3.Value) * Math.Sin(theta);
+                var y =   (s3.Value) * Math.Cos(theta);
+                uc.myCamera.Position = new Point3D(0, -2 * x, -2 * y);
+                uc.myCamera.LookDirection = new Vector3D(0, x, y);
+                //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
+            }
+        }
+
         private void ButtClick2(object sender, RoutedEventArgs e)
         {
             if (Watcher.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown)
@@ -32,15 +49,38 @@ namespace WpfApp1
                 double lat = Watcher.Position.Location.Latitude;
                 double lon = Watcher.Position.Location.Longitude;
                 //  th.ButtClick(traceListener =>
-                Task.Run(() => MountainView.Program.Foo2(null, lat, lon, ms => this.Dispatcher.Invoke(() =>
+                Task.Run(async () =>
+                {
+                    BitmapImage bi = null;
+                    BitmapImage bi2 = null;
+                    var data = await MountainView.Program.Foo2(null, lat, lon,
+                        ms => this.Dispatcher.Invoke(() =>
+                        {
+                            // Tell the WPF image to use this stream.
+                            bi = new BitmapImage();
+                            bi.BeginInit();
+                            bi.StreamSource = ms;
+                            bi.EndInit();
+//                            this.mainImage.Source = bi;
+                        }),
+                        ms => this.Dispatcher.Invoke(() =>
+                        {
+                            // Tell the WPF image to use this stream.
+                            bi2 = new BitmapImage();
+                            bi2.BeginInit();
+                            bi2.StreamSource = ms;
+                            bi2.EndInit();
+  //                          this.mainImage2.Source = bi2;
+                        }));
+
+                    Debug.WriteLine(data.Item2.Length);
+
+                    this.Dispatcher.Invoke(() =>
                     {
-                        // Tell the WPF image to use this stream.
-                        BitmapImage bi = new BitmapImage();
-                        bi.BeginInit();
-                        bi.StreamSource = ms;
-                        bi.EndInit();
-                        this.mainImage.Source = bi;
-                    })));
+                        uc.Blarg(bi2, data.Item2, data.Item3, data.Item4);
+                    });
+
+                });
             }
         }
 
