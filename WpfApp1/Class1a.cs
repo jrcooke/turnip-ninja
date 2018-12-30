@@ -635,19 +635,22 @@ namespace MeshDecimator.Algorithms2
 
                 if (deleted[k])
                 {
-                    triangles[tid].deleted = true;
+                    t.deleted = true;
                     deletedTriangles++;
-                    continue;
+                }
+                else
+                {
+
+                    t[r.tvertex] = i0;
+                    t.dirty = true;
+                    t.err0 = CalculateError(t.v0, t.v1);
+                    t.err1 = CalculateError(t.v1, t.v2);
+                    t.err2 = CalculateError(t.v2, t.v0);
+                    t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
+                    refsRA.Add(r);
                 }
 
-                t[r.tvertex] = i0;
-                t.dirty = true;
-                t.err0 = CalculateError(t.v0, t.v1);
-                t.err1 = CalculateError(t.v1, t.v2);
-                t.err2 = CalculateError(t.v2, t.v0);
-                t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
                 triangles[r.tid] = t;
-                refsRA.Add(r);
             }
         }
 
