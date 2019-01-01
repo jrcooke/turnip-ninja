@@ -63,9 +63,11 @@ namespace MeshDecimator
             Z = z;
         }
 
-        public static Vector3d operator +(Vector3d a, Vector3d b)
+        public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d c)
         {
-            return new Vector3d(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+            c.X = (a.X + b.X) * 0.5;
+            c.Y = (a.Y + b.Y) * 0.5;
+            c.Z = (a.Z + b.Z) * 0.5;
         }
 
         public static Vector3d operator -(Vector3d a, Vector3d b)
@@ -92,24 +94,22 @@ namespace MeshDecimator
         /// <summary>
         /// Gets a normalized vector from this vector.
         /// </summary>
-        public Vector3d Normalized
+        public void Normalize()
         {
-            get
-            {
-                double square = System.Math.Sqrt(X * X + Y * Y + Z * Z);
-                return new Vector3d(X / square, Y / square, Z / square);
-            }
+            double norm = Math.Sqrt(X * X + Y * Y + Z * Z);
+            X /= norm;
+            Y /= norm;
+            Z /= norm;
         }
 
         /// <summary>
         /// Cross Product of two vectors.
         /// </summary>
-        public static Vector3d Cross(ref Vector3d a, ref Vector3d b)
+        public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d c)
         {
-            return new Vector3d(
-                a.Y * b.Z - a.Z * b.Y,
-                a.Z * b.X - a.X * b.Z,
-                a.X * b.Y - a.Y * b.X);
+            c.X = a.Y * b.Z - a.Z * b.Y;
+            c.Y = a.Z * b.X - a.X * b.Z;
+            c.Z = a.X * b.Y - a.Y * b.X;
         }
     }
 
@@ -299,14 +299,18 @@ namespace MeshDecimator
                     continue;
                 }
 
-                Vector3d d1 = (vertices[id1].p - p).Normalized;
-                Vector3d d2 = (vertices[id2].p - p).Normalized;
+                Vector3d d1 = (vertices[id1].p - p);
+                d1.Normalize();
+                Vector3d d2 = (vertices[id2].p - p);
+                d2.Normalize();
                 if (Math.Abs(Vector3d.Dot(ref d1, ref d2)) > 0.999)
                 {
                     return true;
                 }
 
-                Vector3d n = Vector3d.Cross(ref d1, ref d2).Normalized;
+                Vector3d n = new Vector3d();
+                Vector3d.Cross(ref d1, ref d2, ref n);
+                n.Normalize();
                 deleted[k] = false;
                 if (Vector3d.Dot(ref n, ref triangles[r.tid].n) < 0.2)
                 {
@@ -485,10 +489,10 @@ namespace MeshDecimator
                     Vector3d p2 = vertices[v2].p;
                     Vector3d p10 = p1 - p0;
                     Vector3d p20 = p2 - p0;
-                    Vector3d n = Vector3d.Cross(ref p10, ref p20).Normalized;
-                    triangles[i].n = n;
+                    Vector3d.Cross(ref p10, ref p20, ref triangles[i].n);
+                    triangles[i].n.Normalize();
 
-                    var sm = new SymmetricMatrix(n.X, n.Y, n.Z, -Vector3d.Dot(ref n, ref p0));
+                    var sm = new SymmetricMatrix(ref triangles[i].n, -Vector3d.Dot(ref triangles[i].n, ref p0));
 
                     SymmetricMatrix.AddInto(ref vertices[v0].q, ref sm);
                     SymmetricMatrix.AddInto(ref vertices[v1].q, ref sm);
@@ -695,18 +699,18 @@ namespace MeshDecimator
         }
 
         // Error between vertex and Quadric
-        private double VertexError(ref SymmetricMatrix q, double x, double y, double z)
+        private double VertexError(ref SymmetricMatrix q, ref Vector3d v)
         {
             return
-                1 * q.m0 * x * x +
-                2 * q.m1 * x * y +
-                2 * q.m2 * x * z +
-                2 * q.m3 * x +
-                1 * q.m4 * y * y +
-                2 * q.m5 * y * z +
-                2 * q.m6 * y +
-                1 * q.m7 * z * z +
-                2 * q.m8 * z +
+                1 * q.m0 * v.X * v.X +
+                2 * q.m1 * v.X * v.Y +
+                2 * q.m2 * v.X * v.Z +
+                2 * q.m3 * v.X +
+                1 * q.m4 * v.Y * v.Y +
+                2 * q.m5 * v.Y * v.Z +
+                2 * q.m6 * v.Y +
+                1 * q.m7 * v.Z * v.Z +
+                2 * q.m8 * v.Z +
                 1 * q.m9;
         }
 
@@ -730,17 +734,18 @@ namespace MeshDecimator
                     -1.0 / det * q.Determinant2(),  // vx = A41/det(q_delta)
                     +1.0 / det * q.Determinant3(),  // vy = A42/det(q_delta)
                     -1.0 / det * q.Determinant4()); // vz = A43/det(q_delta)
-                error = VertexError(ref q, result.X, result.Y, result.Z);
+                error = VertexError(ref q, ref result);
             }
             else
             {
                 // det = 0 -> try to find best result
                 Vector3d p1 = vertices[id_v1].p;
                 Vector3d p2 = vertices[id_v2].p;
-                Vector3d p3 = (p1 + p2) * 0.5;
-                double error1 = VertexError(ref q, p1.X, p1.Y, p1.Z);
-                double error2 = VertexError(ref q, p2.X, p2.Y, p2.Z);
-                double error3 = VertexError(ref q, p3.X, p3.Y, p3.Z);
+                Vector3d p3 = new Vector3d();
+                Vector3d.Average(ref p1, ref p2, ref p3);
+                double error1 = VertexError(ref q, ref p1);
+                double error2 = VertexError(ref q, ref p2);
+                double error3 = VertexError(ref q, ref p3);
                 error = Math.Min(error1, Math.Min(error2, error3));
                 if (error1 == error)
                 {
@@ -856,16 +861,16 @@ namespace MeshDecimator
             /// <param name="c">The component value.</param>
             public SymmetricMatrix(double c = 0)
             {
-                this.m0 = c;
-                this.m1 = c;
-                this.m2 = c;
-                this.m3 = c;
-                this.m4 = c;
-                this.m5 = c;
-                this.m6 = c;
-                this.m7 = c;
-                this.m8 = c;
-                this.m9 = c;
+                m0 = c;
+                m1 = c;
+                m2 = c;
+                m3 = c;
+                m4 = c;
+                m5 = c;
+                m6 = c;
+                m7 = c;
+                m8 = c;
+                m9 = c;
             }
 
             /// <summary>
@@ -899,11 +904,11 @@ namespace MeshDecimator
             /// <param name="b">The plane y-component</param>
             /// <param name="c">The plane z-component</param>
             /// <param name="d">The plane w-component</param>
-            public SymmetricMatrix(double a, double b, double c, double d)
+            public SymmetricMatrix(ref Vector3d a, double d)
             {
-                m0 = a * a; m1 = a * b; m2 = a * c; m3 = a * d;
-                m4 = b * b; m5 = b * c; m6 = b * d;
-                m7 = c * c; m8 = c * d;
+                m0 = a.X * a.X; m1 = a.X * a.Y; m2 = a.X * a.Z; m3 = a.X * d;
+                m4 = a.Y * a.Y; m5 = a.Y * a.Z; m6 = a.Y * d;
+                m7 = a.Z * a.Z; m8 = a.Z * d;
                 m9 = d * d;
             }
 
