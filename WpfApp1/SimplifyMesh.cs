@@ -1,4 +1,6 @@
-﻿/*
+﻿// Jason Cooke built upon the following
+
+/*
 MIT License
 
 Copyright(c) 2017-2018 Mattias Edlund
@@ -23,6 +25,7 @@ SOFTWARE.
 https://github.com/Whinarn/MeshDecimator
  */
 
+// Mattias build upon the following:
 /////////////////////////////////////////////
 //
 // Mesh Simplification Tutorial
@@ -33,7 +36,7 @@ https://github.com/Whinarn/MeshDecimator
 // http://opensource.org/licenses/MIT
 //
 //https://github.com/sp4cerat/Fast-Quadric-Mesh-Simplification
-
+/////////////////////////////////////////////
 
 using System;
 using System.Collections.Generic;
@@ -53,9 +56,6 @@ namespace MeshDecimator
         /// <summary>
         /// Creates a new vector.
         /// </summary>
-        /// <param name="x">The x value.</param>
-        /// <param name="y">The y value.</param>
-        /// <param name="z">The z value.</param>
         public Vector3d(double x, double y, double z)
         {
             X = x;
@@ -63,23 +63,11 @@ namespace MeshDecimator
             Z = z;
         }
 
-        /// <summary>
-        /// Adds two vectors.
-        /// </summary>
-        /// <param name="a">The first vector.</param>
-        /// <param name="b">The second vector.</param>
-        /// <returns>The resulting vector.</returns>
         public static Vector3d operator +(Vector3d a, Vector3d b)
         {
             return new Vector3d(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
         }
 
-        /// <summary>
-        /// Subtracts two vectors.
-        /// </summary>
-        /// <param name="a">The first vector.</param>
-        /// <param name="b">The second vector.</param>
-        /// <returns>The resulting vector.</returns>
         public static Vector3d operator -(Vector3d a, Vector3d b)
         {
             return new Vector3d(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
@@ -88,9 +76,6 @@ namespace MeshDecimator
         /// <summary>
         /// Dot Product of two vectors.
         /// </summary>
-        /// <param name="a">The left hand side vector.</param>
-        /// <param name="b">The right hand side vector.</param>
-        /// <returns>The dot product value.</returns>
         public static double Dot(ref Vector3d a, ref Vector3d b)
         {
             return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
@@ -99,9 +84,6 @@ namespace MeshDecimator
         /// <summary>
         /// Scales the vector uniformly.
         /// </summary>
-        /// <param name="a">The vector.</param>
-        /// <param name="d">The scaling value.</param>
-        /// <returns>The resulting vector.</returns>
         public static Vector3d operator *(Vector3d a, double d)
         {
             return new Vector3d(a.X * d, a.Y * d, a.Z * d);
@@ -122,8 +104,6 @@ namespace MeshDecimator
         /// <summary>
         /// Cross Product of two vectors.
         /// </summary>
-        /// <param name="a">The left hand side vector.</param>
-        /// <param name="b">The right hand side vector.</param>
         public static Vector3d Cross(ref Vector3d a, ref Vector3d b)
         {
             return new Vector3d(
@@ -142,7 +122,7 @@ namespace MeshDecimator
 
         private ResizableArray<Triangle> trianglesRA;
         private ResizableArray<Vertex> verticesRA;
-        private ResizableArray<Ref> refsRA = new ResizableArray<Ref>(0);
+        private ResizableArray<Ref> refsRA = new ResizableArray<Ref>("refsRA", 0);
 
         private Triangle[] triangles { get { return trianglesRA.Data; } }
 
@@ -158,13 +138,13 @@ namespace MeshDecimator
         /// </summary>
         public SimplifyMesh(Vector3d[] verticesIn, int[] indices)
         {
-            verticesRA = new ResizableArray<Vertex>(verticesIn.Length);
+            verticesRA = new ResizableArray<Vertex>("verticesRA", verticesIn.Length);
             for (int i = 0; i < verticesIn.Length; i++)
             {
                 vertices[i] = new Vertex(verticesIn[i]);
             }
 
-            trianglesRA = new ResizableArray<Triangle>(indices.Length / 3);
+            trianglesRA = new ResizableArray<Triangle>("trianglesRA", indices.Length / 3);
             int triangleIndex = 0;
 
             for (int i = 0; i < indices.Length / 3; i++)
@@ -208,8 +188,8 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0, bool verbose = false)
         {
-            ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
-            ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
+            ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
+            ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
             int deletedTriangles = 0;
 
@@ -253,15 +233,15 @@ namespace MeshDecimator
         }
 
         /// <summary>
-        /// Decimates the mesh without losing any quality.
+        /// Siplify the mesh with a specified error threshold.
         /// </summary>
-        public void SimplifyMeshLossless(double threshold = 1.0E-3)
+        public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
-            ResizableArray<bool> deleted0 = new ResizableArray<bool>(20);
-            ResizableArray<bool> deleted1 = new ResizableArray<bool>(20);
+            ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
+            ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
 
-            for (int iteration = 0; iteration < 9999; iteration++)
+            for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
                 Debug.WriteLine("Lossless iteration {0}", iteration);
 
@@ -406,8 +386,7 @@ namespace MeshDecimator
                     }
 
                     // Compute vertex to collapse to
-                    Vector3d p;
-                    CalculateError(i0, i1, out p);
+                    CalculateError(i0, i1, out Vector3d p);
                     deleted0.Resize(vertices[i0].tcount); // normals temporarily
                     deleted1.Resize(vertices[i1].tcount); // normals temporarily
 
@@ -561,7 +540,7 @@ namespace MeshDecimator
             Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts, part 2");
 
             // Write References
-            refsRA.Resize(tstartX);
+            refsRA.Resize(tstartX * 2);
 
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts, with Ref");
             for (int i = 0; i < trianglesRA.Length; i++)
@@ -680,7 +659,7 @@ namespace MeshDecimator
                 }
             }
 
-            this.trianglesRA.Resize(dst);
+            trianglesRA.Resize(dst);
 
             dst = 0;
             for (int i = 0; i < verticesRA.Length; i++)
@@ -780,8 +759,9 @@ namespace MeshDecimator
         /// A resizable array.
         /// </summary>
         /// <typeparam name="T">The item type.</typeparam>
-        internal sealed class ResizableArray<T>
+        internal class ResizableArray<T>
         {
+            private string name;
             private T[] data;
 
             /// <summary>
@@ -801,18 +781,20 @@ namespace MeshDecimator
             /// <returns>The element value.</returns>
             public T this[int index]
             {
-                get { return Data[index]; }
-                set { Data[index] = value; }
+                get { return data[index]; }
+                set { data[index] = value; }
             }
 
             /// <summary>
             /// Creates a new resizable array.
             /// </summary>
             /// <param name="length">The initial array length.</param>
-            public ResizableArray(int length)
+            public ResizableArray(string name, int length)
             {
+                this.name = name;
                 data = new T[length];
                 Length = length;
+                Debug.WriteLine("Creating array '" + name + "' with size " + length);
             }
 
             /// <summary>
@@ -821,12 +803,12 @@ namespace MeshDecimator
             /// <param name="length">The new length.</param>
             public void Resize(int length)
             {
-                if (length != Data.Length)
+                if (length > data.Length || length < (data.Length - 1000))
                 {
+                    // Don't worry about downsizing unless it is a big change
+                    Debug.WriteLine("Resizing array '" + name + "' from " + data.Length + " to " + length);
                     Array.Resize(ref data, length);
                 }
-
-                // Don't worry about downsizing
 
                 Length = length;
             }
@@ -837,12 +819,14 @@ namespace MeshDecimator
             /// <param name="item">The new item.</param>
             public void Add(T item)
             {
-                if (Length >= Data.Length)
+                if (Length >= data.Length)
                 {
-                    Array.Resize(ref data, (int)((Length + 1) * 1.2));
+                    int length = (int)((Length + 1) * 1.2);
+                    Debug.WriteLine("Implicitly resizing array '" + name + "' from " + data.Length + " to " + length);
+                    Array.Resize(ref data, length);
                 }
 
-                Data[Length++] = item;
+                data[Length++] = item;
             }
         }
 

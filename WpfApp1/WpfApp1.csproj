@@ -108,6 +108,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\MountainViewDesktopCore\MountainViewDesktopCore.csproj">
+      <Project>{475507E8-C7BE-4B07-A098-615BF92C4177}</Project>
+      <Name>MountainViewDesktopCore</Name>
+    </ProjectReference>
     <ProjectReference Include="..\MountainViewDesktop\MountainViewDesktop.csproj">
       <Project>{475507e8-c7be-4b07-a098-615bf92c4176}</Project>
       <Name>MountainViewDesktop</Name>

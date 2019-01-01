@@ -1,6 +1,4 @@
 ﻿using MeshDecimator;
-using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -124,7 +122,7 @@ namespace WpfApp1
                 Positions = null;
                 TriangleIncides = null;
 
-                md.SimplifyMeshLossless(1.0E-3);
+                md.SimplifyMeshByThreshold(1.0E-3);
                 var newVertices = md.GetVertices();
                 var newIndices = md.GetIndices();
 
