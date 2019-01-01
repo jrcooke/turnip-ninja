@@ -63,16 +63,18 @@ namespace MeshDecimator
             Z = z;
         }
 
-        public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d c)
+        public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d result)
         {
-            c.X = (a.X + b.X) * 0.5;
-            c.Y = (a.Y + b.Y) * 0.5;
-            c.Z = (a.Z + b.Z) * 0.5;
+            result.X = (a.X + b.X) * 0.5;
+            result.Y = (a.Y + b.Y) * 0.5;
+            result.Z = (a.Z + b.Z) * 0.5;
         }
 
-        public static Vector3d operator -(Vector3d a, Vector3d b)
+        public static void Sub(ref Vector3d a, ref Vector3d b, ref Vector3d result)
         {
-            return new Vector3d(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
+            result.X = a.X - b.X;
+            result.Y = a.Y - b.Y;
+            result.Z = a.Z - b.Z;
         }
 
         /// <summary>
@@ -81,14 +83,6 @@ namespace MeshDecimator
         public static double Dot(ref Vector3d a, ref Vector3d b)
         {
             return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
-        }
-
-        /// <summary>
-        /// Scales the vector uniformly.
-        /// </summary>
-        public static Vector3d operator *(Vector3d a, double d)
-        {
-            return new Vector3d(a.X * d, a.Y * d, a.Z * d);
         }
 
         /// <summary>
@@ -105,11 +99,11 @@ namespace MeshDecimator
         /// <summary>
         /// Cross Product of two vectors.
         /// </summary>
-        public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d c)
+        public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d result)
         {
-            c.X = a.Y * b.Z - a.Z * b.Y;
-            c.Y = a.Z * b.X - a.X * b.Z;
-            c.Z = a.X * b.Y - a.Y * b.X;
+            result.X = a.Y * b.Z - a.Z * b.Y;
+            result.Y = a.Z * b.X - a.X * b.Z;
+            result.Z = a.X * b.Y - a.Y * b.X;
         }
 
         public static void DoCrossAndDots(ref Vector3d tirNorm, ref Vector3d p, ref Vector3d v1, ref Vector3d v2, out double dot1, out double dot2)
@@ -147,6 +141,8 @@ namespace MeshDecimator
         private ResizableArray<Triangle> triangles;
         private ResizableArray<Vertex> vertices;
         private ResizableArray<Ref> refs = new ResizableArray<Ref>("refs", 0);
+        private ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
+        private ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
 
         // Pre-allocated buffers
         private double[] errArr = new double[3];
@@ -206,8 +202,6 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0, bool verbose = false)
         {
-            ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
-            ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = triangles.Length;
             SymmetricMatrix q = new SymmetricMatrix();
             Vector3d vbuff = new Vector3d();
@@ -246,7 +240,7 @@ namespace MeshDecimator
                 }
 
                 // Remove vertices & mark deleted triangles
-                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref vbuff, ref q);
+                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, ref vbuff, ref q);
             }
 
             CompactMesh();
@@ -257,8 +251,6 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
-            ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
-            ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = triangles.Length;
             SymmetricMatrix q = new SymmetricMatrix();
             Vector3d vbuff = new Vector3d();
@@ -282,7 +274,7 @@ namespace MeshDecimator
 
                 // All triangles with edges below the threshold will be removed
                 // Remove vertices & mark deleted triangles
-                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref vbuff, ref q) <= 0)
+                if (RemoveVertexPass(initialCount, 0, threshold, ref vbuff, ref q) <= 0)
                 {
                     break;
                 }
@@ -337,11 +329,10 @@ namespace MeshDecimator
         }
 
 
-
         /// <summary>
         /// Update triangle connections and edge error after a edge is collapsed.
         /// </summary>
-        private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles, ref Vector3d vbuff, ref SymmetricMatrix q)
+        private void UpdateTriangles(int i0, ref Vertex v, bool[] deleted, ref int deletedTriangles, ref Vector3d vbuff, ref SymmetricMatrix q)
         {
             for (int k = 0; k < v.tcount; k++)
             {
@@ -352,7 +343,7 @@ namespace MeshDecimator
                     continue;
                 }
 
-                if (deleted.Data[k])
+                if (deleted[k])
                 {
                     t.deleted = true;
                     deletedTriangles++;
@@ -379,8 +370,6 @@ namespace MeshDecimator
             int startTrisCount,
             int targetTrisCount,
             double threshold,
-            ResizableArray<bool> deleted0,
-            ResizableArray<bool> deleted1,
             ref Vector3d vbuff,
             ref SymmetricMatrix q)
         {
@@ -432,8 +421,8 @@ namespace MeshDecimator
                     SymmetricMatrix.Add(ref vertices.Data[i1].q, ref vertices.Data[i0].q, ref vertices.Data[i0].q);
 
                     int tstart = refs.Length;
-                    UpdateTriangles(i0, ref vertices.Data[i0], deleted0, ref deletedTriangles, ref vbuff, ref q);
-                    UpdateTriangles(i0, ref vertices.Data[i1], deleted1, ref deletedTriangles, ref vbuff, ref q);
+                    UpdateTriangles(i0, ref vertices.Data[i0], deleted0.Data, ref deletedTriangles, ref vbuff, ref q);
+                    UpdateTriangles(i0, ref vertices.Data[i1], deleted1.Data, ref deletedTriangles, ref vbuff, ref q);
 
                     int tcount = refs.Length - tstart;
                     if (tcount <= vertices.Data[i0].tcount)
@@ -497,25 +486,23 @@ namespace MeshDecimator
                 }
 
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.update Tri");
+                Vector3d p10 = new Vector3d();
+                Vector3d p20 = new Vector3d();
                 for (int i = 0; i < triangles.Length; i++)
                 {
                     int v0 = triangles.Data[i].v0;
                     int v1 = triangles.Data[i].v1;
                     int v2 = triangles.Data[i].v2;
 
-                    Vector3d p0 = vertices.Data[v0].p;
-                    Vector3d p1 = vertices.Data[v1].p;
-                    Vector3d p2 = vertices.Data[v2].p;
-                    Vector3d p10 = p1 - p0;
-                    Vector3d p20 = p2 - p0;
+                    Vector3d.Sub(ref vertices.Data[v1].p, ref vertices.Data[v0].p, ref p10);
+                    Vector3d.Sub(ref vertices.Data[v2].p, ref vertices.Data[v0].p, ref p20);
                     Vector3d.Cross(ref p10, ref p20, ref triangles.Data[i].n);
                     triangles.Data[i].n.Normalize();
 
-                    var sm = new SymmetricMatrix(ref triangles.Data[i].n, -Vector3d.Dot(ref triangles.Data[i].n, ref p0));
-
-                    SymmetricMatrix.AddInto(ref vertices.Data[v0].q, ref sm);
-                    SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref sm);
-                    SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref sm);
+                    q.Repopulate(ref triangles.Data[i].n, -Vector3d.Dot(ref triangles.Data[i].n, ref vertices.Data[v0].p));
+                    SymmetricMatrix.AddInto(ref vertices.Data[v0].q, ref q);
+                    SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref q);
+                    SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref q);
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.update Tri");
 
@@ -858,55 +845,11 @@ namespace MeshDecimator
             public double m9;
 
             /// <summary>
-            /// Creates a symmetric matrix with a value in each component.
-            /// </summary>
-            /// <param name="c">The component value.</param>
-            public SymmetricMatrix(double c = 0)
-            {
-                m0 = c;
-                m1 = c;
-                m2 = c;
-                m3 = c;
-                m4 = c;
-                m5 = c;
-                m6 = c;
-                m7 = c;
-                m8 = c;
-                m9 = c;
-            }
-
-            /// <summary>
-            /// Creates a symmetric matrix.
-            /// </summary>
-            /// <param name="m11">The m11 component.</param>
-            /// <param name="m12">The m12 component.</param>
-            /// <param name="m13">The m13 component.</param>
-            /// <param name="m14">The m14 component.</param>
-            /// <param name="m22">The m22 component.</param>
-            /// <param name="m23">The m23 component.</param>
-            /// <param name="m24">The m24 component.</param>
-            /// <param name="m33">The m33 component.</param>
-            /// <param name="m34">The m34 component.</param>
-            /// <param name="m44">The m44 component.</param>
-            public SymmetricMatrix(double m11, double m12, double m13, double m14,
-                double m22, double m23, double m24,
-                double m33, double m34,
-                double m44)
-            {
-                m0 = m11; m1 = m12; m2 = m13; m3 = m14;
-                m4 = m22; m5 = m23; m6 = m24;
-                m7 = m33; m8 = m34;
-                m9 = m44;
-            }
-
-            /// <summary>
             /// Creates a symmetric matrix from a plane.
             /// </summary>
-            /// <param name="a">The plane x-component.</param>
-            /// <param name="b">The plane y-component</param>
-            /// <param name="c">The plane z-component</param>
+            /// <param name="a">The plane x,y,z-components.</param>
             /// <param name="d">The plane w-component</param>
-            public SymmetricMatrix(ref Vector3d a, double d)
+            public void Repopulate(ref Vector3d a, double d)
             {
                 m0 = a.X * a.X; m1 = a.X * a.Y; m2 = a.X * a.Z; m3 = a.X * d;
                 m4 = a.Y * a.Y; m5 = a.Y * a.Z; m6 = a.Y * d;
