@@ -352,7 +352,7 @@ namespace MeshDecimator
                     continue;
                 }
 
-                if (deleted[k])
+                if (deleted.Data[k])
                 {
                     t.deleted = true;
                     deletedTriangles++;
@@ -789,28 +789,12 @@ namespace MeshDecimator
         internal class ResizableArray<T>
         {
             private string name;
-            private T[] data;
+            public T[] Data;
 
             /// <summary>
             /// Gets the length of this array.
             /// </summary>
-            public int Length { get; private set; }
-
-            /// <summary>
-            /// Gets the internal data buffer for this array.
-            /// </summary>
-            public T[] Data { get { return data; } }
-
-            /// <summary>
-            /// Gets or sets the element value at a specific index.
-            /// </summary>
-            /// <param name="index">The element index.</param>
-            /// <returns>The element value.</returns>
-            public T this[int index]
-            {
-                get { return data[index]; }
-                set { data[index] = value; }
-            }
+            public int Length;
 
             /// <summary>
             /// Creates a new resizable array.
@@ -819,7 +803,7 @@ namespace MeshDecimator
             public ResizableArray(string name, int length)
             {
                 this.name = name;
-                data = new T[length];
+                Data = new T[length];
                 Length = length;
                 Debug.WriteLine("Creating array '" + name + "' with size " + length);
             }
@@ -830,11 +814,11 @@ namespace MeshDecimator
             /// <param name="length">The new length.</param>
             public void Resize(int length)
             {
-                if (length > data.Length || length < (data.Length - 1000))
+                if (length > Data.Length || length < (Data.Length - 1000))
                 {
                     // Don't worry about downsizing unless it is a big change
-                    Debug.WriteLine("Resizing array '" + name + "' from " + data.Length + " to " + length);
-                    Array.Resize(ref data, length);
+                    Debug.WriteLine("Resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    Array.Resize(ref Data, length);
                 }
 
                 Length = length;
@@ -846,14 +830,14 @@ namespace MeshDecimator
             /// <param name="item">The new item.</param>
             public void Add(T item)
             {
-                if (Length >= data.Length)
+                if (Length >= Data.Length)
                 {
                     int length = (int)((Length + 1) * 1.2);
-                    Debug.WriteLine("Implicitly resizing array '" + name + "' from " + data.Length + " to " + length);
-                    Array.Resize(ref data, length);
+                    Debug.WriteLine("Implicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    Array.Resize(ref Data, length);
                 }
 
-                data[Length++] = item;
+                Data[Length++] = item;
             }
         }
 
