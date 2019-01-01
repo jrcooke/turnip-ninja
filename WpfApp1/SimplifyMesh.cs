@@ -191,6 +191,7 @@ namespace MeshDecimator
             ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
+            SymmetricMatrix q = new SymmetricMatrix();
             int deletedTriangles = 0;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
@@ -204,7 +205,7 @@ namespace MeshDecimator
                 // Update mesh once in a while
                 if (iteration % 5 == 0)
                 {
-                    UpdateMesh(iteration);
+                    UpdateMesh(iteration, ref q);
                 }
 
                 // Clear dirty flag
@@ -226,7 +227,7 @@ namespace MeshDecimator
                 }
 
                 // Remove vertices & mark deleted triangles
-                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1);
+                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref q);
             }
 
             CompactMesh();
@@ -240,6 +241,7 @@ namespace MeshDecimator
             ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
             ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
+            SymmetricMatrix q = new SymmetricMatrix();
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
@@ -247,7 +249,7 @@ namespace MeshDecimator
 
                 // Update mesh every loop
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh");
-                UpdateMesh(iteration);
+                UpdateMesh(iteration, ref q);
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
                 ReportStatus(iteration, initialCount, trianglesRA.Length, threshold);
@@ -260,7 +262,7 @@ namespace MeshDecimator
 
                 // All triangles with edges below the threshold will be removed
                 // Remove vertices & mark deleted triangles
-                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1) <= 0)
+                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref q) <= 0)
                 {
                     break;
                 }
@@ -318,7 +320,7 @@ namespace MeshDecimator
         /// <summary>
         /// Update triangle connections and edge error after a edge is collapsed.
         /// </summary>
-        private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles)
+        private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles, ref SymmetricMatrix q)
         {
             for (int k = 0; k < v.tcount; k++)
             {
@@ -338,9 +340,9 @@ namespace MeshDecimator
                 {
                     t[r.tvertex] = i0;
                     t.dirty = true;
-                    t.err0 = CalculateError(t.v0, t.v1);
-                    t.err1 = CalculateError(t.v1, t.v2);
-                    t.err2 = CalculateError(t.v2, t.v0);
+                    t.err0 = CalculateError(t.v0, t.v1, ref q);
+                    t.err1 = CalculateError(t.v1, t.v2, ref q);
+                    t.err2 = CalculateError(t.v2, t.v0, ref q);
                     t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
                     refsRA.Add(r);
                 }
@@ -357,7 +359,8 @@ namespace MeshDecimator
             int targetTrisCount,
             double threshold,
             ResizableArray<bool> deleted0,
-            ResizableArray<bool> deleted1)
+            ResizableArray<bool> deleted1,
+            ref SymmetricMatrix q)
         {
             int deletedTriangles = 0;
             for (int tid = 0; tid < trianglesRA.Length; tid++)
@@ -386,7 +389,7 @@ namespace MeshDecimator
                     }
 
                     // Compute vertex to collapse to
-                    CalculateError(i0, i1, out Vector3d p);
+                    CalculateError(i0, i1, out Vector3d p, ref q);
                     deleted0.Resize(vertices[i0].tcount); // normals temporarily
                     deleted1.Resize(vertices[i1].tcount); // normals temporarily
 
@@ -403,11 +406,11 @@ namespace MeshDecimator
 
                     // Not flipped, so remove edge
                     vertices[i0].p = p;
-                    vertices[i0].q = vertices[i1].q + vertices[i0].q;
+                    SymmetricMatrix.Add(ref vertices[i1].q, ref vertices[i0].q, ref vertices[i0].q);
 
                     int tstart = refs.Length;
-                    UpdateTriangles(i0, ref vertices[i0], deleted0, ref deletedTriangles);
-                    UpdateTriangles(i0, ref vertices[i1], deleted1, ref deletedTriangles);
+                    UpdateTriangles(i0, ref vertices[i0], deleted0, ref deletedTriangles, ref q);
+                    UpdateTriangles(i0, ref vertices[i1], deleted1, ref deletedTriangles, ref q);
 
                     int tcount = refs.Length - tstart;
                     if (tcount <= vertices[i0].tcount)
@@ -436,7 +439,7 @@ namespace MeshDecimator
         /// Compact triangles, compute edge error and build reference list.
         /// </summary>
         /// <param name="iteration">The iteration index.</param>
-        private void UpdateMesh(int iteration)
+        private void UpdateMesh(int iteration, ref SymmetricMatrix q)
         {
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.compactTri");
             if (iteration > 0) // compact triangles
@@ -486,9 +489,10 @@ namespace MeshDecimator
                     triangles[i].n = n;
 
                     var sm = new SymmetricMatrix(n.X, n.Y, n.Z, -Vector3d.Dot(ref n, ref p0));
-                    vertices[v0].q += sm;
-                    vertices[v1].q += sm;
-                    vertices[v2].q += sm;
+
+                    SymmetricMatrix.AddInto(ref vertices[v0].q, ref sm);
+                    SymmetricMatrix.AddInto(ref vertices[v1].q, ref sm);
+                    SymmetricMatrix.AddInto(ref vertices[v2].q, ref sm);
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.update Tri");
 
@@ -497,9 +501,9 @@ namespace MeshDecimator
                 {
                     // Calc Edge Error
                     var t = triangles[i];
-                    t.err0 = CalculateError(t.v0, t.v1);
-                    t.err1 = CalculateError(t.v1, t.v2);
-                    t.err2 = CalculateError(t.v2, t.v0);
+                    t.err0 = CalculateError(t.v0, t.v1, ref q);
+                    t.err1 = CalculateError(t.v1, t.v2, ref q);
+                    t.err2 = CalculateError(t.v2, t.v0, ref q);
                     t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
                     triangles[i] = t;
                 }
@@ -707,15 +711,15 @@ namespace MeshDecimator
         }
 
         // Error for one edge
-        private double CalculateError(int id_v1, int id_v2)
+        private double CalculateError(int id_v1, int id_v2, ref SymmetricMatrix q)
         {
-            return CalculateError(id_v1, id_v2, out Vector3d result);
+            return CalculateError(id_v1, id_v2, out Vector3d result, ref q);
         }
 
-        private double CalculateError(int id_v1, int id_v2, out Vector3d result)
+        private double CalculateError(int id_v1, int id_v2, out Vector3d result, ref SymmetricMatrix q)
         {
             // compute interpolated vertex
-            SymmetricMatrix q = vertices[id_v1].q + vertices[id_v2].q;
+            SymmetricMatrix.Add(ref vertices[id_v1].q, ref vertices[id_v2].q, ref q);
             bool border = vertices[id_v1].border & vertices[id_v2].border;
             double error = 0;
             double det = q.Determinant1();
@@ -972,14 +976,36 @@ namespace MeshDecimator
             /// </summary>
             /// <param name="a">The left hand side.</param>
             /// <param name="b">The right hand side.</param>
-            /// <returns>The resulting matrix.</returns>
-            public static SymmetricMatrix operator +(SymmetricMatrix a, SymmetricMatrix b)
+            /// <param name="c">The resulting matrix.</returns>
+            public static void Add(ref SymmetricMatrix a, ref SymmetricMatrix b, ref SymmetricMatrix c)
             {
-                return new SymmetricMatrix(
-                    a.m0 + b.m0, a.m1 + b.m1, a.m2 + b.m2, a.m3 + b.m3,
-                    a.m4 + b.m4, a.m5 + b.m5, a.m6 + b.m6,
-                    a.m7 + b.m7, a.m8 + b.m8,
-                    a.m9 + b.m9);
+                c.m0 = a.m0 + b.m0;
+                c.m1 = a.m1 + b.m1;
+                c.m2 = a.m2 + b.m2;
+                c.m3 = a.m3 + b.m3;
+                c.m4 = a.m4 + b.m4;
+                c.m5 = a.m5 + b.m5;
+                c.m6 = a.m6 + b.m6;
+                c.m7 = a.m7 + b.m7;
+                c.m8 = a.m8 + b.m8;
+                c.m9 = a.m9 + b.m9;
+            }
+
+            /// <summary>
+            /// Implements a += b, for matrices
+            /// </summary>
+            public static void AddInto(ref SymmetricMatrix a, ref SymmetricMatrix b)
+            {
+                a.m0 += b.m0;
+                a.m1 += b.m1;
+                a.m2 += b.m2;
+                a.m3 += b.m3;
+                a.m4 += b.m4;
+                a.m5 += b.m5;
+                a.m6 += b.m6;
+                a.m7 += b.m7;
+                a.m8 += b.m8;
+                a.m9 += b.m9;
             }
         }
 
