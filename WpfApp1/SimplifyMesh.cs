@@ -111,6 +111,30 @@ namespace MeshDecimator
             c.Y = a.Z * b.X - a.X * b.Z;
             c.Z = a.X * b.Y - a.Y * b.X;
         }
+
+        public static void DoCrossAndDots(ref Vector3d tirNorm, ref Vector3d p, ref Vector3d v1, ref Vector3d v2, out double dot1, out double dot2)
+        {
+            double d1X = v1.X - p.X;
+            double d1Y = v1.Y - p.Y;
+            double d1Z = v1.Z - p.Z;
+
+            double d2X = v2.X - p.X;
+            double d2Y = v2.Y - p.Y;
+            double d2Z = v2.Z - p.Z;
+
+            // Do the cross product
+            double nX = d1Y * d2Z - d1Z * d2Y;
+            double nY = d1Z * d2X - d1X * d2Z;
+            double nZ = d1X * d2Y - d1Y * d2X;
+
+            // Bulk normarize
+            double norm1 = Math.Sqrt(d1X * d1X + d1Y * d1Y + d1Z * d1Z);
+            double norm2 = Math.Sqrt(d2X * d2X + d2Y * d2Y + d2Z * d2Z);
+            double normN = Math.Sqrt(nX * nX + nY * nY + nZ * nZ);
+
+            dot1 = (d1X * d2X + d1Y * d2Y + d1Z * d2Z) / (norm1 * norm2);
+            dot2 = (nX * tirNorm.X + nY * tirNorm.Y + nZ * tirNorm.Z) / (normN);
+        }
     }
 
     /// <summary>
@@ -141,7 +165,7 @@ namespace MeshDecimator
             verticesRA = new ResizableArray<Vertex>("verticesRA", verticesIn.Length);
             for (int i = 0; i < verticesIn.Length; i++)
             {
-                vertices[i] = new Vertex(verticesIn[i]);
+                verticesRA.Data[i] = new Vertex(verticesIn[i]);
             }
 
             trianglesRA = new ResizableArray<Triangle>("trianglesRA", indices.Length / 3);
@@ -192,6 +216,7 @@ namespace MeshDecimator
             ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
             SymmetricMatrix q = new SymmetricMatrix();
+            Vector3d vbuff = new Vector3d();
             int deletedTriangles = 0;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
@@ -205,7 +230,7 @@ namespace MeshDecimator
                 // Update mesh once in a while
                 if (iteration % 5 == 0)
                 {
-                    UpdateMesh(iteration, ref q);
+                    UpdateMesh(iteration, ref vbuff, ref q);
                 }
 
                 // Clear dirty flag
@@ -227,7 +252,7 @@ namespace MeshDecimator
                 }
 
                 // Remove vertices & mark deleted triangles
-                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref q);
+                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, deleted0, deleted1, ref vbuff, ref q);
             }
 
             CompactMesh();
@@ -242,6 +267,7 @@ namespace MeshDecimator
             ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
             int initialCount = trianglesRA.Length;
             SymmetricMatrix q = new SymmetricMatrix();
+            Vector3d vbuff = new Vector3d();
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
@@ -249,7 +275,7 @@ namespace MeshDecimator
 
                 // Update mesh every loop
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh");
-                UpdateMesh(iteration, ref q);
+                UpdateMesh(iteration, ref vbuff, ref q);
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
                 ReportStatus(iteration, initialCount, trianglesRA.Length, threshold);
@@ -262,7 +288,7 @@ namespace MeshDecimator
 
                 // All triangles with edges below the threshold will be removed
                 // Remove vertices & mark deleted triangles
-                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref q) <= 0)
+                if (RemoveVertexPass(initialCount, 0, threshold, deleted0, deleted1, ref vbuff, ref q) <= 0)
                 {
                     break;
                 }
@@ -299,20 +325,15 @@ namespace MeshDecimator
                     continue;
                 }
 
-                Vector3d d1 = (vertices[id1].p - p);
-                d1.Normalize();
-                Vector3d d2 = (vertices[id2].p - p);
-                d2.Normalize();
-                if (Math.Abs(Vector3d.Dot(ref d1, ref d2)) > 0.999)
+                Vector3d.DoCrossAndDots(ref triangles[r.tid].n, ref p, ref vertices[id1].p, ref vertices[id2].p, out double dot1, out double dot2);
+
+                if (Math.Abs(dot1) > 0.999)
                 {
                     return true;
                 }
 
-                Vector3d n = new Vector3d();
-                Vector3d.Cross(ref d1, ref d2, ref n);
-                n.Normalize();
                 deleted[k] = false;
-                if (Vector3d.Dot(ref n, ref triangles[r.tid].n) < 0.2)
+                if (dot2 < 0.2)
                 {
                     return true;
                 }
@@ -321,10 +342,12 @@ namespace MeshDecimator
             return false;
         }
 
+
+
         /// <summary>
         /// Update triangle connections and edge error after a edge is collapsed.
         /// </summary>
-        private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles, ref SymmetricMatrix q)
+        private void UpdateTriangles(int i0, ref Vertex v, ResizableArray<bool> deleted, ref int deletedTriangles, ref Vector3d vbuff, ref SymmetricMatrix q)
         {
             for (int k = 0; k < v.tcount; k++)
             {
@@ -344,9 +367,9 @@ namespace MeshDecimator
                 {
                     t[r.tvertex] = i0;
                     t.dirty = true;
-                    t.err0 = CalculateError(t.v0, t.v1, ref q);
-                    t.err1 = CalculateError(t.v1, t.v2, ref q);
-                    t.err2 = CalculateError(t.v2, t.v0, ref q);
+                    t.err0 = CalculateError(t.v0, t.v1, ref vbuff, ref q);
+                    t.err1 = CalculateError(t.v1, t.v2, ref vbuff, ref q);
+                    t.err2 = CalculateError(t.v2, t.v0, ref vbuff, ref q);
                     t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
                     refsRA.Add(r);
                 }
@@ -364,6 +387,7 @@ namespace MeshDecimator
             double threshold,
             ResizableArray<bool> deleted0,
             ResizableArray<bool> deleted1,
+            ref Vector3d vbuff,
             ref SymmetricMatrix q)
         {
             int deletedTriangles = 0;
@@ -393,7 +417,8 @@ namespace MeshDecimator
                     }
 
                     // Compute vertex to collapse to
-                    CalculateError(i0, i1, out Vector3d p, ref q);
+                    Vector3d p = new Vector3d();
+                    CalculateError(i0, i1, ref p, ref q);
                     deleted0.Resize(vertices[i0].tcount); // normals temporarily
                     deleted1.Resize(vertices[i1].tcount); // normals temporarily
 
@@ -413,8 +438,8 @@ namespace MeshDecimator
                     SymmetricMatrix.Add(ref vertices[i1].q, ref vertices[i0].q, ref vertices[i0].q);
 
                     int tstart = refs.Length;
-                    UpdateTriangles(i0, ref vertices[i0], deleted0, ref deletedTriangles, ref q);
-                    UpdateTriangles(i0, ref vertices[i1], deleted1, ref deletedTriangles, ref q);
+                    UpdateTriangles(i0, ref vertices[i0], deleted0, ref deletedTriangles, ref vbuff, ref q);
+                    UpdateTriangles(i0, ref vertices[i1], deleted1, ref deletedTriangles, ref vbuff, ref q);
 
                     int tcount = refs.Length - tstart;
                     if (tcount <= vertices[i0].tcount)
@@ -443,7 +468,7 @@ namespace MeshDecimator
         /// Compact triangles, compute edge error and build reference list.
         /// </summary>
         /// <param name="iteration">The iteration index.</param>
-        private void UpdateMesh(int iteration, ref SymmetricMatrix q)
+        private void UpdateMesh(int iteration, ref Vector3d vbuff, ref SymmetricMatrix q)
         {
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.compactTri");
             if (iteration > 0) // compact triangles
@@ -505,9 +530,9 @@ namespace MeshDecimator
                 {
                     // Calc Edge Error
                     var t = triangles[i];
-                    t.err0 = CalculateError(t.v0, t.v1, ref q);
-                    t.err1 = CalculateError(t.v1, t.v2, ref q);
-                    t.err2 = CalculateError(t.v2, t.v0, ref q);
+                    t.err0 = CalculateError(t.v0, t.v1, ref vbuff, ref q);
+                    t.err1 = CalculateError(t.v1, t.v2, ref vbuff, ref q);
+                    t.err2 = CalculateError(t.v2, t.v0, ref vbuff, ref q);
                     t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
                     triangles[i] = t;
                 }
@@ -715,12 +740,12 @@ namespace MeshDecimator
         }
 
         // Error for one edge
-        private double CalculateError(int id_v1, int id_v2, ref SymmetricMatrix q)
-        {
-            return CalculateError(id_v1, id_v2, out Vector3d result, ref q);
-        }
+        //private double CalculateError(int id_v1, int id_v2, ref SymmetricMatrix q)
+        //{
+        //    return CalculateError(id_v1, id_v2, out Vector3d result, ref q);
+        //}
 
-        private double CalculateError(int id_v1, int id_v2, out Vector3d result, ref SymmetricMatrix q)
+        private double CalculateError(int id_v1, int id_v2, ref Vector3d result, ref SymmetricMatrix q)
         {
             // compute interpolated vertex
             SymmetricMatrix.Add(ref vertices[id_v1].q, ref vertices[id_v2].q, ref q);
@@ -730,10 +755,9 @@ namespace MeshDecimator
             if (det != 0 && !border)
             {
                 // q_delta is invertible
-                result = new Vector3d(
-                    -1.0 / det * q.Determinant2(),  // vx = A41/det(q_delta)
-                    +1.0 / det * q.Determinant3(),  // vy = A42/det(q_delta)
-                    -1.0 / det * q.Determinant4()); // vz = A43/det(q_delta)
+                result.X = -1.0 / det * q.Determinant2(); // vx = A41/det(q_delta)
+                result.Y = +1.0 / det * q.Determinant3(); // vy = A42/det(q_delta)
+                result.Z = -1.0 / det * q.Determinant4(); // vz = A43/det(q_delta)
                 error = VertexError(ref q, ref result);
             }
             else
