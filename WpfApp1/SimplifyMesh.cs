@@ -1,4 +1,11 @@
-﻿// Jason Cooke built upon the following
+﻿// Copyright (c) 2018-2019 Jason Cooke
+// Source is at
+// https://github.com/jrcooke/turnip-ninja
+// Built upon the work of
+// https://github.com/Whinarn/MeshDecimator
+// and
+// https://github.com/sp4cerat/Fast-Quadric-Mesh-Simplification
+
 
 /*
 MIT License
@@ -25,7 +32,6 @@ SOFTWARE.
 https://github.com/Whinarn/MeshDecimator
  */
 
-// Mattias build upon the following:
 /////////////////////////////////////////////
 //
 // Mesh Simplification Tutorial
@@ -63,28 +69,6 @@ namespace MeshDecimator
             Z = z;
         }
 
-        public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-        {
-            result.X = (a.X + b.X) * 0.5;
-            result.Y = (a.Y + b.Y) * 0.5;
-            result.Z = (a.Z + b.Z) * 0.5;
-        }
-
-        public static void Sub(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-        {
-            result.X = a.X - b.X;
-            result.Y = a.Y - b.Y;
-            result.Z = a.Z - b.Z;
-        }
-
-        /// <summary>
-        /// Dot Product of two vectors.
-        /// </summary>
-        public static double Dot(ref Vector3d a, ref Vector3d b)
-        {
-            return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
-        }
-
         /// <summary>
         /// Gets a normalized vector from this vector.
         /// </summary>
@@ -95,40 +79,6 @@ namespace MeshDecimator
             Y /= norm;
             Z /= norm;
         }
-
-        /// <summary>
-        /// Cross Product of two vectors.
-        /// </summary>
-        public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-        {
-            result.X = a.Y * b.Z - a.Z * b.Y;
-            result.Y = a.Z * b.X - a.X * b.Z;
-            result.Z = a.X * b.Y - a.Y * b.X;
-        }
-
-        public static void DoCrossAndDots(ref Vector3d tirNorm, ref Vector3d p, ref Vector3d v1, ref Vector3d v2, out double dot1, out double dot2)
-        {
-            double d1X = v1.X - p.X;
-            double d1Y = v1.Y - p.Y;
-            double d1Z = v1.Z - p.Z;
-
-            double d2X = v2.X - p.X;
-            double d2Y = v2.Y - p.Y;
-            double d2Z = v2.Z - p.Z;
-
-            // Do the cross product
-            double nX = d1Y * d2Z - d1Z * d2Y;
-            double nY = d1Z * d2X - d1X * d2Z;
-            double nZ = d1X * d2Y - d1Y * d2X;
-
-            // Bulk normarize
-            double norm1 = Math.Sqrt(d1X * d1X + d1Y * d1Y + d1Z * d1Z);
-            double norm2 = Math.Sqrt(d2X * d2X + d2Y * d2Y + d2Z * d2Z);
-            double normN = Math.Sqrt(nX * nX + nY * nY + nZ * nZ);
-
-            dot1 = (d1X * d2X + d1Y * d2Y + d1Z * d2Z) / (norm1 * norm2);
-            dot2 = (nX * tirNorm.X + nY * tirNorm.Y + nZ * tirNorm.Z) / (normN);
-        }
     }
 
     /// <summary>
@@ -136,16 +86,16 @@ namespace MeshDecimator
     /// </summary>
     public class SimplifyMesh
     {
-        private int maxIterationCount = 100;
+        private const int maxIterationCount = 100;
 
         private ResizableArray<Triangle> triangles;
         private ResizableArray<Vertex> vertices;
         private ResizableArray<Ref> refs = new ResizableArray<Ref>("refs", 0);
-        private ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 20);
-        private ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 20);
+        private ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 50);
+        private ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 50);
 
         // Pre-allocated buffers
-        private double[] errArr = new double[3];
+        private readonly double[] errArr = new double[3];
 
         /// <summary>
         /// Initializes the algorithm with the original mesh.
@@ -159,27 +109,23 @@ namespace MeshDecimator
             }
 
             triangles = new ResizableArray<Triangle>("triangles", indices.Length / 3);
-            int triangleIndex = 0;
-
+            int offset = 0;
             for (int i = 0; i < indices.Length / 3; i++)
             {
-                int offset = i * 3;
-                int v0 = indices[offset + 0];
-                int v1 = indices[offset + 1];
-                int v2 = indices[offset + 2];
-                triangles.Data[triangleIndex++] = new Triangle(v0, v1, v2);
+                triangles.Data[i] = new Triangle(indices[offset++], indices[offset++], indices[offset++]);
             }
         }
 
         public int[] GetIndices()
         {
             int[] indices = new int[triangles.Length * 3];
+            int offset = 0;
             for (int i = 0; i < triangles.Length; i++)
             {
                 var triangle = triangles.Data[i];
-                indices[i * 3 + 0] = triangle.v0;
-                indices[i * 3 + 1] = triangle.v1;
-                indices[i * 3 + 2] = triangle.v2;
+                indices[offset++] = triangle.v0;
+                indices[offset++] = triangle.v1;
+                indices[offset++] = triangle.v2;
             }
 
             return indices;
@@ -188,7 +134,6 @@ namespace MeshDecimator
         public Vector3d[] GetVertices()
         {
             var verticesOut = new Vector3d[vertices.Length];
-
             for (int i = 0; i < vertices.Length; i++)
             {
                 verticesOut[i] = vertices.Data[i].p;
@@ -203,8 +148,9 @@ namespace MeshDecimator
         public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0, bool verbose = false)
         {
             int initialCount = triangles.Length;
-            SymmetricMatrix q = new SymmetricMatrix();
+            SymmetricMatrix smbuff = new SymmetricMatrix();
             Vector3d vbuff = new Vector3d();
+            Vector3d vbuff2 = new Vector3d();
             int deletedTriangles = 0;
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
@@ -218,7 +164,7 @@ namespace MeshDecimator
                 // Update mesh once in a while
                 if (iteration % 5 == 0)
                 {
-                    UpdateMesh(iteration, ref vbuff, ref q);
+                    UpdateMesh(iteration, ref vbuff, ref vbuff2, ref smbuff);
                 }
 
                 // Clear dirty flag
@@ -240,20 +186,21 @@ namespace MeshDecimator
                 }
 
                 // Remove vertices & mark deleted triangles
-                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, ref vbuff, ref q);
+                deletedTriangles += RemoveVertexPass(initialCount, targetCount, threshold, ref vbuff, ref vbuff2, ref smbuff);
             }
 
             CompactMesh();
         }
 
         /// <summary>
-        /// Siplify the mesh with a specified error threshold.
+        /// Simplift the mesh with a specified error threshold.
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
             int initialCount = triangles.Length;
-            SymmetricMatrix q = new SymmetricMatrix();
             Vector3d vbuff = new Vector3d();
+            Vector3d vbuff2 = new Vector3d();
+            SymmetricMatrix smbuff = new SymmetricMatrix();
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
@@ -261,7 +208,7 @@ namespace MeshDecimator
 
                 // Update mesh every loop
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh");
-                UpdateMesh(iteration, ref vbuff, ref q);
+                UpdateMesh(iteration, ref vbuff, ref vbuff2, ref smbuff);
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
                 ReportStatus(iteration, initialCount, triangles.Length, threshold);
@@ -274,7 +221,7 @@ namespace MeshDecimator
 
                 // All triangles with edges below the threshold will be removed
                 // Remove vertices & mark deleted triangles
-                if (RemoveVertexPass(initialCount, 0, threshold, ref vbuff, ref q) <= 0)
+                if (RemoveVertexPass(initialCount, 0, threshold, ref vbuff, ref vbuff2, ref smbuff) <= 0)
                 {
                     break;
                 }
@@ -311,7 +258,7 @@ namespace MeshDecimator
                     continue;
                 }
 
-                Vector3d.DoCrossAndDots(ref triangles.Data[r.tid].n, ref p, ref vertices.Data[id1].p, ref vertices.Data[id2].p, out double dot1, out double dot2);
+                Vector3dExt.DoCrossAndDots(ref triangles.Data[r.tid].n, ref p, ref vertices.Data[id1].p, ref vertices.Data[id2].p, out double dot1, out double dot2);
 
                 if (Math.Abs(dot1) > 0.999)
                 {
@@ -332,7 +279,7 @@ namespace MeshDecimator
         /// <summary>
         /// Update triangle connections and edge error after a edge is collapsed.
         /// </summary>
-        private void UpdateTriangles(int i0, ref Vertex v, bool[] deleted, ref int deletedTriangles, ref Vector3d vbuff, ref SymmetricMatrix q)
+        private void UpdateTriangles(int i0, ref Vertex v, bool[] deleted, ref int deletedTriangles, ref Vector3d vbuff, ref Vector3d vbuff2, ref SymmetricMatrix smbuff)
         {
             for (int k = 0; k < v.tcount; k++)
             {
@@ -352,10 +299,7 @@ namespace MeshDecimator
                 {
                     t[r.tvertex] = i0;
                     t.dirty = true;
-                    t.err0 = CalculateError(t.v0, t.v1, ref vbuff, ref q);
-                    t.err1 = CalculateError(t.v1, t.v2, ref vbuff, ref q);
-                    t.err2 = CalculateError(t.v2, t.v0, ref vbuff, ref q);
-                    t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
+                    CalcFullError(ref t, ref vbuff, ref vbuff2, ref smbuff);
                     refs.Add(r);
                 }
 
@@ -371,9 +315,11 @@ namespace MeshDecimator
             int targetTrisCount,
             double threshold,
             ref Vector3d vbuff,
-            ref SymmetricMatrix q)
+            ref Vector3d vbuff2,
+            ref SymmetricMatrix smbuff)
         {
             int deletedTriangles = 0;
+            Vector3d p = new Vector3d();
             for (int tid = 0; tid < triangles.Length; tid++)
             {
                 var t = triangles.Data[tid];
@@ -400,8 +346,7 @@ namespace MeshDecimator
                     }
 
                     // Compute vertex to collapse to
-                    Vector3d p = new Vector3d();
-                    CalculateError(i0, i1, ref p, ref q);
+                    CalculateError(i0, i1, ref p, ref vbuff, ref smbuff);
                     deleted0.Resize(vertices.Data[i0].tcount); // normals temporarily
                     deleted1.Resize(vertices.Data[i1].tcount); // normals temporarily
 
@@ -418,11 +363,12 @@ namespace MeshDecimator
 
                     // Not flipped, so remove edge
                     vertices.Data[i0].p = p;
+                    p = new Vector3d();
                     SymmetricMatrix.Add(ref vertices.Data[i1].q, ref vertices.Data[i0].q, ref vertices.Data[i0].q);
 
                     int tstart = refs.Length;
-                    UpdateTriangles(i0, ref vertices.Data[i0], deleted0.Data, ref deletedTriangles, ref vbuff, ref q);
-                    UpdateTriangles(i0, ref vertices.Data[i1], deleted1.Data, ref deletedTriangles, ref vbuff, ref q);
+                    UpdateTriangles(i0, ref vertices.Data[i0], deleted0.Data, ref deletedTriangles, ref vbuff, ref vbuff2, ref smbuff);
+                    UpdateTriangles(i0, ref vertices.Data[i1], deleted1.Data, ref deletedTriangles, ref vbuff, ref vbuff2, ref smbuff);
 
                     int tcount = refs.Length - tstart;
                     if (tcount <= vertices.Data[i0].tcount)
@@ -451,7 +397,7 @@ namespace MeshDecimator
         /// Compact triangles, compute edge error and build reference list.
         /// </summary>
         /// <param name="iteration">The iteration index.</param>
-        private void UpdateMesh(int iteration, ref Vector3d vbuff, ref SymmetricMatrix q)
+        private void UpdateMesh(int iteration, ref Vector3d vbuff, ref Vector3d vbuff2, ref SymmetricMatrix smbuff)
         {
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.compactTri");
             if (iteration > 0) // compact triangles
@@ -480,11 +426,6 @@ namespace MeshDecimator
             // but mostly improves the result for closed meshes
             if (iteration == 0)
             {
-                for (int i = 0; i < vertices.Length; i++)
-                {
-                    vertices.Data[i].q = new SymmetricMatrix();
-                }
-
                 Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.update Tri");
                 Vector3d p10 = new Vector3d();
                 Vector3d p20 = new Vector3d();
@@ -494,15 +435,15 @@ namespace MeshDecimator
                     int v1 = triangles.Data[i].v1;
                     int v2 = triangles.Data[i].v2;
 
-                    Vector3d.Sub(ref vertices.Data[v1].p, ref vertices.Data[v0].p, ref p10);
-                    Vector3d.Sub(ref vertices.Data[v2].p, ref vertices.Data[v0].p, ref p20);
-                    Vector3d.Cross(ref p10, ref p20, ref triangles.Data[i].n);
+                    Vector3dExt.Sub(ref vertices.Data[v1].p, ref vertices.Data[v0].p, ref p10);
+                    Vector3dExt.Sub(ref vertices.Data[v2].p, ref vertices.Data[v0].p, ref p20);
+                    Vector3dExt.Cross(ref p10, ref p20, ref triangles.Data[i].n);
                     triangles.Data[i].n.Normalize();
 
-                    q.Repopulate(ref triangles.Data[i].n, -Vector3d.Dot(ref triangles.Data[i].n, ref vertices.Data[v0].p));
-                    SymmetricMatrix.AddInto(ref vertices.Data[v0].q, ref q);
-                    SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref q);
-                    SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref q);
+                    smbuff.Repopulate(ref triangles.Data[i].n, -Vector3dExt.Dot(ref triangles.Data[i].n, ref vertices.Data[v0].p));
+                    SymmetricMatrix.AddInto(ref vertices.Data[v0].q, ref smbuff);
+                    SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref smbuff);
+                    SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref smbuff);
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.update Tri");
 
@@ -511,10 +452,7 @@ namespace MeshDecimator
                 {
                     // Calc Edge Error
                     var t = triangles.Data[i];
-                    t.err0 = CalculateError(t.v0, t.v1, ref vbuff, ref q);
-                    t.err1 = CalculateError(t.v1, t.v2, ref vbuff, ref q);
-                    t.err2 = CalculateError(t.v2, t.v0, ref vbuff, ref q);
-                    t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
+                    CalcFullError(ref t, ref vbuff, ref vbuff2, ref smbuff);
                     triangles.Data[i] = t;
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.calc edge error");
@@ -522,7 +460,6 @@ namespace MeshDecimator
 
             // Init Reference ID list
             Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Init Reference ID list");
-
             for (int i = 0; i < vertices.Length; i++)
             {
                 vertices.Data[i].tstart = 0;
@@ -646,7 +583,6 @@ namespace MeshDecimator
                     }
                 }
                 Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex is border, part 2");
-
             }
         }
 
@@ -720,37 +656,39 @@ namespace MeshDecimator
                 1 * q.m9;
         }
 
-        // Error for one edge
-        //private double CalculateError(int id_v1, int id_v2, ref SymmetricMatrix q)
-        //{
-        //    return CalculateError(id_v1, id_v2, out Vector3d result, ref q);
-        //}
+        private void CalcFullError(ref Triangle t, ref Vector3d vbuff, ref Vector3d vbuff2, ref SymmetricMatrix smbuff)
+        {
+            t.err0 = CalculateError(t.v0, t.v1, ref vbuff, ref vbuff2, ref smbuff);
+            t.err1 = CalculateError(t.v1, t.v2, ref vbuff, ref vbuff2, ref smbuff);
+            t.err2 = CalculateError(t.v2, t.v0, ref vbuff, ref vbuff2, ref smbuff);
+            t.err3 = Math.Min(t.err0, Math.Min(t.err1, t.err2));
+        }
 
-        private double CalculateError(int id_v1, int id_v2, ref Vector3d result, ref SymmetricMatrix q)
+        // Error for one edge
+        private double CalculateError(int id_v1, int id_v2, ref Vector3d result, ref Vector3d vbuff, ref SymmetricMatrix smbuff)
         {
             // compute interpolated vertex
-            SymmetricMatrix.Add(ref vertices.Data[id_v1].q, ref vertices.Data[id_v2].q, ref q);
+            SymmetricMatrix.Add(ref vertices.Data[id_v1].q, ref vertices.Data[id_v2].q, ref smbuff);
             bool border = vertices.Data[id_v1].border & vertices.Data[id_v2].border;
             double error = 0;
-            double det = q.Determinant1();
+            double det = smbuff.Determinant1();
             if (det != 0 && !border)
             {
                 // q_delta is invertible
-                result.X = -1.0 / det * q.Determinant2(); // vx = A41/det(q_delta)
-                result.Y = +1.0 / det * q.Determinant3(); // vy = A42/det(q_delta)
-                result.Z = -1.0 / det * q.Determinant4(); // vz = A43/det(q_delta)
-                error = VertexError(ref q, ref result);
+                result.X = -1.0 / det * smbuff.Determinant2(); // vx = A41/det(q_delta)
+                result.Y = +1.0 / det * smbuff.Determinant3(); // vy = A42/det(q_delta)
+                result.Z = -1.0 / det * smbuff.Determinant4(); // vz = A43/det(q_delta)
+                error = VertexError(ref smbuff, ref result);
             }
             else
             {
                 // det = 0 -> try to find best result
                 Vector3d p1 = vertices.Data[id_v1].p;
                 Vector3d p2 = vertices.Data[id_v2].p;
-                Vector3d p3 = new Vector3d();
-                Vector3d.Average(ref p1, ref p2, ref p3);
-                double error1 = VertexError(ref q, ref p1);
-                double error2 = VertexError(ref q, ref p2);
-                double error3 = VertexError(ref q, ref p3);
+                Vector3dExt.Average(ref p1, ref p2, ref vbuff);
+                double error1 = VertexError(ref smbuff, ref p1);
+                double error2 = VertexError(ref smbuff, ref p2);
+                double error3 = VertexError(ref smbuff, ref vbuff);
                 error = Math.Min(error1, Math.Min(error2, error3));
                 if (error1 == error)
                 {
@@ -762,11 +700,71 @@ namespace MeshDecimator
                 }
                 else
                 {
-                    result = p3;
+                    result = vbuff;
+                    vbuff = new Vector3d();
                 }
             }
 
             return error;
+        }
+
+        private class Vector3dExt
+        {
+            public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d result)
+            {
+                result.X = (a.X + b.X) * 0.5;
+                result.Y = (a.Y + b.Y) * 0.5;
+                result.Z = (a.Z + b.Z) * 0.5;
+            }
+
+            public static void Sub(ref Vector3d a, ref Vector3d b, ref Vector3d result)
+            {
+                result.X = a.X - b.X;
+                result.Y = a.Y - b.Y;
+                result.Z = a.Z - b.Z;
+            }
+
+            /// <summary>
+            /// Dot Product of two vectors.
+            /// </summary>
+            public static double Dot(ref Vector3d a, ref Vector3d b)
+            {
+                return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+            }
+
+            /// <summary>
+            /// Cross Product of two vectors.
+            /// </summary>
+            public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d result)
+            {
+                result.X = a.Y * b.Z - a.Z * b.Y;
+                result.Y = a.Z * b.X - a.X * b.Z;
+                result.Z = a.X * b.Y - a.Y * b.X;
+            }
+
+            public static void DoCrossAndDots(ref Vector3d tirNorm, ref Vector3d p, ref Vector3d v1, ref Vector3d v2, out double dot1, out double dot2)
+            {
+                double d1X = v1.X - p.X;
+                double d1Y = v1.Y - p.Y;
+                double d1Z = v1.Z - p.Z;
+
+                double d2X = v2.X - p.X;
+                double d2Y = v2.Y - p.Y;
+                double d2Z = v2.Z - p.Z;
+
+                // Do the cross product
+                double nX = d1Y * d2Z - d1Z * d2Y;
+                double nY = d1Z * d2X - d1X * d2Z;
+                double nZ = d1X * d2Y - d1Y * d2X;
+
+                // Bulk normarize
+                double norm1 = Math.Sqrt(d1X * d1X + d1Y * d1Y + d1Z * d1Z);
+                double norm2 = Math.Sqrt(d2X * d2X + d2Y * d2Y + d2Z * d2Z);
+                double normN = Math.Sqrt(nX * nX + nY * nY + nZ * nZ);
+
+                dot1 = (d1X * d2X + d1Y * d2Y + d1Z * d2Z) / (norm1 * norm2);
+                dot2 = (nX * tirNorm.X + nY * tirNorm.Y + nZ * tirNorm.Z) / (normN);
+            }
         }
 
         /// <summary>
