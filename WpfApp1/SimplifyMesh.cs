@@ -207,9 +207,7 @@ namespace MeshDecimator
                 Debug.WriteLine("Lossless iteration {0}", iteration);
 
                 // Update mesh every loop
-                Debug.WriteLine(DateTime.Now + "\tStarting updatemesh");
                 UpdateMesh(iteration, ref vbuff, ref vbuff2, ref smbuff);
-                Debug.WriteLine(DateTime.Now + "\tEnd updatemesh");
 
                 ReportStatus(iteration, initialCount, triangles.Length, threshold);
 
@@ -347,8 +345,8 @@ namespace MeshDecimator
 
                     // Compute vertex to collapse to
                     CalculateError(i0, i1, ref p, ref vbuff, ref smbuff);
-                    deleted0.Resize(vertices.Data[i0].tcount); // normals temporarily
-                    deleted1.Resize(vertices.Data[i1].tcount); // normals temporarily
+                    deleted0.Resize(vertices.Data[i0].tcount);
+                    deleted1.Resize(vertices.Data[i1].tcount);
 
                     // Don't remove if flipped
                     if (Flipped(ref p, i0, i1, ref vertices.Data[i0], deleted0.Data))
@@ -366,14 +364,14 @@ namespace MeshDecimator
                     p = new Vector3d();
                     SymmetricMatrix.Add(ref vertices.Data[i1].q, ref vertices.Data[i0].q, ref vertices.Data[i0].q);
 
-                    int tstart = refs.Length;
                     UpdateTriangles(i0, ref vertices.Data[i0], deleted0.Data, ref deletedTriangles, ref vbuff, ref vbuff2, ref smbuff);
                     UpdateTriangles(i0, ref vertices.Data[i1], deleted1.Data, ref deletedTriangles, ref vbuff, ref vbuff2, ref smbuff);
 
+                    int tstart = refs.Length;
                     int tcount = refs.Length - tstart;
                     if (tcount <= vertices.Data[i0].tcount)
                     {
-                        // save ram
+                        // Compact
                         if (tcount > 0)
                         {
                             Array.Copy(refs.Data, tstart, refs.Data, vertices.Data[i0].tstart, tcount);
