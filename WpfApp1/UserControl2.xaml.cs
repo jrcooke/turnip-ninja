@@ -74,11 +74,15 @@ namespace WpfApp1
             {
                 int iMin = chunkI * chunkMax;
                 int iMax = (chunkI < numChunks - 1 ? chunkMax * (chunkI + 1) + 1 : max);
+                int iCount = iMax - iMin;
                 for (int chunkJ = 0; chunkJ < numChunks; chunkJ++)
                 {
                     int jMin = chunkJ * chunkMax;
                     int jMax = (chunkJ < numChunks - 1 ? chunkMax * (chunkJ + 1) + 1 : max);
-                    List<Vector3d> positions = new List<Vector3d>();
+                    int jCount = jMax - jMin;
+
+                    int vid = 0;
+                    Vector3d[] positions = new Vector3d[iCount*jCount];
                     for (int i = iMin; i < iMax; i++)
                     {
                         for (int j = jMin; j < jMax; j++)
@@ -86,25 +90,26 @@ namespace WpfApp1
                             int iPrime = (max - 1 - i) * heights.Length / max;
                             int jPrime = (j) * heights[0].Length / max;
                             double height = 10000 * heights[jPrime][iPrime];
-                            positions.Add(new Vector3d(
+                            positions[vid++] = new Vector3d(
                                 10.0 * (i - max / 2.0) * imageWidth / (max * imageHeight),
                                 10.0 * (j - max / 2.0) / max,
-                                10.0 * height / (max * imageHeight)));
+                                10.0 * height / (max * imageHeight));
                         }
                     }
 
                     // Create a collection of triangle indices for the MeshGeometry3D.
-                    List<int> TriangleIncides = new List<int>();
-                    for (int i = 0; i < iMax - iMin - 1; i++)
+                    int tid = 0;
+                    int[] TriangleIncides = new int[(iCount-1) * (jCount-1) * 6];
+                    for (int i = 0; i < iCount - 1; i++)
                     {
-                        for (int j = 0; j < jMax - jMin - 1; j++)
+                        for (int j = 0; j < jCount - 1; j++)
                         {
-                            TriangleIncides.Add((i + 0) * (jMax - jMin) + (j + 0));
-                            TriangleIncides.Add((i + 1) * (jMax - jMin) + (j + 0));
-                            TriangleIncides.Add((i + 0) * (jMax - jMin) + (j + 1));
-                            TriangleIncides.Add((i + 1) * (jMax - jMin) + (j + 1));
-                            TriangleIncides.Add((i + 0) * (jMax - jMin) + (j + 1));
-                            TriangleIncides.Add((i + 1) * (jMax - jMin) + (j + 0));
+                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 0);
+                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 0);
+                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 1);
+                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                         }
                     }
 
