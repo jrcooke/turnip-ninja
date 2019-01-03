@@ -45,7 +45,6 @@ https://github.com/Whinarn/MeshDecimator
 /////////////////////////////////////////////
 
 using System;
-using System.Diagnostics;
 
 namespace MeshDecimator
 {
@@ -187,7 +186,7 @@ namespace MeshDecimator
                 // target number of triangles reached ? Then break
                 if (verbose && (iteration % 5) == 0)
                 {
-                    Debug.WriteLine("iteration {0} - triangles {1} threshold {2}", iteration, initialCount - deletedTriangles, threshold);
+                    System.Diagnostics.Debug.WriteLine("iteration {0} - triangles {1} threshold {2}", iteration, initialCount - deletedTriangles, threshold);
                 }
 
                 // Remove vertices & mark deleted triangles
@@ -202,7 +201,7 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
-            Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
+            System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
 
             int initialCount = triangles.Length;
             Vector3d vbuff = new Vector3d();
@@ -235,7 +234,7 @@ namespace MeshDecimator
 
         private void ReportStatus(int iteration, int initialCount, int triangleCount, double threshold)
         {
-            Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
+            System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
         }
 
         /// <summary>
@@ -743,7 +742,7 @@ namespace MeshDecimator
                 if (Length >= Data.Length)
                 {
                     int length = (int)((Length + 1) * 2);
-                    Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
                     Array.Resize(ref Data, length);
                 }
 
