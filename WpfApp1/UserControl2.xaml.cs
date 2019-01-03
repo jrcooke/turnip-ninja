@@ -177,15 +177,18 @@ namespace WpfApp1
                 }
             }
 
-            GlueChunks(reducedPositions, reducedTriangleIndices, chunkInfos, fudge);
+            var reducedPositionsArray = reducedPositions.ToArray();
+            reducedPositions = null;
 
-            IEnumerable<Vector3d> psFinal = reducedPositions;
+            GlueChunks(reducedPositionsArray, reducedTriangleIndices, chunkInfos, fudge);
+
+            IEnumerable<Vector3d> psFinal = reducedPositionsArray;
             IEnumerable<int> tisFinal = reducedTriangleIndices;
             if (true)
             {
-                var mdFinal = new SimplifyMesh(reducedPositions.ToArray(), reducedTriangleIndices.ToArray(), reducedExternalIndices.ToArray());
+                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndices.ToArray(), reducedExternalIndices.ToArray());
 
-                reducedPositions = null;
+                reducedPositionsArray = null;
                 reducedTriangleIndices = null;
 
                 mdFinal.SimplifyMeshByThreshold(1.0E-3);
@@ -210,8 +213,7 @@ namespace WpfApp1
             {
                 for (int i = 0; i < vertices.Length; i++)
                 {
-                    var v = vertices[i];
-                    if ((v.X - e.X) * (v.X - e.X) + (v.Y - e.Y) * (v.Y - e.Y) + (v.Z - e.Z) * (v.Z - e.Z) < fudge * fudge)
+                    if (e.DeltaSq(ref vertices[i]) < fudge * fudge)
                     {
                         yield return i;
                         break;
@@ -220,8 +222,9 @@ namespace WpfApp1
             }
         }
 
-        private static void GlueChunks(List<Vector3d> reducedPositions, List<int> reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudge)
+        private static void GlueChunks(Vector3d[] reducedPositions, List<int> reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudge)
         {
+            double fudgeSq = fudge * fudge;
             Dictionary<int, int> equiv = new Dictionary<int, int>();
             for (int i = 0; i < chunkInfos.Length; i++)
             {
@@ -237,26 +240,14 @@ namespace WpfApp1
                         {
                             foreach (int j2 in chunkInfoJ.EdgeIndices)
                             {
-                                if (i2 > j2)
+                                if (reducedPositions[i2].DeltaSq(ref reducedPositions[j2]) < fudgeSq)
                                 {
-                                    throw new InvalidOperationException();
-                                }
-
-                                if (Math.Abs(reducedPositions[i2].X - reducedPositions[j2].X) < fudge &&
-                                    Math.Abs(reducedPositions[i2].Y - reducedPositions[j2].Y) < fudge)
-                                {
-                                    if (equiv.TryGetValue(j2, out int iprime))
-                                    {
-                                        if (iprime > i2)
-                                        {
-                                            throw new InvalidOperationException();
-                                            // equiv.Add(j2, i2);
-                                        }
-                                    }
-                                    else
+                                    if (!equiv.ContainsKey(j2))
                                     {
                                         equiv.Add(j2, i2);
                                     }
+
+                                    break;
                                 }
                             }
                         }
@@ -264,7 +255,7 @@ namespace WpfApp1
                 }
             }
 
-            // Glue seams
+            // Glue seams. Don't worry about leftover indices
             for (int i = 0; i < reducedTriangleIndices.Count; i++)
             {
                 if (equiv.TryGetValue(reducedTriangleIndices[i], out int newVertex))

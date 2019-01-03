@@ -77,6 +77,14 @@ namespace MeshDecimator
             Y /= norm;
             Z /= norm;
         }
+
+        public double DeltaSq(ref Vector3d a)
+        {
+            double dx = X - a.X;
+            double dy = Y - a.Y;
+            double dz = Z - a.Z;
+            return dx * dx + dy * dy + dz * dz;
+        }
     }
 
     /// <summary>
@@ -107,7 +115,7 @@ namespace MeshDecimator
                 vertices.Data[i] = new Vertex(vertexIn);
             }
 
-            foreach(var edgeIndex in edgeIndices)
+            foreach (var edgeIndex in edgeIndices)
             {
                 vertices.Data[edgeIndex].IsEdge = true;
             }
