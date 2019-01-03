@@ -45,7 +45,6 @@ https://github.com/Whinarn/MeshDecimator
 /////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace MeshDecimator
@@ -100,12 +99,18 @@ namespace MeshDecimator
         /// <summary>
         /// Initializes the algorithm with the original mesh.
         /// </summary>
-        public SimplifyMesh(Vector3d[] verticesIn, int[] indices)
+        public SimplifyMesh(Vector3d[] verticesIn, int[] indices, int[] edgeIndices)
         {
             vertices = new ResizableArray<Vertex>("vertices", verticesIn.Length);
             for (int i = 0; i < verticesIn.Length; i++)
             {
-                vertices.Data[i] = new Vertex(verticesIn[i]);
+                var vertexIn = verticesIn[i];
+                vertices.Data[i] = new Vertex(vertexIn);
+            }
+
+            foreach(var edgeIndex in edgeIndices)
+            {
+                vertices.Data[edgeIndex].IsEdge = true;
             }
 
             triangles = new ResizableArray<Triangle>("triangles", indices.Length / 3);
@@ -197,6 +202,8 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
+            Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
+
             int initialCount = triangles.Length;
             Vector3d vbuff = new Vector3d();
             Vector3d vbuff2 = new Vector3d();
@@ -204,8 +211,6 @@ namespace MeshDecimator
 
             for (int iteration = 0; iteration < maxIterationCount; iteration++)
             {
-                Debug.WriteLine("Lossless iteration {0}", iteration);
-
                 // Update mesh every loop
                 UpdateMesh(iteration, ref vbuff, ref vbuff2, ref smbuff);
 
@@ -326,6 +331,12 @@ namespace MeshDecimator
                     continue;
                 }
 
+                if (vertices.Data[t.v0].IsEdge || vertices.Data[t.v1].IsEdge || vertices.Data[t.v2].IsEdge)
+                {
+                    // Don't mess with triangles that touch edges
+                    continue;
+                }
+
                 t.GetErrors(errArr);
                 for (int j = 0; j < 3; j++)
                 {
@@ -336,12 +347,6 @@ namespace MeshDecimator
 
                     int i0 = t[j];
                     int i1 = t[(j + 1) % 3];
-
-                    // Border check
-                    if (vertices.Data[i0].border != vertices.Data[i1].border)
-                    {
-                        continue;
-                    }
 
                     // Compute vertex to collapse to
                     CalculateError(i0, i1, ref p, ref vbuff, ref smbuff);
@@ -397,7 +402,6 @@ namespace MeshDecimator
         /// <param name="iteration">The iteration index.</param>
         private void UpdateMesh(int iteration, ref Vector3d vbuff, ref Vector3d vbuff2, ref SymmetricMatrix smbuff)
         {
-            Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.compactTri");
             if (iteration > 0) // compact triangles
             {
                 int dst = 0;
@@ -415,7 +419,6 @@ namespace MeshDecimator
 
                 triangles.Resize(dst);
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.compactTri");
 
             // Init Quadrics by Plane & Edge Errors
             //
@@ -424,7 +427,6 @@ namespace MeshDecimator
             // but mostly improves the result for closed meshes
             if (iteration == 0)
             {
-                Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.update Tri");
                 Vector3d p10 = new Vector3d();
                 Vector3d p20 = new Vector3d();
                 for (int i = 0; i < triangles.Length; i++)
@@ -443,9 +445,7 @@ namespace MeshDecimator
                     SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref smbuff);
                     SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref smbuff);
                 }
-                Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.update Tri");
 
-                Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.calc edge error");
                 for (int i = 0; i < triangles.Length; i++)
                 {
                     // Calc Edge Error
@@ -453,19 +453,15 @@ namespace MeshDecimator
                     CalcFullError(ref t, ref vbuff, ref vbuff2, ref smbuff);
                     triangles.Data[i] = t;
                 }
-                Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.calc edge error");
             }
 
             // Init Reference ID list
-            Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Init Reference ID list");
             for (int i = 0; i < vertices.Length; i++)
             {
                 vertices.Data[i].tstart = 0;
                 vertices.Data[i].tcount = 0;
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Init Reference ID list");
 
-            Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts");
             for (int i = 0; i < triangles.Length; i++)
             {
                 Triangle t = triangles.Data[i];
@@ -473,9 +469,7 @@ namespace MeshDecimator
                 vertices.Data[t.v1].tcount++;
                 vertices.Data[t.v2].tcount++;
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts");
 
-            Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts, part 2");
             int tstartX = 0;
             for (int i = 0; i < vertices.Length; i++)
             {
@@ -486,12 +480,9 @@ namespace MeshDecimator
                     vertices.Data[i].tcount = 0;
                 }
             }
-            Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts, part 2");
 
             // Write References
-            refs.Resize(tstartX * 2);
-
-            Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex triangle counts, with Ref");
+            refs.Resize(tstartX, tstartX * 2);
             for (int i = 0; i < triangles.Length; i++)
             {
                 int v0 = triangles.Data[i].v0;
@@ -515,72 +506,6 @@ namespace MeshDecimator
                 vertices.Data[v0].tcount++;
                 vertices.Data[v1].tcount++;
                 vertices.Data[v2].tcount++;
-            }
-            Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex triangle counts, with Ref");
-
-            // Identify boundary : vertices.Data[].border=0,1
-            if (iteration == 0)
-            {
-                var vcount = new List<int>(8);
-                var vids = new List<int>(8);
-
-                Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex is border");
-                for (int i = 0; i < vertices.Length; i++)
-                {
-                    vertices.Data[i].border = false;
-                }
-                Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex is border");
-
-                Debug.WriteLine(DateTime.Now + "\tStarting updatemesh.Update vertex is border, part 2");
-                int borderVertexCount = 0;
-                for (int i = 0; i < vertices.Length; i++)
-                {
-                    int tstart = vertices.Data[i].tstart;
-                    int tcount = vertices.Data[i].tcount;
-                    vcount.Clear();
-                    vids.Clear();
-                    int vsize = 0;
-
-                    for (int j = 0; j < tcount; j++)
-                    {
-                        int tid = refs.Data[tstart + j].tid;
-                        for (int k = 0; k < 3; k++)
-                        {
-                            int ofs = 0;
-                            int id = triangles.Data[tid][k];
-                            while (ofs < vsize)
-                            {
-                                if (vids[ofs] == id)
-                                {
-                                    break;
-                                }
-
-                                ++ofs;
-                            }
-
-                            if (ofs == vsize)
-                            {
-                                vcount.Add(1);
-                                vids.Add(id);
-                                ++vsize;
-                            }
-                            else
-                            {
-                                vcount[ofs]++;
-                            }
-                        }
-                    }
-
-                    for (int j = 0; j < vsize; j++)
-                    {
-                        if (vcount[j] == 1)
-                        {
-                            vertices.Data[vids[j]].border = true;
-                            ++borderVertexCount;
-                        }
-                    }
-                }
-                Debug.WriteLine(DateTime.Now + "\tEnd updatemesh.Update vertex is border, part 2");
             }
         }
 
@@ -667,10 +592,9 @@ namespace MeshDecimator
         {
             // compute interpolated vertex
             SymmetricMatrix.Add(ref vertices.Data[id_v1].q, ref vertices.Data[id_v2].q, ref smbuff);
-            bool border = vertices.Data[id_v1].border & vertices.Data[id_v2].border;
             double error = 0;
             double det = smbuff.Determinant1();
-            if (det != 0 && !border)
+            if (det != 0)
             {
                 // q_delta is invertible
                 result.X = -1.0 / det * smbuff.Determinant2(); // vx = A41/det(q_delta)
@@ -788,20 +712,23 @@ namespace MeshDecimator
                 this.name = name;
                 Data = new T[length];
                 Length = length;
-                Debug.WriteLine("Creating array '" + name + "' with size " + length);
             }
 
             /// <summary>
             /// Resizes this array.
             /// </summary>
             /// <param name="length">The new length.</param>
-            public void Resize(int length)
+            public void Resize(int length, int dataLength = -1)
             {
-                if (length > Data.Length || length < (Data.Length - 1000))
+                if (dataLength == -1)
+                {
+                    dataLength = length;
+                }
+
+                if (dataLength > Data.Length || dataLength < (Data.Length - 1000))
                 {
                     // Don't worry about downsizing unless it is a big change
-                    Debug.WriteLine("Resizing array '" + name + "' from " + Data.Length + " to " + length);
-                    Array.Resize(ref Data, length);
+                    Array.Resize(ref Data, dataLength);
                 }
 
                 Length = length;
@@ -815,8 +742,8 @@ namespace MeshDecimator
             {
                 if (Length >= Data.Length)
                 {
-                    int length = (int)((Length + 1) * 1.2);
-                    Debug.WriteLine("Implicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    int length = (int)((Length + 1) * 2);
+                    Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
                     Array.Resize(ref Data, length);
                 }
 
@@ -922,19 +849,19 @@ namespace MeshDecimator
             /// </summary>
             /// <param name="a">The left hand side.</param>
             /// <param name="b">The right hand side.</param>
-            /// <param name="c">The resulting matrix.</returns>
-            public static void Add(ref SymmetricMatrix a, ref SymmetricMatrix b, ref SymmetricMatrix c)
+            /// <param name="result">The resulting matrix.</returns>
+            public static void Add(ref SymmetricMatrix a, ref SymmetricMatrix b, ref SymmetricMatrix result)
             {
-                c.m0 = a.m0 + b.m0;
-                c.m1 = a.m1 + b.m1;
-                c.m2 = a.m2 + b.m2;
-                c.m3 = a.m3 + b.m3;
-                c.m4 = a.m4 + b.m4;
-                c.m5 = a.m5 + b.m5;
-                c.m6 = a.m6 + b.m6;
-                c.m7 = a.m7 + b.m7;
-                c.m8 = a.m8 + b.m8;
-                c.m9 = a.m9 + b.m9;
+                result.m0 = a.m0 + b.m0;
+                result.m1 = a.m1 + b.m1;
+                result.m2 = a.m2 + b.m2;
+                result.m3 = a.m3 + b.m3;
+                result.m4 = a.m4 + b.m4;
+                result.m5 = a.m5 + b.m5;
+                result.m6 = a.m6 + b.m6;
+                result.m7 = a.m7 + b.m7;
+                result.m8 = a.m8 + b.m8;
+                result.m9 = a.m9 + b.m9;
             }
 
             /// <summary>
@@ -1026,7 +953,7 @@ namespace MeshDecimator
             public int tstart;
             public int tcount;
             public SymmetricMatrix q;
-            public bool border;
+            public bool IsEdge;
 
             public Vertex(Vector3d p)
             {
@@ -1034,7 +961,7 @@ namespace MeshDecimator
                 tstart = 0;
                 tcount = 0;
                 q = new SymmetricMatrix();
-                border = true;
+                IsEdge = false;
             }
         }
 

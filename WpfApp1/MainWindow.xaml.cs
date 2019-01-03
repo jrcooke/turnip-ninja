@@ -73,7 +73,7 @@ namespace WpfApp1
   //                          this.mainImage2.Source = bi2;
                         }));
 
-                    Debug.WriteLine(data.Item2.Length);
+//                    Debug.WriteLine(data.Item2.Length);
 
                     this.Dispatcher.Invoke(() =>
                     {

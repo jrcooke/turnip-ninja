@@ -1,6 +1,7 @@
 ﻿using MeshDecimator;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,27 +63,46 @@ namespace WpfApp1
             Material myMaterial = new DiffuseMaterial(ib);
             myGeometryModel.Material = myMaterial;
 
-            MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
-            myMeshGeometry3D.Positions = new Point3DCollection();
-            myMeshGeometry3D.TextureCoordinates = new PointCollection();
-            myMeshGeometry3D.TriangleIndices = new Int32Collection();
+            var reducedPositions = new List<Vector3d>();
+            var reducedTriangleIndices = new List<int>();
+            var reducedExternalIndices = new List<int>();
 
-            int numChunks = 5;
             var max = heights.Length;
-            var chunkMax = max / numChunks;
-            for (int chunkI = 0; chunkI < numChunks; chunkI++)
+            double xSpacing = 10.0 * imageWidth / (max * imageHeight);
+            double ySpacing = 10.0 / max;
+
+            double fudge = Math.Min(xSpacing, ySpacing) / 100.0;
+
+            int numChunks = 9;
+            int minChunk = 0;
+            int numChunkPrime = numChunks;
+            //if (true)
+            //{
+            //    numChunks = 9;
+            //    minChunk = 3;
+            //    numChunkPrime = 3;
+            //}
+            int chunkMax = max / numChunks;
+
+            var chunkInfos = new ChunkInfo[numChunkPrime * numChunkPrime];
+            for (int chunkI = minChunk; chunkI < minChunk + numChunkPrime; chunkI++)
             {
                 int iMin = chunkI * chunkMax;
                 int iMax = (chunkI < numChunks - 1 ? chunkMax * (chunkI + 1) + 1 : max);
                 int iCount = iMax - iMin;
-                for (int chunkJ = 0; chunkJ < numChunks; chunkJ++)
+                for (int chunkJ = minChunk; chunkJ < minChunk + numChunkPrime; chunkJ++)
                 {
+                    Debug.WriteLine(DateTime.Now + "\tWorking on chunk (" + (chunkI - minChunk) + "," + (chunkJ - minChunk) + ") " +
+                        "(" + (((chunkI - minChunk) * numChunkPrime) + (chunkJ - minChunk)) + "/" + (numChunkPrime * numChunkPrime) + ")");
                     int jMin = chunkJ * chunkMax;
                     int jMax = (chunkJ < numChunks - 1 ? chunkMax * (chunkJ + 1) + 1 : max);
                     int jCount = jMax - jMin;
 
                     int vid = 0;
-                    Vector3d[] positions = new Vector3d[iCount*jCount];
+                    Vector3d[] positions = new Vector3d[iCount * jCount];
+                    List<int> edgeIndices = new List<int>();
+                    List<Vector3d> edges = new List<Vector3d>();
+                    List<Vector3d> exteriors = new List<Vector3d>();
                     for (int i = iMin; i < iMax; i++)
                     {
                         for (int j = jMin; j < jMax; j++)
@@ -90,56 +110,174 @@ namespace WpfApp1
                             int iPrime = (max - 1 - i) * heights.Length / max;
                             int jPrime = (j) * heights[0].Length / max;
                             double height = 10000 * heights[jPrime][iPrime];
-                            positions[vid++] = new Vector3d(
-                                10.0 * (i - max / 2.0) * imageWidth / (max * imageHeight),
-                                10.0 * (j - max / 2.0) / max,
+                            var v = new Vector3d(
+                                (i - max / 2.0) * xSpacing,
+                                (j - max / 2.0) * ySpacing,
                                 10.0 * height / (max * imageHeight));
+
+                            if (i == iMin || i == (iMax - 1) || j == jMin || j == (jMax - 1))
+                            {
+                                edgeIndices.Add(vid);
+                                edges.Add(v);
+                            }
+
+                            if ((chunkI == minChunk && i == iMin) ||
+                                (chunkI == minChunk + numChunkPrime - 1 && i == iMax - 1) ||
+                                (chunkJ == minChunk && j == jMin) ||
+                                (chunkJ == minChunk + numChunkPrime - 1 && j == jMax - 1))
+                            {
+                                exteriors.Add(v);
+                            }
+
+                            positions[vid++] = v;
                         }
                     }
 
-                    // Create a collection of triangle indices for the MeshGeometry3D.
+                    // Create a collection of triangle indices
                     int tid = 0;
-                    int[] TriangleIncides = new int[(iCount-1) * (jCount-1) * 6];
+                    int[] triangleIncides = new int[(iCount - 1) * (jCount - 1) * 6];
                     for (int i = 0; i < iCount - 1; i++)
                     {
                         for (int j = 0; j < jCount - 1; j++)
                         {
-                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 0);
-                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 0);
-                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 1);
-                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 1);
-                            TriangleIncides[tid++] = (i + 0) * jCount + (j + 1);
-                            TriangleIncides[tid++] = (i + 1) * jCount + (j + 0);
+                            triangleIncides[tid++] = (i + 0) * jCount + (j + 0);
+                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
+                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            triangleIncides[tid++] = (i + 1) * jCount + (j + 1);
+                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                         }
                     }
 
-                    var md = new SimplifyMesh(positions.ToArray(), TriangleIncides.ToArray());
+                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray());
                     positions = null;
-                    TriangleIncides = null;
+                    triangleIncides = null;
 
+                    ChunkInfo chunkInfo = new ChunkInfo();
                     md.SimplifyMeshByThreshold(1.0E-3);
-                    var ps = md.GetVertices();
-                    var tis = md.GetIndices();
+                    var startIndex = reducedPositions.Count;
+                    var vertices = md.GetVertices();
+                    reducedPositions.AddRange(vertices);
+                    chunkInfo.EdgeIndices.AddRange(GetVertexIndices(vertices, edges, fudge).Select(ei => ei + startIndex));
+                    reducedExternalIndices.AddRange(GetVertexIndices(vertices, exteriors, fudge).Select(exti => exti + startIndex));
+                    reducedTriangleIndices.AddRange(md.GetIndices().Select(ti => ti + startIndex));
+                    vertices = null;
+                    edges = null;
+                    exteriors = null;
                     md = null;
 
-                    int positionOffset = myMeshGeometry3D.Positions.Count;
+                    List<int> chunkNeighbors = new List<int>();
+                    if (chunkI > minChunk) chunkNeighbors.Add((chunkI - 1 - minChunk) * numChunkPrime + (chunkJ - minChunk));
+                    if (chunkI < minChunk + numChunkPrime - 1) chunkNeighbors.Add((chunkI + 1 - minChunk) * numChunkPrime + (chunkJ - minChunk));
+                    if (chunkJ > minChunk) chunkNeighbors.Add((chunkI - minChunk) * numChunkPrime + (chunkJ - 1 - minChunk));
+                    if (chunkJ < minChunk + numChunkPrime - 1) chunkNeighbors.Add((chunkI - minChunk) * numChunkPrime + (chunkJ + 1 - minChunk));
+                    chunkInfo.Neighbors = chunkNeighbors.ToArray();
 
-                    foreach (var p in ps)
-                    {
-                        myMeshGeometry3D.Positions.Add(new Point3D(p.X, p.Y, p.Z));
-                        myMeshGeometry3D.TextureCoordinates.Add(new Point(p.X, -p.Y));
-                    }
-                    ps = null;
-
-                    foreach (var ti in tis)
-                    {
-                        myMeshGeometry3D.TriangleIndices.Add(ti + positionOffset);
-                    }
-                    tis = null;
+                    chunkInfos[(chunkI - minChunk) * numChunkPrime + (chunkJ - minChunk)] = chunkInfo;
                 }
             }
 
+            GlueChunks(reducedPositions, reducedTriangleIndices, chunkInfos, fudge);
+
+            IEnumerable<Vector3d> psFinal = reducedPositions;
+            IEnumerable<int> tisFinal = reducedTriangleIndices;
+            if (true)
+            {
+                var mdFinal = new SimplifyMesh(reducedPositions.ToArray(), reducedTriangleIndices.ToArray(), reducedExternalIndices.ToArray());
+
+                reducedPositions = null;
+                reducedTriangleIndices = null;
+
+                mdFinal.SimplifyMeshByThreshold(1.0E-3);
+                psFinal = mdFinal.GetVertices();
+                tisFinal = mdFinal.GetIndices();
+                mdFinal = null;
+            }
+
+            MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
+            myMeshGeometry3D.Positions = new Point3DCollection(psFinal.Select(p => new Point3D(p.X, p.Y, p.Z)));
+            myMeshGeometry3D.TextureCoordinates = new PointCollection(psFinal.Select(p => new Point(p.X, -p.Y)));
+            myMeshGeometry3D.TriangleIndices = new Int32Collection(tisFinal);
+            psFinal = null;
+            tisFinal = null;
+
             myGeometryModel.Geometry = myMeshGeometry3D;
+        }
+
+        private static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudge)
+        {
+            foreach (var e in edges)
+            {
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    var v = vertices[i];
+                    if ((v.X - e.X) * (v.X - e.X) + (v.Y - e.Y) * (v.Y - e.Y) + (v.Z - e.Z) * (v.Z - e.Z) < fudge * fudge)
+                    {
+                        yield return i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void GlueChunks(List<Vector3d> reducedPositions, List<int> reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudge)
+        {
+            Dictionary<int, int> equiv = new Dictionary<int, int>();
+            for (int i = 0; i < chunkInfos.Length; i++)
+            {
+                ChunkInfo chunkInfoI = chunkInfos[i];
+                for (int j = i + 1; j < chunkInfos.Length; j++)
+                {
+                    ChunkInfo chunkInfoJ = chunkInfos[j];
+                    Debug.WriteLine(i + "\t" + j);
+
+                    if (chunkInfoI.Neighbors.Contains(j))
+                    {
+                        foreach (int i2 in chunkInfoI.EdgeIndices)
+                        {
+                            foreach (int j2 in chunkInfoJ.EdgeIndices)
+                            {
+                                if (i2 > j2)
+                                {
+                                    throw new InvalidOperationException();
+                                }
+
+                                if (Math.Abs(reducedPositions[i2].X - reducedPositions[j2].X) < fudge &&
+                                    Math.Abs(reducedPositions[i2].Y - reducedPositions[j2].Y) < fudge)
+                                {
+                                    if (equiv.TryGetValue(j2, out int iprime))
+                                    {
+                                        if (iprime > i2)
+                                        {
+                                            throw new InvalidOperationException();
+                                            // equiv.Add(j2, i2);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        equiv.Add(j2, i2);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Glue seams
+            for (int i = 0; i < reducedTriangleIndices.Count; i++)
+            {
+                if (equiv.TryGetValue(reducedTriangleIndices[i], out int newVertex))
+                {
+                    reducedTriangleIndices[i] = newVertex;
+                }
+            }
+        }
+
+        private class ChunkInfo
+        {
+            public List<int> EdgeIndices { get; set; } = new List<int>();
+            public int[] Neighbors { get; set; }
         }
     }
 }
