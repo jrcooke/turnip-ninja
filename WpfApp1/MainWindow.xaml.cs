@@ -77,7 +77,7 @@ namespace WpfApp1
 
                     this.Dispatcher.Invoke(() =>
                     {
-                        uc.Blarg(bi2, data.Item2, data.Item3, data.Item4);
+                        uc.Blarg(bi2, data.Item2, data.Item3);
                     });
 
                 });

@@ -5,6 +5,9 @@
 // https://github.com/Whinarn/MeshDecimator
 // and
 // https://github.com/sp4cerat/Fast-Quadric-Mesh-Simplification
+// Which appers to be based on
+// M. Garland and P. S. Heckbert. Surface Simplification using Quadric Error Metrics. Conference Proceedings of SIGGRAPH 1997, pp. 209–216.
+// https://www.ri.cmu.edu/pub_files/pub2/garland_michael_1997_1/garland_michael_1997_1.pdf
 
 
 /*
@@ -94,11 +97,12 @@ namespace MeshDecimator
     {
         private const int maxIterationCount = 100;
 
+        private bool verbose;
         private ResizableArray<Triangle> triangles;
         private ResizableArray<Vertex> vertices;
-        private ResizableArray<Ref> refs = new ResizableArray<Ref>("refs", 0);
-        private ResizableArray<bool> deleted0 = new ResizableArray<bool>("deleted0", 50);
-        private ResizableArray<bool> deleted1 = new ResizableArray<bool>("deleted1", 50);
+        private ResizableArray<Ref> refs;
+        private ResizableArray<bool> deleted0;
+        private ResizableArray<bool> deleted1;
 
         // Pre-allocated buffers
         private readonly double[] errArr = new double[3];
@@ -106,9 +110,13 @@ namespace MeshDecimator
         /// <summary>
         /// Initializes the algorithm with the original mesh.
         /// </summary>
-        public SimplifyMesh(Vector3d[] verticesIn, int[] indices, int[] edgeIndices)
+        public SimplifyMesh(Vector3d[] verticesIn, int[] indices, int[] edgeIndices, bool verbose = false)
         {
-            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Length);
+            this.verbose = verbose;
+            refs = new ResizableArray<Ref>("refs", 0, verbose);
+            deleted0 = new ResizableArray<bool>("deleted0", 50, verbose);
+            deleted1 = new ResizableArray<bool>("deleted1", 50, verbose);
+            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Length, verbose);
             for (int i = 0; i < verticesIn.Length; i++)
             {
                 var vertexIn = verticesIn[i];
@@ -120,7 +128,7 @@ namespace MeshDecimator
                 vertices.Data[edgeIndex].IsEdge = true;
             }
 
-            triangles = new ResizableArray<Triangle>("triangles", indices.Length / 3);
+            triangles = new ResizableArray<Triangle>("triangles", indices.Length / 3, verbose);
             int offset = 0;
             for (int i = 0; i < indices.Length / 3; i++)
             {
@@ -157,7 +165,7 @@ namespace MeshDecimator
         /// <summary>
         /// Main simplification function
         /// </summary>
-        public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0, bool verbose = false)
+        public void SimplifyMeshByCount(int targetCount, double agressiveness = 7.0)
         {
             int initialCount = triangles.Length;
             SymmetricMatrix smbuff = new SymmetricMatrix();
@@ -209,7 +217,10 @@ namespace MeshDecimator
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
-            System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
+            if (verbose)
+            {
+                System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
+            }
 
             int initialCount = triangles.Length;
             Vector3d vbuff = new Vector3d();
@@ -242,7 +253,10 @@ namespace MeshDecimator
 
         private void ReportStatus(int iteration, int initialCount, int triangleCount, double threshold)
         {
-            System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
+            if (verbose)
+            {
+                System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
+            }
         }
 
         /// <summary>
@@ -704,6 +718,7 @@ namespace MeshDecimator
         {
             private string name;
             public T[] Data;
+            private bool verbose;
 
             /// <summary>
             /// Gets the length of this array.
@@ -714,11 +729,12 @@ namespace MeshDecimator
             /// Creates a new resizable array.
             /// </summary>
             /// <param name="length">The initial array length.</param>
-            public ResizableArray(string name, int length)
+            public ResizableArray(string name, int length, bool verbose)
             {
                 this.name = name;
                 Data = new T[length];
                 Length = length;
+                this.verbose = verbose;
             }
 
             /// <summary>
@@ -750,7 +766,11 @@ namespace MeshDecimator
                 if (Length >= Data.Length)
                 {
                     int length = (int)((Length + 1) * 2);
-                    System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    if (verbose)
+                    {
+                        System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                    }
+
                     Array.Resize(ref Data, length);
                 }
 

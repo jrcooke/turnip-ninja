@@ -1,8 +1,10 @@
-﻿using MountainView.Base;
+﻿using MeshDecimator;
+using MountainView.Base;
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
 using MountainViewCore.Base;
+using MountainViewDesktopCore.Elevation;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -118,7 +120,7 @@ namespace MountainView
         }
 
 
-        public static async Task<Tuple<Bitmap, float[][], double, double>> Foo2(TraceListener log, double latD, double lonD,
+        public static async Task<Tuple<Bitmap, Vector3d[], int[]>> Foo2(TraceListener log, double latD, double lonD,
             Action<MemoryStream> getBitmap = null,
             Action<MemoryStream> getBitmap2 = null)
         {
@@ -184,7 +186,8 @@ namespace MountainView
                 }
             }
 
-            return new Tuple<Bitmap, float[][], double, double>(bm, heig, imageWidth, imageHeight);
+            Mesh m = new Mesh(heig, imageWidth, imageHeight);
+            return new Tuple<Bitmap, Vector3d[], int[]>(bm, m.Vertices, m.TriangleIndices);
         }
 
         public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)

@@ -77,7 +77,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="SimplifyMesh.cs" />
     <Compile Include="UserControl2.xaml.cs">
       <DependentUpon>UserControl2.xaml</DependentUpon>
     </Compile>
