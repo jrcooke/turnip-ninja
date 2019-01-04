@@ -166,30 +166,30 @@ namespace MountainView
                             heig = pixels2.Data;
 
                             int max = heig.Length;
-                            double xSpacing = 10.0 * imageWidth / (max * imageHeight);
-                            double ySpacing = 10.0 / max;
                             positions = new Vector3d[max][];
                             for (int i = 0; i < max; i++)
                             {
                                 positions[i] = new Vector3d[max];
-                                // var latRad = Math.PI / 180 * (/*pixels2.LatLo.DecimalDegree + */i * pixels2.LatDelta.DecimalDegree / max);
+                                var latRad = Math.PI / 180 * (pixels2.LatLo.DecimalDegree + i * pixels2.LatDelta.DecimalDegree / max);
 
                                 for (int j = 0; j < max; j++)
                                 {
-                                    // var lonRad = Math.PI / 180 * (/*pixels2.LonLo.DecimalDegree*/ + i * pixels2.LonDelta.DecimalDegree / max);
+                                    var lonRad = Math.PI / 180 * (pixels2.LonLo.DecimalDegree + i * pixels2.LonDelta.DecimalDegree / max);
 
                                     int iPrime = max - 1 - i;
                                     int jPrime = j;
-                                    double height = 10000 * heig[jPrime][iPrime];
+                                    //double height = heig[jPrime][iPrime];
+                                    //                                    double height = heig[jPrime][iPrime] + Utils.AlphaMeters;
+                                    double height = 3 * heig[jPrime][iPrime] + Utils.AlphaMeters;
 
+                                    //var v = new Vector3d(
+                                    //    10.0 * (i - max / 2.0) * xSpacing / imageHeight,
+                                    //    10.0 * (j - max / 2.0) * ySpacing / imageHeight,
+                                    //    10.0 * height / imageHeight);
                                     var v = new Vector3d(
-                                        (i - max / 2.0) * xSpacing,
-                                        (j - max / 2.0) * ySpacing,
-                                        10.0 * height / (max * imageHeight));
-
-                                    //int iPrime = max - 1 - i;
-                                    //int jPrime = j;
-                                    //double height = heig[jPrime][iPrime] + Utils.AlphaMeters;
+                                        i * imageWidth / max,
+                                        j * imageHeight / max,
+                                        height);
 
                                     ////var x = height * Math.Cos(latRad) * Math.Cos(lonRad);
                                     ////var y = height * Math.Cos(latRad) * Math.Sin(lonRad);
@@ -225,29 +225,30 @@ namespace MountainView
                 }
             }
 
-            //var avgV = new Vector3d(
-            //    positions.SelectMany(p => p).Average(p => p.X),
-            //    positions.SelectMany(p => p).Average(p => p.Y),
-            //    positions.SelectMany(p => p).Average(p => p.Z));
+            var avgV = new Vector3d(
+                positions.SelectMany(p => p).Average(p => p.X),
+                positions.SelectMany(p => p).Average(p => p.Y),
+                positions.SelectMany(p => p).Average(p => p.Z));
 
-            //var deltaV = new Vector3d(
-            //    positions.SelectMany(p => p).Max(p => p.X) - positions.SelectMany(p => p).Min(p => p.X),
-            //    positions.SelectMany(p => p).Max(p => p.Y) - positions.SelectMany(p => p).Min(p => p.Y),
-            //    positions.SelectMany(p => p).Max(p => p.Z) - positions.SelectMany(p => p).Min(p => p.Z));
+            // Find the max dist between adjacent corners. This will the the characteristic length.
+            var cornerDistsSq = new double[]
+            {
+                positions[0][0].DeltaSq(ref positions[0][positions.Length-1]),
+                positions[0][0].DeltaSq(ref positions[positions.Length-1][0]),
+                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[0][positions.Length-1]),
+                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
+            };
+            var deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
 
-
-            //for (int i = 0; i < positions.Length; i++)
-            //{
-            //    for (int j = 0; j < positions.Length; j++)
-            //    {
-            //        positions[i][j].X -= avgV.X;
-            //        positions[i][j].Y -= avgV.Y;
-            //        positions[i][j].Z -= avgV.Z;
-            //        positions[i][j].X *= 10.0 / deltaV.X;
-            //        positions[i][j].Y *= 10.0 / deltaV.Y;
-            //        positions[i][j].Z *= 10.0 / deltaV.Z;
-            //    }
-            //}
+            for (int i = 0; i < positions.Length; i++)
+            {
+                for (int j = 0; j < positions.Length; j++)
+                {
+                    positions[i][j].X = (positions[i][j].X - avgV.X) * deltaV;
+                    positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
+                    positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
+                }
+            }
 
             //avgV = new Vector3d(
             //    positions.SelectMany(p => p).Average(p => p.X),

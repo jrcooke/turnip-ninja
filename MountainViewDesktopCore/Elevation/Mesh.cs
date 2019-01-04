@@ -31,17 +31,17 @@ namespace MountainViewDesktopCore.Elevation
                 grid[max-1][max-1].DeltaSq(ref grid[max-1][max-2]),
                 grid[max-1][max-1].DeltaSq(ref grid[max-2][max-1]),
             };
-            double fudge = cornerDists.Min()/ 100.0;
+            double fudgeSq = cornerDists.Min()/ 100.0;
 
             int numChunks = 9;
             int minChunk = 0;
             int numChunkPrime = numChunks;
-            //if (true)
-            //{
-            //    numChunks = 9;
-            //    minChunk = 3;
-            //    numChunkPrime = 3;
-            //}
+            if (true)
+            {
+                numChunks = 9;
+                minChunk = 3;
+                numChunkPrime = 3;
+            }
             int chunkMax = max / numChunks;
 
             var chunkInfos = new ChunkInfo[numChunkPrime * numChunkPrime];
@@ -114,8 +114,8 @@ namespace MountainViewDesktopCore.Elevation
                     var startIndex = reducedPositions.Count;
                     var vertices = md.GetVertices();
                     reducedPositions.AddRange(vertices);
-                    chunkInfo.EdgeIndices.AddRange(GetVertexIndices(vertices, edges, fudge).Select(ei => ei + startIndex));
-                    reducedExternalIndices.AddRange(GetVertexIndices(vertices, exteriors, fudge).Select(exti => exti + startIndex));
+                    chunkInfo.EdgeIndices.AddRange(GetVertexIndices(vertices, edges, fudgeSq).Select(ei => ei + startIndex));
+                    reducedExternalIndices.AddRange(GetVertexIndices(vertices, exteriors, fudgeSq).Select(exti => exti + startIndex));
                     reducedTriangleIndices.AddRange(md.GetIndices().Select(ti => ti + startIndex));
                     vertices = null;
                     edges = null;
@@ -139,7 +139,7 @@ namespace MountainViewDesktopCore.Elevation
             var reducedTriangleIndicesArray = reducedTriangleIndices.ToArray();
             reducedTriangleIndices = null;
 
-            GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudge);
+            GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudgeSq);
 
             Vector3d[] psFinal = reducedPositionsArray;
             int[] tisFinal = reducedTriangleIndicesArray;
@@ -159,13 +159,13 @@ namespace MountainViewDesktopCore.Elevation
             this.TriangleIndices = tisFinal;
         }
 
-        private static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudge)
+        private static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudgeSq)
         {
             foreach (var e in edges)
             {
                 for (int i = 0; i < vertices.Length; i++)
                 {
-                    if (e.DeltaSq(ref vertices[i]) < fudge * fudge)
+                    if (e.DeltaSq(ref vertices[i]) < fudgeSq)
                     {
                         yield return i;
                         break;
@@ -174,9 +174,8 @@ namespace MountainViewDesktopCore.Elevation
             }
         }
 
-        private static void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudge)
+        private static void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudgeSq)
         {
-            double fudgeSq = fudge * fudge;
             Dictionary<int, int> equiv = new Dictionary<int, int>();
             for (int i = 0; i < chunkInfos.Length; i++)
             {
