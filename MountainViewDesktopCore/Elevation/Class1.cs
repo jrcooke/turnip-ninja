@@ -11,17 +11,27 @@ namespace MountainViewDesktopCore.Elevation
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
 
-        public Mesh(float[][] heights, double imageWidth, double imageHeight)
+        public Mesh(Vector3d[][] grid)
         {
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
             var reducedExternalIndices = new List<int>();
 
-            var max = heights.Length;
-            double xSpacing = 10.0 * imageWidth / (max * imageHeight);
-            double ySpacing = 10.0 / max;
+            var max = grid.Length;
 
-            double fudge = Math.Min(xSpacing, ySpacing) / 100.0;
+            // The min distance between vertices is at the corners
+            var cornerDists = new double[]
+            {
+                grid[0][0].DeltaSq(ref grid[0][1]),
+                grid[0][0].DeltaSq(ref grid[1][0]),
+                grid[max-1][0].DeltaSq(ref grid[max-1][1]),
+                grid[max-1][0].DeltaSq(ref grid[max-2][0]),
+                grid[0][max-1].DeltaSq(ref grid[0][max-2]),
+                grid[0][max-1].DeltaSq(ref grid[1][max-1]),
+                grid[max-1][max-1].DeltaSq(ref grid[max-1][max-2]),
+                grid[max-1][max-1].DeltaSq(ref grid[max-2][max-1]),
+            };
+            double fudge = cornerDists.Min()/ 100.0;
 
             int numChunks = 9;
             int minChunk = 0;
@@ -57,13 +67,9 @@ namespace MountainViewDesktopCore.Elevation
                     {
                         for (int j = jMin; j < jMax; j++)
                         {
-                            int iPrime = (max - 1 - i) * heights.Length / max;
-                            int jPrime = (j) * heights[0].Length / max;
-                            double height = 10000 * heights[jPrime][iPrime];
-                            var v = new Vector3d(
-                                (i - max / 2.0) * xSpacing,
-                                (j - max / 2.0) * ySpacing,
-                                10.0 * height / (max * imageHeight));
+                            int iPrime = (max - 1 - i) * grid.Length / max;
+                            int jPrime = (j) * grid[0].Length / max;
+                            var v = grid[jPrime][iPrime];
 
                             if (i == iMin || i == (iMax - 1) || j == jMin || j == (jMax - 1))
                             {
@@ -99,7 +105,7 @@ namespace MountainViewDesktopCore.Elevation
                         }
                     }
 
-                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray());
+                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray(), true);
                     positions = null;
                     triangleIncides = null;
 
@@ -139,7 +145,7 @@ namespace MountainViewDesktopCore.Elevation
             int[] tisFinal = reducedTriangleIndicesArray;
             if (true)
             {
-                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray());
+                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), true);
                 reducedPositionsArray = null;
                 reducedTriangleIndicesArray = null;
 

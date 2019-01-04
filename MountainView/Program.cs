@@ -133,6 +133,7 @@ namespace MountainView
 
             var lat = Angle.FromDecimalDegrees(latD);
             var lon = Angle.FromDecimalDegrees(lonD);
+            Vector3d[][] positions = null;
 
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
@@ -163,6 +164,44 @@ namespace MountainView
                         {
                             getBitmap?.Invoke(Utils.GetBitmap(pixels2, a => Utils.GetColorForHeight(a), OutputType.JPEG));
                             heig = pixels2.Data;
+
+                            int max = heig.Length;
+                            double xSpacing = 10.0 * imageWidth / (max * imageHeight);
+                            double ySpacing = 10.0 / max;
+                            positions = new Vector3d[max][];
+                            for (int i = 0; i < max; i++)
+                            {
+                                positions[i] = new Vector3d[max];
+                                // var latRad = Math.PI / 180 * (/*pixels2.LatLo.DecimalDegree + */i * pixels2.LatDelta.DecimalDegree / max);
+
+                                for (int j = 0; j < max; j++)
+                                {
+                                    // var lonRad = Math.PI / 180 * (/*pixels2.LonLo.DecimalDegree*/ + i * pixels2.LonDelta.DecimalDegree / max);
+
+                                    int iPrime = max - 1 - i;
+                                    int jPrime = j;
+                                    double height = 10000 * heig[jPrime][iPrime];
+
+                                    var v = new Vector3d(
+                                        (i - max / 2.0) * xSpacing,
+                                        (j - max / 2.0) * ySpacing,
+                                        10.0 * height / (max * imageHeight));
+
+                                    //int iPrime = max - 1 - i;
+                                    //int jPrime = j;
+                                    //double height = heig[jPrime][iPrime] + Utils.AlphaMeters;
+
+                                    ////var x = height * Math.Cos(latRad) * Math.Cos(lonRad);
+                                    ////var y = height * Math.Cos(latRad) * Math.Sin(lonRad);
+                                    ////var z = height * Math.Sin(latRad);
+                                    //var x = height * Math.Cos(lonRad);
+                                    //var y = height * Math.Sin(lonRad);
+                                    //var z = height;
+                                    //var v = new Vector3d(x, y, z);
+
+                                    positions[i][j] = v;
+                                }
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -186,7 +225,41 @@ namespace MountainView
                 }
             }
 
-            Mesh m = new Mesh(heig, imageWidth, imageHeight);
+            //var avgV = new Vector3d(
+            //    positions.SelectMany(p => p).Average(p => p.X),
+            //    positions.SelectMany(p => p).Average(p => p.Y),
+            //    positions.SelectMany(p => p).Average(p => p.Z));
+
+            //var deltaV = new Vector3d(
+            //    positions.SelectMany(p => p).Max(p => p.X) - positions.SelectMany(p => p).Min(p => p.X),
+            //    positions.SelectMany(p => p).Max(p => p.Y) - positions.SelectMany(p => p).Min(p => p.Y),
+            //    positions.SelectMany(p => p).Max(p => p.Z) - positions.SelectMany(p => p).Min(p => p.Z));
+
+
+            //for (int i = 0; i < positions.Length; i++)
+            //{
+            //    for (int j = 0; j < positions.Length; j++)
+            //    {
+            //        positions[i][j].X -= avgV.X;
+            //        positions[i][j].Y -= avgV.Y;
+            //        positions[i][j].Z -= avgV.Z;
+            //        positions[i][j].X *= 10.0 / deltaV.X;
+            //        positions[i][j].Y *= 10.0 / deltaV.Y;
+            //        positions[i][j].Z *= 10.0 / deltaV.Z;
+            //    }
+            //}
+
+            //avgV = new Vector3d(
+            //    positions.SelectMany(p => p).Average(p => p.X),
+            //    positions.SelectMany(p => p).Average(p => p.Y),
+            //    positions.SelectMany(p => p).Average(p => p.Z));
+
+            //deltaV = new Vector3d(
+            //    positions.SelectMany(p => p).Max(p => p.X) - positions.SelectMany(p => p).Min(p => p.X),
+            //    positions.SelectMany(p => p).Max(p => p.Y) - positions.SelectMany(p => p).Min(p => p.Y),
+            //    positions.SelectMany(p => p).Max(p => p.Z) - positions.SelectMany(p => p).Min(p => p.Z));
+
+            Mesh m = new Mesh(positions);
             return new Tuple<Bitmap, Vector3d[], int[]>(bm, m.Vertices, m.TriangleIndices);
         }
 

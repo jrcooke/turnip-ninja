@@ -18,7 +18,7 @@ namespace MountainView.Base
 
     public static class Utils
     {
-        private const double AlphaMeters = 6378000.0;
+        public const double AlphaMeters = 6378000.0;
 
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;

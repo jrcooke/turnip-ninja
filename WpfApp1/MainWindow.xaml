@@ -31,7 +31,8 @@
         <StackPanel Grid.Row="1">
             <Button Name="getCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>
             <Button IsEnabled="False" Content="" />
-            <Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />
+            <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />-->
+            <Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.28" />
             <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="10" Value="3.4" />
         </StackPanel>
         <local:UserControl2 x:Name="uc" Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" />
