@@ -31,12 +31,12 @@ namespace WpfApp1
             myGeometryModel = new GeometryModel3D();
             myModel3DGroup.Children.Add(myGeometryModel);
 
-            if (true)
+            if (false)
             {
                 myDirectionalLight = new DirectionalLight()
                 {
                     Color = Colors.White,
-                    Direction = new Vector3D(0, 0, -500),
+                    Direction = new Vector3D(0, 0, 500),
                 };
 
                 myModel3DGroup.Children.Add(myDirectionalLight);

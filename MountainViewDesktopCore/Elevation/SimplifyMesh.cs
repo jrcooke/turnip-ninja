@@ -48,6 +48,8 @@ https://github.com/Whinarn/MeshDecimator
 /////////////////////////////////////////////
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MeshDecimator
 {
@@ -110,17 +112,21 @@ namespace MeshDecimator
         /// <summary>
         /// Initializes the algorithm with the original mesh.
         /// </summary>
-        public SimplifyMesh(Vector3d[] verticesIn, int[] indices, int[] edgeIndices, bool verbose = false)
+        public SimplifyMesh(IEnumerable<Vector3d> verticesIn, IEnumerable<int> indices, IEnumerable<int> edgeIndices, bool verbose = false)
         {
             this.verbose = verbose;
             refs = new ResizableArray<Ref>("refs", 0, verbose);
             deleted0 = new ResizableArray<bool>("deleted0", 50, verbose);
             deleted1 = new ResizableArray<bool>("deleted1", 50, verbose);
-            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Length, verbose);
-            for (int i = 0; i < verticesIn.Length; i++)
+            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Count(), verbose);
+
+            int offset = 0;
+            foreach (var vertexIn in verticesIn)
             {
-                var vertexIn = verticesIn[i];
-                vertices.Data[i] = new Vertex(vertexIn);
+                vertices.Data[offset].p.X = vertexIn.X;
+                vertices.Data[offset].p.Y = vertexIn.Y;
+                vertices.Data[offset].p.Z = vertexIn.Z;
+                offset++;
             }
 
             foreach (var edgeIndex in edgeIndices)
@@ -128,11 +134,22 @@ namespace MeshDecimator
                 vertices.Data[edgeIndex].IsEdge = true;
             }
 
-            triangles = new ResizableArray<Triangle>("triangles", indices.Length / 3, verbose);
-            int offset = 0;
-            for (int i = 0; i < indices.Length / 3; i++)
+            int tCount = indices.Count() / 3;
+            triangles = new ResizableArray<Triangle>("triangles", tCount, verbose);
+            int[] tri = new int[3];
+            int triOffset = 0;
+            offset = 0;
+            foreach (var index in indices)
             {
-                triangles.Data[i] = new Triangle(indices[offset++], indices[offset++], indices[offset++]);
+                tri[triOffset++] = index;
+                if (triOffset == 3)
+                {
+                    triangles.Data[offset].v0 = tri[0];
+                    triangles.Data[offset].v1 = tri[1];
+                    triangles.Data[offset].v2 = tri[2];
+                    offset++;
+                    triOffset = 0;
+                }
             }
         }
 
@@ -949,23 +966,6 @@ namespace MeshDecimator
                 }
             }
 
-            public Triangle(int v0, int v1, int v2)
-            {
-                this.v0 = v0;
-                this.v1 = v1;
-                this.v2 = v2;
-
-                err0 = 0;
-                err1 = 0;
-                err2 = 0;
-                err3 = 0;
-
-                deleted = false;
-                dirty = false;
-
-                n = new Vector3d();
-            }
-
             public void GetErrors(double[] err)
             {
                 err[0] = err0;
@@ -981,15 +981,6 @@ namespace MeshDecimator
             public int tcount;
             public SymmetricMatrix q;
             public bool IsEdge;
-
-            public Vertex(Vector3d p)
-            {
-                this.p = p;
-                tstart = 0;
-                tcount = 0;
-                q = new SymmetricMatrix();
-                IsEdge = false;
-            }
         }
 
         private struct Ref

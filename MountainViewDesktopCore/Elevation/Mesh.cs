@@ -11,7 +11,7 @@ namespace MountainViewDesktopCore.Elevation
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
 
-        public Mesh(Vector3d[][] grid)
+        public Mesh(Vector3d[][] grid, double threshold = 0.001)
         {
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
@@ -31,29 +31,36 @@ namespace MountainViewDesktopCore.Elevation
                 grid[max-1][max-1].DeltaSq(ref grid[max-1][max-2]),
                 grid[max-1][max-1].DeltaSq(ref grid[max-2][max-1]),
             };
-            double fudgeSq = cornerDists.Min()/ 100.0;
+            double fudgeSq = cornerDists.Min() / 100.0;
 
             int numChunks = 9;
-            int minChunk = 0;
-            int numChunkPrime = numChunks;
-            if (true)
-            {
-                numChunks = 9;
-                minChunk = 3;
-                numChunkPrime = 3;
-            }
             int chunkMax = max / numChunks;
 
-            var chunkInfos = new ChunkInfo[numChunkPrime * numChunkPrime];
-            for (int chunkI = minChunk; chunkI < minChunk + numChunkPrime; chunkI++)
+            List<int> chunkIs = new List<int>();
+            List<int> chunkJs = new List<int>();
+            for (int i = 0; i < numChunks; i++)
+            {
+                chunkIs.Add(i);
+                chunkJs.Add(i);
+            }
+
+            if (false)
+            {
+                numChunks = 9;
+                chunkIs = new List<int>() { 0 };
+                chunkJs = new List<int>() { 7 };
+            }
+
+            var chunkInfos = new ChunkInfo[chunkIs.Count * chunkJs.Count];
+            foreach (int chunkI in chunkIs)
             {
                 int iMin = chunkI * chunkMax;
                 int iMax = (chunkI < numChunks - 1 ? chunkMax * (chunkI + 1) + 1 : max);
                 int iCount = iMax - iMin;
-                for (int chunkJ = minChunk; chunkJ < minChunk + numChunkPrime; chunkJ++)
+                foreach (int chunkJ in chunkJs)
                 {
-                    Debug.WriteLine(DateTime.Now + "\tWorking on chunk (" + (chunkI - minChunk) + "," + (chunkJ - minChunk) + ") " +
-                        "(" + (((chunkI - minChunk) * numChunkPrime) + (chunkJ - minChunk)) + "/" + (numChunkPrime * numChunkPrime) + ")");
+                    Debug.WriteLine(DateTime.Now + "\tWorking on chunk (" + (chunkI - chunkIs.Min()) + "," + (chunkJ - chunkJs.Min()) + ") " +
+                        "(" + (((chunkI - chunkIs.Min()) * chunkJs.Count) + (chunkJ - chunkJs.Min())) + "/" + (chunkIs.Count * chunkJs.Count) + ")");
                     int jMin = chunkJ * chunkMax;
                     int jMax = (chunkJ < numChunks - 1 ? chunkMax * (chunkJ + 1) + 1 : max);
                     int jCount = jMax - jMin;
@@ -77,10 +84,10 @@ namespace MountainViewDesktopCore.Elevation
                                 edges.Add(v);
                             }
 
-                            if ((chunkI == minChunk && i == iMin) ||
-                                (chunkI == minChunk + numChunkPrime - 1 && i == iMax - 1) ||
-                                (chunkJ == minChunk && j == jMin) ||
-                                (chunkJ == minChunk + numChunkPrime - 1 && j == jMax - 1))
+                            if ((chunkI == chunkIs.Min() && i == iMin) ||
+                                (chunkI == chunkIs.Max() && i == iMax - 1) ||
+                                (chunkJ == chunkJs.Min() && j == jMin) ||
+                                (chunkJ == chunkJs.Max() && j == jMax - 1))
                             {
                                 exteriors.Add(v);
                             }
@@ -97,11 +104,11 @@ namespace MountainViewDesktopCore.Elevation
                         for (int j = 0; j < jCount - 1; j++)
                         {
                             triangleIncides[tid++] = (i + 0) * jCount + (j + 0);
-                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                             triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                             triangleIncides[tid++] = (i + 1) * jCount + (j + 1);
-                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
                             triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
+                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
                         }
                     }
 
@@ -110,7 +117,7 @@ namespace MountainViewDesktopCore.Elevation
                     triangleIncides = null;
 
                     ChunkInfo chunkInfo = new ChunkInfo();
-                    md.SimplifyMeshByThreshold(1.0E-3);
+                    md.SimplifyMeshByThreshold(threshold);
                     var startIndex = reducedPositions.Count;
                     var vertices = md.GetVertices();
                     reducedPositions.AddRange(vertices);
@@ -123,13 +130,13 @@ namespace MountainViewDesktopCore.Elevation
                     md = null;
 
                     List<int> chunkNeighbors = new List<int>();
-                    if (chunkI > minChunk) chunkNeighbors.Add((chunkI - 1 - minChunk) * numChunkPrime + (chunkJ - minChunk));
-                    if (chunkI < minChunk + numChunkPrime - 1) chunkNeighbors.Add((chunkI + 1 - minChunk) * numChunkPrime + (chunkJ - minChunk));
-                    if (chunkJ > minChunk) chunkNeighbors.Add((chunkI - minChunk) * numChunkPrime + (chunkJ - 1 - minChunk));
-                    if (chunkJ < minChunk + numChunkPrime - 1) chunkNeighbors.Add((chunkI - minChunk) * numChunkPrime + (chunkJ + 1 - minChunk));
+                    if (chunkI > chunkIs.Min()) chunkNeighbors.Add((chunkI - chunkIs.Min() - 1) * chunkJs.Count + (chunkJ - chunkJs.Min() + 0));
+                    if (chunkI < chunkIs.Max()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 1) * chunkJs.Count + (chunkJ - chunkJs.Min() + 0));
+                    if (chunkJ > chunkJs.Min()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 0) * chunkJs.Count + (chunkJ - chunkJs.Min() - 1));
+                    if (chunkJ < chunkJs.Max()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 0) * chunkJs.Count + (chunkJ - chunkJs.Min() + 1));
                     chunkInfo.Neighbors = chunkNeighbors.ToArray();
 
-                    chunkInfos[(chunkI - minChunk) * numChunkPrime + (chunkJ - minChunk)] = chunkInfo;
+                    chunkInfos[(chunkI - chunkIs.Min()) * chunkJs.Count + (chunkJ - chunkJs.Min())] = chunkInfo;
                 }
             }
 
@@ -149,14 +156,62 @@ namespace MountainViewDesktopCore.Elevation
                 reducedPositionsArray = null;
                 reducedTriangleIndicesArray = null;
 
-                mdFinal.SimplifyMeshByThreshold(1.0E-3);
+                mdFinal.SimplifyMeshByThreshold(threshold);
                 psFinal = mdFinal.GetVertices();
                 tisFinal = mdFinal.GetIndices();
                 mdFinal = null;
             }
 
+            if (true)
+            {
+                Center(psFinal);
+            }
+
             this.Vertices = psFinal;
             this.TriangleIndices = tisFinal;
+        }
+
+        public static void CenterAndScale(Vector3d[][] positions)
+        {
+            var avgV = new Vector3d(
+                positions.SelectMany(p => p).Average(p => p.X),
+                positions.SelectMany(p => p).Average(p => p.Y),
+                positions.SelectMany(p => p).Average(p => p.Z));
+
+            // Find the max dist between adjacent corners. This will the the characteristic length.
+            var cornerDistsSq = new double[]
+            {
+                positions[0][0].DeltaSq(ref positions[0][positions.Length-1]),
+                positions[0][0].DeltaSq(ref positions[positions.Length-1][0]),
+                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[0][positions.Length-1]),
+                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
+            };
+            var deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
+
+            for (int i = 0; i < positions.Length; i++)
+            {
+                for (int j = 0; j < positions.Length; j++)
+                {
+                    positions[i][j].X = (positions[i][j].X - avgV.X) * deltaV;
+                    positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
+                    positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
+                }
+            }
+        }
+
+        public static void Center(Vector3d[] positions)
+        {
+            var avgV = new Vector3d(
+                positions.Average(p => p.X),
+                positions.Average(p => p.Y),
+                positions.Average(p => p.Z));
+
+            for (int i = 0; i < positions.Length; i++)
+            {
+                positions[i].X = positions[i].X - avgV.X;
+                positions[i].Y = positions[i].Y - avgV.Y;
+                positions[i].Z = positions[i].Z - avgV.Z;
+            }
         }
 
         private static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudgeSq)

@@ -6,6 +6,7 @@ using MountainView.Imaging;
 using MountainViewCore.Base;
 using MountainViewDesktopCore.Elevation;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -137,7 +138,6 @@ namespace MountainView
 
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
-            //for(
             int zoomLevel = 5; // 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
             {
                 var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
@@ -166,40 +166,31 @@ namespace MountainView
                             heig = pixels2.Data;
 
                             int max = heig.Length;
+
+                            Dictionary<int, Tuple<double, double>> latSinCoses = new Dictionary<int, Tuple<double, double>>();
+                            Dictionary<int, Tuple<double, double>> lonSinCoses = new Dictionary<int, Tuple<double, double>>();
+                            for (int i = 0; i < max; i++)
+                            {
+                                var latRad = Math.PI / 180 * (pixels2.LatLo.DecimalDegree + i * pixels2.LatDelta.DecimalDegree / max);
+                                latSinCoses.Add(i, new Tuple<double, double>(Math.Sin(latRad), Math.Cos(latRad)));
+
+                                var lonRad = Math.PI / 180 * (pixels2.LonLo.DecimalDegree + i * pixels2.LonDelta.DecimalDegree / max);
+                                lonSinCoses.Add(i, new Tuple<double, double>(Math.Sin(lonRad), Math.Cos(lonRad)));
+                            }
+
                             positions = new Vector3d[max][];
                             for (int i = 0; i < max; i++)
                             {
                                 positions[i] = new Vector3d[max];
-                                var latRad = Math.PI / 180 * (pixels2.LatLo.DecimalDegree + i * pixels2.LatDelta.DecimalDegree / max);
+                                var latSinCos = latSinCoses[i];
 
                                 for (int j = 0; j < max; j++)
                                 {
-                                    var lonRad = Math.PI / 180 * (pixels2.LonLo.DecimalDegree + i * pixels2.LonDelta.DecimalDegree / max);
-
-                                    int iPrime = max - 1 - i;
-                                    int jPrime = j;
-                                    //double height = heig[jPrime][iPrime];
-                                    //                                    double height = heig[jPrime][iPrime] + Utils.AlphaMeters;
-                                    double height = 3 * heig[jPrime][iPrime] + Utils.AlphaMeters;
-
-                                    //var v = new Vector3d(
-                                    //    10.0 * (i - max / 2.0) * xSpacing / imageHeight,
-                                    //    10.0 * (j - max / 2.0) * ySpacing / imageHeight,
-                                    //    10.0 * height / imageHeight);
-                                    var v = new Vector3d(
-                                        i * imageWidth / max,
-                                        j * imageHeight / max,
-                                        height);
-
-                                    ////var x = height * Math.Cos(latRad) * Math.Cos(lonRad);
-                                    ////var y = height * Math.Cos(latRad) * Math.Sin(lonRad);
-                                    ////var z = height * Math.Sin(latRad);
-                                    //var x = height * Math.Cos(lonRad);
-                                    //var y = height * Math.Sin(lonRad);
-                                    //var z = height;
-                                    //var v = new Vector3d(x, y, z);
-
-                                    positions[i][j] = v;
+                                    var lonSinCos = lonSinCoses[j];
+                                    double height = heig[j][max - 1 - i] + Utils.AlphaMeters;
+                                    positions[i][j].X = height * latSinCos.Item2 * lonSinCos.Item2;
+                                    positions[i][j].Y = height * latSinCos.Item2 * lonSinCos.Item1;
+                                    positions[i][j].Z = height * latSinCos.Item1;
                                 }
                             }
                         }
@@ -225,41 +216,7 @@ namespace MountainView
                 }
             }
 
-            var avgV = new Vector3d(
-                positions.SelectMany(p => p).Average(p => p.X),
-                positions.SelectMany(p => p).Average(p => p.Y),
-                positions.SelectMany(p => p).Average(p => p.Z));
-
-            // Find the max dist between adjacent corners. This will the the characteristic length.
-            var cornerDistsSq = new double[]
-            {
-                positions[0][0].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[0][0].DeltaSq(ref positions[positions.Length-1][0]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
-            };
-            var deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                for (int j = 0; j < positions.Length; j++)
-                {
-                    positions[i][j].X = (positions[i][j].X - avgV.X) * deltaV;
-                    positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
-                    positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
-                }
-            }
-
-            //avgV = new Vector3d(
-            //    positions.SelectMany(p => p).Average(p => p.X),
-            //    positions.SelectMany(p => p).Average(p => p.Y),
-            //    positions.SelectMany(p => p).Average(p => p.Z));
-
-            //deltaV = new Vector3d(
-            //    positions.SelectMany(p => p).Max(p => p.X) - positions.SelectMany(p => p).Min(p => p.X),
-            //    positions.SelectMany(p => p).Max(p => p.Y) - positions.SelectMany(p => p).Min(p => p.Y),
-            //    positions.SelectMany(p => p).Max(p => p.Z) - positions.SelectMany(p => p).Min(p => p.Z));
-
+            Mesh.CenterAndScale(positions);
             Mesh m = new Mesh(positions);
             return new Tuple<Bitmap, Vector3d[], int[]>(bm, m.Vertices, m.TriangleIndices);
         }
