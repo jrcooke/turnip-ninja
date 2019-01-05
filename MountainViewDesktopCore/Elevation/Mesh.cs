@@ -1,4 +1,5 @@
 ﻿using MeshDecimator;
+using MountainView.Base;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -10,7 +11,6 @@ namespace MountainViewDesktopCore.Elevation
     {
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
-        public int[] CornerIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
 
         public Mesh(Vector3d[][] grid, double threshold = 0.001)
@@ -51,14 +51,16 @@ namespace MountainViewDesktopCore.Elevation
             if (false)
             {
                 numChunks = 9;
-                chunkIs = new List<int>() { 0 };
-                chunkJs = new List<int>() { 7 };
+                chunkIs = new List<int>() { 0, 1, 2, 3, 4 };
+                chunkJs = new List<int>() { 0, 1, 2, 3, 4 };
                 verbose = true;
             }
 
-            var chunkInfos = new ChunkInfo[chunkIs.Count * chunkJs.Count];
+            var chunkInfos = new ChunkInfo[chunkIs.Count][];
             foreach (int chunkI in chunkIs)
             {
+                chunkInfos[chunkI - chunkIs.Min()] = new ChunkInfo[chunkJs.Count];
+
                 int iMin = chunkI * chunkMax;
                 int iMax = (chunkI < numChunks - 1 ? chunkMax * (chunkI + 1) + 1 : max);
                 int iCount = iMax - iMin;
@@ -145,14 +147,7 @@ namespace MountainViewDesktopCore.Elevation
                     corners = null;
                     md = null;
 
-                    List<int> chunkNeighbors = new List<int>();
-                    if (chunkI > chunkIs.Min()) chunkNeighbors.Add((chunkI - chunkIs.Min() - 1) * chunkJs.Count + (chunkJ - chunkJs.Min() + 0));
-                    if (chunkI < chunkIs.Max()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 1) * chunkJs.Count + (chunkJ - chunkJs.Min() + 0));
-                    if (chunkJ > chunkJs.Min()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 0) * chunkJs.Count + (chunkJ - chunkJs.Min() - 1));
-                    if (chunkJ < chunkJs.Max()) chunkNeighbors.Add((chunkI - chunkIs.Min() + 0) * chunkJs.Count + (chunkJ - chunkJs.Min() + 1));
-                    chunkInfo.Neighbors = chunkNeighbors.ToArray();
-
-                    chunkInfos[(chunkI - chunkIs.Min()) * chunkJs.Count + (chunkJ - chunkJs.Min())] = chunkInfo;
+                    chunkInfos[chunkI - chunkIs.Min()][chunkJ - chunkJs.Min()] = chunkInfo;
                 }
             }
 
@@ -185,61 +180,12 @@ namespace MountainViewDesktopCore.Elevation
 
             var cornersFinal = GetVertexIndices(psFinal, cornerArray, fudgeSq).ToArray();
 
-            if (true)
+            Vertices = psFinal;
+            TriangleIndices = tisFinal;
+            VertexNormals = vertexNormals;
+            if (VertexNormals == null)
             {
-                Center(psFinal);
-            }
-
-            this.Vertices = psFinal;
-            this.TriangleIndices = tisFinal;
-            this.CornerIndices = cornersFinal;
-            this.VertexNormals = vertexNormals;
-            if (this.VertexNormals == null)
-            {
-                this.VertexNormals = psFinal.Select(p => new Vector3d(0, 0, 1)).ToArray();
-            }
-        }
-
-        public static void CenterAndScale(Vector3d[][] positions)
-        {
-            var avgV = new Vector3d(
-                positions.SelectMany(p => p).Average(p => p.X),
-                positions.SelectMany(p => p).Average(p => p.Y),
-                positions.SelectMany(p => p).Average(p => p.Z));
-
-            // Find the max dist between adjacent corners. This will the the characteristic length.
-            var cornerDistsSq = new double[]
-            {
-                positions[0][0].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[0][0].DeltaSq(ref positions[positions.Length-1][0]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
-            };
-            var deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                for (int j = 0; j < positions.Length; j++)
-                {
-                    positions[i][j].X = (positions[i][j].X - avgV.X) * deltaV;
-                    positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
-                    positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
-                }
-            }
-        }
-
-        public static void Center(Vector3d[] positions)
-        {
-            var avgV = new Vector3d(
-                positions.Average(p => p.X),
-                positions.Average(p => p.Y),
-                positions.Average(p => p.Z));
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                positions[i].X = positions[i].X - avgV.X;
-                positions[i].Y = positions[i].Y - avgV.Y;
-                positions[i].Z = positions[i].Z - avgV.Z;
+                VertexNormals = psFinal.Select(p => new Vector3d(0, 0, 1)).ToArray();
             }
         }
 
@@ -258,43 +204,70 @@ namespace MountainViewDesktopCore.Elevation
             }
         }
 
-        private static void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[] chunkInfos, double fudgeSq)
+        private static void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[][] chunkInfos, double fudgeSq)
         {
             Dictionary<int, int> equiv = new Dictionary<int, int>();
-            for (int i = 0; i < chunkInfos.Length; i++)
+            for (int i1 = 0; i1 < chunkInfos.Length; i1++)
             {
-                ChunkInfo chunkInfoI = chunkInfos[i];
-                for (int j = i + 1; j < chunkInfos.Length; j++)
+                for (int j1 = 0; j1 < chunkInfos[i1].Length; j1++)
                 {
-                    ChunkInfo chunkInfoJ = chunkInfos[j];
-                    if (chunkInfoI.Neighbors.Contains(j))
-                    {
-                        Debug.WriteLine("Gluing chunks " + i + " and " + j);
-                        foreach (int i2 in chunkInfoI.EdgeIndices)
-                        {
-                            foreach (int j2 in chunkInfoJ.EdgeIndices)
-                            {
-                                if (reducedPositions[i2].DeltaSq(ref reducedPositions[j2]) < fudgeSq)
-                                {
-                                    if (!equiv.ContainsKey(j2))
-                                    {
-                                        equiv.Add(j2, i2);
-                                    }
+                    ChunkInfo chunkInfoI = chunkInfos[i1][j1];
 
-                                    break;
-                                }
-                            }
-                        }
+                    if (j1 < chunkInfos[i1].Length - 1)
+                    {
+                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + i1 + "," + (j1 + 1) + ")");
+                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1][j1 + 1], fudgeSq, equiv);
+                    }
+
+                    if (i1 < chunkInfos.Length - 1)
+                    {
+                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + (i1 + 1) + "," + j1 + ")");
+                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1], fudgeSq, equiv);
+                    }
+
+                    if (j1 < chunkInfos[i1].Length - 1 && i1 < chunkInfos.Length - 1)
+                    {
+                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + (i1 + 1) + "," + (j1 + 1) + ")");
+                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1 + 1], fudgeSq, equiv, true);
                     }
                 }
             }
-
             // Glue seams. Don't worry about leftover indices
             for (int i = 0; i < reducedTriangleIndices.Length; i++)
             {
                 if (equiv.TryGetValue(reducedTriangleIndices[i], out int newVertex))
                 {
                     reducedTriangleIndices[i] = newVertex;
+                }
+            }
+        }
+
+        private static void AlignEdges(
+            Vector3d[] reducedPositions,
+            ChunkInfo chunkInfoI,
+            ChunkInfo chunkInfoJ,
+            double fudgeSq,
+            Dictionary<int, int> equiv,
+            bool singleMatch = false)
+        {
+            foreach (int i2 in chunkInfoI.EdgeIndices)
+            {
+                foreach (int j2 in chunkInfoJ.EdgeIndices)
+                {
+                    if (reducedPositions[i2].DeltaSq(ref reducedPositions[j2]) < fudgeSq)
+                    {
+                        if (!equiv.ContainsKey(j2))
+                        {
+                            equiv.Add(j2, i2);
+                        }
+
+                        if (singleMatch)
+                        {
+                            return;
+                        }
+
+                        break;
+                    }
                 }
             }
         }

@@ -1,9 +1,4 @@
-﻿using MeshDecimator;
-using MountainViewDesktopCore.Elevation;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -66,18 +61,18 @@ namespace WpfApp1
             this.Content = myViewport3D;
         }
 
-        public void Blarg(BitmapImage bi, Mesh m)
+        public void Blarg(BitmapImage bi, MountainView.Program.MOO m)
         {
             ImageBrush ib = new ImageBrush() { ImageSource = bi };
+            ib.ViewportUnits = BrushMappingMode.Absolute;
             Material myMaterial = new DiffuseMaterial(ib);
             myGeometryModel.Material = myMaterial;
 
             MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
             myMeshGeometry3D.Positions = new Point3DCollection(m.Vertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
-            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.Vertices.Select(p => new Point(p.X, -p.Y)));
+            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.VertexRelatives.Select(p => new Point(p.X, p.Y)));
             myMeshGeometry3D.Normals = new Vector3DCollection(m.VertexNormals.Select(p => new Vector3D(p.X, p.Y, p.Z)));
             myMeshGeometry3D.TriangleIndices = new Int32Collection(m.TriangleIndices);
-
             myGeometryModel.Geometry = myMeshGeometry3D;
         }
     }

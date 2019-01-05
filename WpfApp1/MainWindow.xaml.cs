@@ -26,6 +26,8 @@ namespace WpfApp1
             Watcher = new GeoCoordinateWatcher();
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
+
+            NewMethod(47.683923371494558, -122.29201376263447);
         }
 
 
@@ -35,7 +37,7 @@ namespace WpfApp1
             {
                 var theta = s1.Value * 2.0 * Math.PI;
                 var x = (s3.Value) * Math.Sin(theta);
-                var y =   (s3.Value) * Math.Cos(theta);
+                var y = (s3.Value) * Math.Cos(theta);
                 uc.myCamera.Position = new Point3D(0, -2 * x, -2 * y);
                 uc.myCamera.LookDirection = new Vector3D(0, x, y);
                 //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
@@ -49,44 +51,44 @@ namespace WpfApp1
                 double lat = Watcher.Position.Location.Latitude;
                 double lon = Watcher.Position.Location.Longitude;
                 //  th.ButtClick(traceListener =>
-                Task.Run(async () =>
-                {
-                    BitmapImage bi = null;
-                    BitmapImage bi2 = null;
-                    var mesh = await MountainView.Program.Foo2(null, lat, lon,
-                        ms => this.Dispatcher.Invoke(() =>
-                        {
-                            // Tell the WPF image to use this stream.
-                            bi = new BitmapImage();
-                            bi.BeginInit();
-                            bi.StreamSource = ms;
-                            bi.EndInit();
-//                            this.mainImage.Source = bi;
-                        }),
-                        ms => this.Dispatcher.Invoke(() =>
-                        {
-                            // Tell the WPF image to use this stream.
-                            bi2 = new BitmapImage();
-                            bi2.BeginInit();
-                            bi2.StreamSource = ms;
-                            bi2.EndInit();
-  //                          this.mainImage2.Source = bi2;
-                        }));
-
-//                    Debug.WriteLine(data.Item2.Length);
-
-                    this.Dispatcher.Invoke(() =>
-                    {
-                        uc.Blarg(bi2, mesh);
-                    });
-
-                });
+                NewMethod(lat, lon);
             }
+        }
+
+        private void NewMethod(double lat, double lon)
+        {
+            Task.Run(async () =>
+            {
+                BitmapImage heightImage = null;
+                BitmapImage satImage = null;
+                var mesh = await MountainView.Program.Foo2(null, lat, lon,
+                    ms => Dispatcher.Invoke(() =>
+                    {
+                        heightImage = new BitmapImage();
+                        heightImage.BeginInit();
+                        heightImage.StreamSource = ms;
+                        heightImage.EndInit();
+                    }),
+                    ms => Dispatcher.Invoke(() =>
+                    {
+                        satImage = new BitmapImage();
+                        satImage.BeginInit();
+                        satImage.StreamSource = ms;
+                        satImage.EndInit();
+                    }));
+
+                Dispatcher.Invoke(() =>
+                {
+                    mainImage.Source = heightImage;
+                    mainImage2.Source = satImage;
+                    uc.Blarg(heightImage, mesh);
+                });
+            });
         }
 
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
-            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
+       //     getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
         }
     }
 
