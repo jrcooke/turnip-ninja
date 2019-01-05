@@ -81,7 +81,7 @@ namespace WpfApp1
                 {
                     mainImage.Source = heightImage;
                     mainImage2.Source = satImage;
-                    uc.Blarg(heightImage, mesh);
+                    uc.Blarg(satImage, mesh);
                 });
             });
         }

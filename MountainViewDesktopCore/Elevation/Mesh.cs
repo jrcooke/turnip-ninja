@@ -1,5 +1,4 @@
 ﻿using MeshDecimator;
-using MountainView.Base;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -132,7 +131,7 @@ namespace MountainViewDesktopCore.Elevation
                     positions = null;
                     triangleIncides = null;
 
-                    ChunkInfo chunkInfo = new ChunkInfo();
+                    ChunkInfo chunkInfo = new ChunkInfo() { I = chunkI - chunkIs.Min(), J = chunkJ - chunkJs.Min() };
                     md.SimplifyMeshByThreshold(threshold);
                     var startIndex = reducedPositions.Count;
                     var vertices = md.GetVertices();
@@ -212,24 +211,9 @@ namespace MountainViewDesktopCore.Elevation
                 for (int j1 = 0; j1 < chunkInfos[i1].Length; j1++)
                 {
                     ChunkInfo chunkInfoI = chunkInfos[i1][j1];
-
-                    if (j1 < chunkInfos[i1].Length - 1)
-                    {
-                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + i1 + "," + (j1 + 1) + ")");
-                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1][j1 + 1], fudgeSq, equiv);
-                    }
-
-                    if (i1 < chunkInfos.Length - 1)
-                    {
-                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + (i1 + 1) + "," + j1 + ")");
-                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1], fudgeSq, equiv);
-                    }
-
-                    if (j1 < chunkInfos[i1].Length - 1 && i1 < chunkInfos.Length - 1)
-                    {
-                        Debug.WriteLine("Gluing chunks (" + i1 + "," + j1 + ") and (" + (i1 + 1) + "," + (j1 + 1) + ")");
-                        AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1 + 1], fudgeSq, equiv, true);
-                    }
+                    if (j1 < chunkInfos[i1].Length - 1) AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1][j1 + 1], fudgeSq, equiv);
+                    if (i1 < chunkInfos.Length - 1) AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1], fudgeSq, equiv);
+                    if (j1 < chunkInfos[i1].Length - 1 && i1 < chunkInfos.Length - 1) AlignEdges(reducedPositions, chunkInfoI, chunkInfos[i1 + 1][j1 + 1], fudgeSq, equiv, true);
                 }
             }
             // Glue seams. Don't worry about leftover indices
@@ -250,22 +234,15 @@ namespace MountainViewDesktopCore.Elevation
             Dictionary<int, int> equiv,
             bool singleMatch = false)
         {
+            Debug.WriteLine("Gluing chunks (" + chunkInfoI.I + "," + chunkInfoI.J + ") and (" + chunkInfoJ.I + "," + chunkInfoJ.J + ")");
             foreach (int i2 in chunkInfoI.EdgeIndices)
             {
                 foreach (int j2 in chunkInfoJ.EdgeIndices)
                 {
                     if (reducedPositions[i2].DeltaSq(ref reducedPositions[j2]) < fudgeSq)
                     {
-                        if (!equiv.ContainsKey(j2))
-                        {
-                            equiv.Add(j2, i2);
-                        }
-
-                        if (singleMatch)
-                        {
-                            return;
-                        }
-
+                        if (!equiv.ContainsKey(j2)) equiv.Add(j2, i2);
+                        if (singleMatch) return;
                         break;
                     }
                 }
@@ -274,8 +251,9 @@ namespace MountainViewDesktopCore.Elevation
 
         private class ChunkInfo
         {
+            public int I { get; set; }
+            public int J { get; set; }
             public List<int> EdgeIndices { get; set; } = new List<int>();
-            public int[] Neighbors { get; set; }
         }
     }
 }

@@ -8,7 +8,6 @@ using MountainViewDesktopCore.Elevation;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -180,8 +179,7 @@ namespace MountainView
                                 for (int j = 0; j < max; j++)
                                 {
                                     var lonSinCos = lonSinCoses[j];
-                                    //double height = heig[j][max - 1 - i] + Utils.AlphaMeters;
-                                    double height = 5 * heig[i][max - 1 - j] + Utils.AlphaMeters;
+                                    double height = heig[j][max - 1 - i] + Utils.AlphaMeters;
                                     positions[i][j].X = height * latSinCos.Item2 * lonSinCos.Item2;
                                     positions[i][j].Y = height * latSinCos.Item2 * lonSinCos.Item1;
                                     positions[i][j].Z = height * latSinCos.Item1;
