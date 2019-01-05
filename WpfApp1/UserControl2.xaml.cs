@@ -31,12 +31,20 @@ namespace WpfApp1
             myGeometryModel = new GeometryModel3D();
             myModel3DGroup.Children.Add(myGeometryModel);
 
-            if (false)
+            if (true)
             {
                 myDirectionalLight = new DirectionalLight()
                 {
                     Color = Colors.White,
                     Direction = new Vector3D(0, 0, 500),
+                };
+
+                myModel3DGroup.Children.Add(myDirectionalLight);
+
+                myDirectionalLight = new DirectionalLight()
+                {
+                    Color = Colors.White,
+                    Direction = new Vector3D(0, 0, -500),
                 };
 
                 myModel3DGroup.Children.Add(myDirectionalLight);
@@ -58,16 +66,17 @@ namespace WpfApp1
             this.Content = myViewport3D;
         }
 
-        public void Blarg(BitmapImage bi, Vector3d[] vertices, int[] triangleIndices)
+        public void Blarg(BitmapImage bi, Mesh m)
         {
             ImageBrush ib = new ImageBrush() { ImageSource = bi };
             Material myMaterial = new DiffuseMaterial(ib);
             myGeometryModel.Material = myMaterial;
 
             MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
-            myMeshGeometry3D.Positions = new Point3DCollection(vertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
-            myMeshGeometry3D.TextureCoordinates = new PointCollection(vertices.Select(p => new Point(p.X, -p.Y)));
-            myMeshGeometry3D.TriangleIndices = new Int32Collection(triangleIndices);
+            myMeshGeometry3D.Positions = new Point3DCollection(m.Vertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
+            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.Vertices.Select(p => new Point(p.X, -p.Y)));
+            myMeshGeometry3D.Normals = new Vector3DCollection(m.VertexNormals.Select(p => new Vector3D(p.X, p.Y, p.Z)));
+            myMeshGeometry3D.TriangleIndices = new Int32Collection(m.TriangleIndices);
 
             myGeometryModel.Geometry = myMeshGeometry3D;
         }

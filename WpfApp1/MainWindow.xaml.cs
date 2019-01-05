@@ -53,7 +53,7 @@ namespace WpfApp1
                 {
                     BitmapImage bi = null;
                     BitmapImage bi2 = null;
-                    var data = await MountainView.Program.Foo2(null, lat, lon,
+                    var mesh = await MountainView.Program.Foo2(null, lat, lon,
                         ms => this.Dispatcher.Invoke(() =>
                         {
                             // Tell the WPF image to use this stream.
@@ -77,7 +77,7 @@ namespace WpfApp1
 
                     this.Dispatcher.Invoke(() =>
                     {
-                        uc.Blarg(bi2, data.Item2, data.Item3);
+                        uc.Blarg(bi2, mesh);
                     });
 
                 });

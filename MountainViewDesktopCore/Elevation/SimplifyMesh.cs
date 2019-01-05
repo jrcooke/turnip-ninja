@@ -105,6 +105,7 @@ namespace MeshDecimator
         private ResizableArray<Ref> refs;
         private ResizableArray<bool> deleted0;
         private ResizableArray<bool> deleted1;
+        private Vector3d[] vertexNormals; // Only available at the end
 
         // Pre-allocated buffers
         private readonly double[] errArr = new double[3];
@@ -177,6 +178,11 @@ namespace MeshDecimator
             }
 
             return verticesOut;
+        }
+
+        public Vector3d[] GetVertexNormals()
+        {
+            return vertexNormals;
         }
 
         /// <summary>
@@ -599,6 +605,16 @@ namespace MeshDecimator
             }
 
             vertices.Resize(dst);
+
+            vertexNormals = new Vector3d[vertices.Length];
+            int[] numTrisPerVertex = new int[vertices.Length];
+            for (int i = 0; i < triangles.Length; i++)
+            {
+                var t = triangles.Data[i];
+                Vector3dExt.WeightedAverage(ref vertexNormals[t.v0], ref t.n, numTrisPerVertex[t.v0]++, 1);
+                Vector3dExt.WeightedAverage(ref vertexNormals[t.v1], ref t.n, numTrisPerVertex[t.v1]++, 1);
+                Vector3dExt.WeightedAverage(ref vertexNormals[t.v2], ref t.n, numTrisPerVertex[t.v2]++, 1);
+            }
         }
 
         // Error between vertex and Quadric
@@ -632,7 +648,7 @@ namespace MeshDecimator
             SymmetricMatrix.Add(ref vertices.Data[id_v1].q, ref vertices.Data[id_v2].q, ref smbuff);
             double error = 0;
             double det = smbuff.Determinant1();
-            if (det != 0)
+            if (Math.Abs(det) > 1.0e-10)
             {
                 // q_delta is invertible
                 result.X = -1.0 / det * smbuff.Determinant2(); // vx = A41/det(q_delta)
@@ -725,6 +741,13 @@ namespace MeshDecimator
                 dot1 = (d1X * d2X + d1Y * d2Y + d1Z * d2Z) / (norm1 * norm2);
                 dot2 = (nX * tirNorm.X + nY * tirNorm.Y + nZ * tirNorm.Z) / (normN);
             }
+
+            internal static void WeightedAverage(ref Vector3d a, ref Vector3d b, int aWeight, int bWeight)
+            {
+                a.X = (a.X * aWeight + b.X * bWeight) / (aWeight + bWeight);
+                a.Y = (a.Y * aWeight + b.Y * bWeight) / (aWeight + bWeight);
+                a.Z = (a.Z * aWeight + b.Z * bWeight) / (aWeight + bWeight);
+            }
         }
 
         /// <summary>
@@ -746,7 +769,7 @@ namespace MeshDecimator
             /// Creates a new resizable array.
             /// </summary>
             /// <param name="length">The initial array length.</param>
-            public ResizableArray(string name, int length, bool verbose)
+            public ResizableArray(string name, int length, bool verbose = false)
             {
                 this.name = name;
                 Data = new T[length];

@@ -10,12 +10,15 @@ namespace MountainViewDesktopCore.Elevation
     {
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
+        public int[] CornerIndices { get; private set; }
+        public Vector3d[] VertexNormals { get; private set; }
 
         public Mesh(Vector3d[][] grid, double threshold = 0.001)
         {
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
             var reducedExternalIndices = new List<int>();
+            var reducedCornerIndices = new List<int>();
 
             var max = grid.Length;
 
@@ -35,6 +38,7 @@ namespace MountainViewDesktopCore.Elevation
 
             int numChunks = 9;
             int chunkMax = max / numChunks;
+            bool verbose = false;
 
             List<int> chunkIs = new List<int>();
             List<int> chunkJs = new List<int>();
@@ -49,6 +53,7 @@ namespace MountainViewDesktopCore.Elevation
                 numChunks = 9;
                 chunkIs = new List<int>() { 0 };
                 chunkJs = new List<int>() { 7 };
+                verbose = true;
             }
 
             var chunkInfos = new ChunkInfo[chunkIs.Count * chunkJs.Count];
@@ -70,6 +75,7 @@ namespace MountainViewDesktopCore.Elevation
                     List<int> edgeIndices = new List<int>();
                     List<Vector3d> edges = new List<Vector3d>();
                     List<Vector3d> exteriors = new List<Vector3d>();
+                    List<Vector3d> corners = new List<Vector3d>();
                     for (int i = iMin; i < iMax; i++)
                     {
                         for (int j = jMin; j < jMax; j++)
@@ -92,6 +98,14 @@ namespace MountainViewDesktopCore.Elevation
                                 exteriors.Add(v);
                             }
 
+                            if ((chunkI == chunkIs.Min() && i == iMin + 0 && chunkJ == chunkJs.Min() && j == jMin + 0) ||
+                                (chunkI == chunkIs.Max() && i == iMax - 1 && chunkJ == chunkJs.Max() && j == jMax - 1) ||
+                                (chunkI == chunkIs.Min() && i == iMin + 0 && chunkJ == chunkJs.Max() && j == jMax - 1) ||
+                                (chunkI == chunkIs.Max() && i == iMax - 1 && chunkJ == chunkJs.Min() && j == jMin + 0))
+                            {
+                                corners.Add(v);
+                            }
+
                             positions[vid++] = v;
                         }
                     }
@@ -112,7 +126,7 @@ namespace MountainViewDesktopCore.Elevation
                         }
                     }
 
-                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray(), true);
+                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray(), verbose);
                     positions = null;
                     triangleIncides = null;
 
@@ -123,10 +137,12 @@ namespace MountainViewDesktopCore.Elevation
                     reducedPositions.AddRange(vertices);
                     chunkInfo.EdgeIndices.AddRange(GetVertexIndices(vertices, edges, fudgeSq).Select(ei => ei + startIndex));
                     reducedExternalIndices.AddRange(GetVertexIndices(vertices, exteriors, fudgeSq).Select(exti => exti + startIndex));
+                    reducedCornerIndices.AddRange(GetVertexIndices(vertices, corners, fudgeSq).Select(exti => exti + startIndex));
                     reducedTriangleIndices.AddRange(md.GetIndices().Select(ti => ti + startIndex));
                     vertices = null;
                     edges = null;
                     exteriors = null;
+                    corners = null;
                     md = null;
 
                     List<int> chunkNeighbors = new List<int>();
@@ -146,21 +162,28 @@ namespace MountainViewDesktopCore.Elevation
             var reducedTriangleIndicesArray = reducedTriangleIndices.ToArray();
             reducedTriangleIndices = null;
 
+            Vector3d[] cornerArray = reducedCornerIndices.Select(p => reducedPositionsArray[p]).ToArray();
+            reducedCornerIndices = null;
+
             GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudgeSq);
 
             Vector3d[] psFinal = reducedPositionsArray;
             int[] tisFinal = reducedTriangleIndicesArray;
+            Vector3d[] vertexNormals = null;
             if (true)
             {
-                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), true);
+                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
                 reducedPositionsArray = null;
                 reducedTriangleIndicesArray = null;
 
                 mdFinal.SimplifyMeshByThreshold(threshold);
                 psFinal = mdFinal.GetVertices();
                 tisFinal = mdFinal.GetIndices();
+                vertexNormals = mdFinal.GetVertexNormals();
                 mdFinal = null;
             }
+
+            var cornersFinal = GetVertexIndices(psFinal, cornerArray, fudgeSq).ToArray();
 
             if (true)
             {
@@ -169,6 +192,12 @@ namespace MountainViewDesktopCore.Elevation
 
             this.Vertices = psFinal;
             this.TriangleIndices = tisFinal;
+            this.CornerIndices = cornersFinal;
+            this.VertexNormals = vertexNormals;
+            if (this.VertexNormals == null)
+            {
+                this.VertexNormals = psFinal.Select(p => new Vector3d(0, 0, 1)).ToArray();
+            }
         }
 
         public static void CenterAndScale(Vector3d[][] positions)
@@ -238,10 +267,9 @@ namespace MountainViewDesktopCore.Elevation
                 for (int j = i + 1; j < chunkInfos.Length; j++)
                 {
                     ChunkInfo chunkInfoJ = chunkInfos[j];
-                    Debug.WriteLine(i + "\t" + j);
-
                     if (chunkInfoI.Neighbors.Contains(j))
                     {
+                        Debug.WriteLine("Gluing chunks " + i + " and " + j);
                         foreach (int i2 in chunkInfoI.EdgeIndices)
                         {
                             foreach (int j2 in chunkInfoJ.EdgeIndices)

@@ -121,7 +121,7 @@ namespace MountainView
         }
 
 
-        public static async Task<Tuple<Bitmap, Vector3d[], int[]>> Foo2(TraceListener log, double latD, double lonD,
+        public static async Task<Mesh> Foo2(TraceListener log, double latD, double lonD,
             Action<MemoryStream> getBitmap = null,
             Action<MemoryStream> getBitmap2 = null)
         {
@@ -218,7 +218,7 @@ namespace MountainView
 
             Mesh.CenterAndScale(positions);
             Mesh m = new Mesh(positions);
-            return new Tuple<Bitmap, Vector3d[], int[]>(bm, m.Vertices, m.TriangleIndices);
+            return m;
         }
 
         public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)
