@@ -2,18 +2,12 @@
 
 namespace MountainViewDesktopCore.Mesh
 {
-    /// <summary>
-    /// A double precision 3D vector.
-    /// </summary>
     public struct Vector3d
     {
         public double X;
         public double Y;
         public double Z;
 
-        /// <summary>
-        /// Creates a new vector.
-        /// </summary>
         public Vector3d(double x, double y, double z)
         {
             X = x;
@@ -21,9 +15,6 @@ namespace MountainViewDesktopCore.Mesh
             Z = z;
         }
 
-        /// <summary>
-        /// Gets a normalized vector from this vector.
-        /// </summary>
         public void Normalize()
         {
             double norm = Math.Sqrt(X * X + Y * Y + Z * Z);
