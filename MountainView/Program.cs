@@ -1,12 +1,10 @@
-﻿using MeshDecimator;
-using MountainView.Base;
+﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
 using MountainViewCore.Base;
-using MountainViewDesktopCore.Elevation;
+using MountainViewDesktopCore.Mesh;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;

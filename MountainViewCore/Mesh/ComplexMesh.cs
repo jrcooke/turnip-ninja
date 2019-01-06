@@ -1,10 +1,9 @@
-﻿using MeshDecimator;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace MountainViewDesktopCore.Elevation
+namespace MountainViewDesktopCore.Mesh
 {
     internal class ComplexMesh
     {

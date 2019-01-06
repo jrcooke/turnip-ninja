@@ -174,8 +174,17 @@
     <Compile Include="..\MountainViewCore\Mesh\FriendlyMesh.cs">
       <Link>Mesh\FriendlyMesh.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Mesh\Meshes.cs">
+      <Link>Mesh\Meshes.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Mesh\SimplifyMesh.cs">
       <Link>Mesh\SimplifyMesh.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Mesh\Vector2d.cs">
+      <Link>Mesh\Vector2d.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Mesh\Vector3d.cs">
+      <Link>Mesh\Vector3d.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

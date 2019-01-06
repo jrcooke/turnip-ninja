@@ -1,18 +1,12 @@
-﻿using MeshDecimator;
-using MountainView.Base;
+﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MountainViewDesktopCore.Elevation
-{
-    public struct Vector2d
-    {
-        public double X;
-        public double Y;
-    }
+namespace MountainViewDesktopCore.Mesh
 
+{
     public class FriendlyMesh
     {
         private const double RadToDeg = 180.0 / Math.PI;
