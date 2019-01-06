@@ -168,6 +168,7 @@
     <Compile Include="..\MountainViewCore\Landmarks\UsgsRawFeatures.cs">
       <Link>Landmarks\UsgsRawFeatures.cs</Link>
     </Compile>
+    <Compile Include="Elevation\FriendlyMesh.cs" />
     <Compile Include="Elevation\Mesh.cs" />
     <Compile Include="Elevation\SimplifyMesh.cs" />
   </ItemGroup>

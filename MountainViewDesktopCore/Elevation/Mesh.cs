@@ -12,7 +12,7 @@ namespace MountainViewDesktopCore.Elevation
         public int[] TriangleIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
 
-        public Mesh(Vector3d[][] grid, double threshold = 0.001)
+        public Mesh(Vector3d[][] grid, double threshold = 0.0001)
         {
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();

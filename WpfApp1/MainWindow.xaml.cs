@@ -61,19 +61,22 @@ namespace WpfApp1
             {
                 BitmapImage heightImage = null;
                 BitmapImage satImage = null;
-                var mesh = await MountainView.Program.Foo2(null, lat, lon,
-                    ms => Dispatcher.Invoke(() =>
+
+                var mesh = await MountainView.Program.GetMesh(null, lat, lon, 5);
+
+                await MountainView.Program.GetImages(null, lat, lon, 5,
+                    heightMS => Dispatcher.Invoke(() =>
                     {
                         heightImage = new BitmapImage();
                         heightImage.BeginInit();
-                        heightImage.StreamSource = ms;
+                        heightImage.StreamSource = heightMS;
                         heightImage.EndInit();
                     }),
-                    ms => Dispatcher.Invoke(() =>
+                    imageMS => Dispatcher.Invoke(() =>
                     {
                         satImage = new BitmapImage();
                         satImage.BeginInit();
-                        satImage.StreamSource = ms;
+                        satImage.StreamSource = imageMS;
                         satImage.EndInit();
                     }));
 
@@ -88,7 +91,7 @@ namespace WpfApp1
 
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
-       //     getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
+            //     getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
         }
     }
 

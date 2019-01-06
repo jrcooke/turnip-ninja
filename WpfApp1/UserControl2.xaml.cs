@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using MountainViewDesktopCore.Elevation;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -11,7 +12,7 @@ namespace WpfApp1
     {
         public PerspectiveCamera myCamera;
         public DirectionalLight myDirectionalLight;
-        private GeometryModel3D myGeometryModel;
+        private Model3DGroup myModel3DGroup;
 
         public UserControl2()
         {
@@ -22,9 +23,7 @@ namespace WpfApp1
                 FieldOfView = 60,
             };
 
-            Model3DGroup myModel3DGroup = new Model3DGroup();
-            myGeometryModel = new GeometryModel3D();
-            myModel3DGroup.Children.Add(myGeometryModel);
+            myModel3DGroup = new Model3DGroup();
 
             if (true)
             {
@@ -61,19 +60,24 @@ namespace WpfApp1
             this.Content = myViewport3D;
         }
 
-        public void Blarg(BitmapImage bi, MountainView.Program.MOO m)
+        public void Blarg(BitmapImage bi, FriendlyMesh m)
         {
             ImageBrush ib = new ImageBrush() { ImageSource = bi };
             ib.ViewportUnits = BrushMappingMode.Absolute;
             Material myMaterial = new DiffuseMaterial(ib);
-            myGeometryModel.Material = myMaterial;
 
             MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
             myMeshGeometry3D.Positions = new Point3DCollection(m.Vertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
-            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.VertexRelatives.Select(p => new Point(p.X, p.Y)));
+            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.VertexToImage.Select(p => new Point(p.X, p.Y)));
             myMeshGeometry3D.Normals = new Vector3DCollection(m.VertexNormals.Select(p => new Vector3D(p.X, p.Y, p.Z)));
             myMeshGeometry3D.TriangleIndices = new Int32Collection(m.TriangleIndices);
-            myGeometryModel.Geometry = myMeshGeometry3D;
+
+            var myGeometryModel = new GeometryModel3D()
+            {
+                Material = myMaterial,
+                Geometry = myMeshGeometry3D,
+            };
+            myModel3DGroup.Children.Add(myGeometryModel);
         }
     }
 }

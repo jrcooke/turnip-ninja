@@ -120,12 +120,9 @@ namespace MountainView
         }
 
 
-        public static async Task<MOO> Foo2(TraceListener log, double latD, double lonD,
-            Action<MemoryStream> getBitmap = null,
-            Action<MemoryStream> getBitmap2 = null)
+        public static async Task<FriendlyMesh> GetMesh(TraceListener log, double latD, double lonD, int zoomLevel = 5)
         {
-            MOO m2 = null;
-
+            // 5 is most zoomed in.
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
             var lat = Angle.FromDecimalDegrees(latD);
@@ -133,182 +130,62 @@ namespace MountainView
 
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
-            int zoomLevel = 5; // 4; // 5 is max;//StandardChunkMetadata.MaxZoomLevel; zoomLevel >= 0; zoomLevel--)
+            var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+            log?.WriteLine(zoomLevel + "\t" + template.LatDelta +
+                "\t" + template.LatLo.ToLatString() + "," + template.LonLo.ToLonString() +
+                ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
+
+            var pixels2 = await Heights.Current.GetData(template, log);
+            var m = new FriendlyMesh(template, pixels2.Data);
+            m.CenterAndScale();
+            return m;
+        }
+
+        public static async Task GetImages(TraceListener log, double latD, double lonD, int zoomLevel,
+            Action<MemoryStream> getHeightBitmap = null,
+            Action<MemoryStream> getImageBitmap2 = null)
+        {
+            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+            var lat = Angle.FromDecimalDegrees(latD);
+            var lon = Angle.FromDecimalDegrees(lonD);
+
+            log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+
+            var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+            if (template == null)
             {
-                var kay = StandardChunkMetadata.GetKey(lat.Fourths, lon.Fourths, zoomLevel);
-                var xxx = StandardChunkMetadata.GetRangeFromKey(kay);
+                log?.WriteLine("Chunk is null");
+            }
+            else
+            {
+                log?.Write(zoomLevel + "\t" + template.LatDelta);
+                log?.WriteLine("\t" + template.LatLo.ToLatString() + "," + template.LonLo.ToLonString() + ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
 
-                var cc = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-                if (cc == null)
+                if (getHeightBitmap != null)
                 {
-                    log?.WriteLine("Chunk is null");
-                }
-                else
-                {
-                    log?.Write(zoomLevel + "\t" + cc.LatDelta);
-                    log?.WriteLine("\t" + cc.LatLo.ToLatString() + "," + cc.LonLo.ToLonString() + ", " + cc.LatHi.ToLatString() + "," + cc.LonHi.ToLonString());
-
-                    var template = cc;
                     try
                     {
-                        var pixels2 = await Heights.Current.GetData(template, log);
-                        if (pixels2 != null)
-                        {
-                            getBitmap?.Invoke(Utils.GetBitmap(pixels2, a => Utils.GetColorForHeight(a), OutputType.JPEG));
-                            var heig = pixels2.Data;
-
-                            int max = heig.Length;
-
-                            Dictionary<int, Tuple<double, double>> latSinCoses = new Dictionary<int, Tuple<double, double>>();
-                            Dictionary<int, Tuple<double, double>> lonSinCoses = new Dictionary<int, Tuple<double, double>>();
-                            for (int i = 0; i < max; i++)
-                            {
-                                var latRad = Math.PI / 180 * (pixels2.LatLo.DecimalDegree + i * pixels2.LatDelta.DecimalDegree / max);
-                                latSinCoses.Add(i, new Tuple<double, double>(Math.Sin(latRad), Math.Cos(latRad)));
-
-                                var lonRad = Math.PI / 180 * (pixels2.LonLo.DecimalDegree + i * pixels2.LonDelta.DecimalDegree / max);
-                                lonSinCoses.Add(i, new Tuple<double, double>(Math.Sin(lonRad), Math.Cos(lonRad)));
-                            }
-
-                            Vector3d[][] positions = new Vector3d[max][];
-                            for (int i = 0; i < max; i++)
-                            {
-                                positions[i] = new Vector3d[max];
-                                var latSinCos = latSinCoses[i];
-
-                                for (int j = 0; j < max; j++)
-                                {
-                                    var lonSinCos = lonSinCoses[j];
-                                    double height = heig[j][max - 1 - i] + Utils.AlphaMeters;
-                                    positions[i][j].X = height * latSinCos.Item2 * lonSinCos.Item2;
-                                    positions[i][j].Y = height * latSinCos.Item2 * lonSinCos.Item1;
-                                    positions[i][j].Z = height * latSinCos.Item1;
-                                }
-                            }
-
-                            CenterAndScale(positions, out Vector3d avgV, out double deltaV);
-                            Mesh m = new Mesh(positions);
-
-                            m2 = new MOO(m, avgV, deltaV, template);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        log?.WriteLine(ex.Message);
-                    }
-
-                    try
-                    {
-                        var pixels = await Images.Current.GetData(template, log);
-                        if (pixels != null)
-                        {
-                            getBitmap2?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
-                            var bm = Utils.GetPlainBitmap(pixels, a => a);
-                        }
+                        var heights = await Heights.Current.GetData((StandardChunkMetadata)template, log);
+                        if (heights != null) getHeightBitmap?.Invoke(Utils.GetBitmap(heights, a => Utils.GetColorForHeight(a), OutputType.JPEG));
                     }
                     catch (Exception ex)
                     {
                         log?.WriteLine(ex.Message);
                     }
                 }
-            }
 
-            return m2;
-        }
-
-        private static void CenterAndScale(Vector3d[][] positions, out Vector3d avgV, out double deltaV)
-        {
-            avgV = new Vector3d(
-                positions.SelectMany(p => p).Average(p => p.X),
-                positions.SelectMany(p => p).Average(p => p.Y),
-                positions.SelectMany(p => p).Average(p => p.Z));
-
-            // Find the max dist between adjacent corners. This will the the characteristic length.
-            var cornerDistsSq = new double[]
-            {
-                positions[0][0].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[0][0].DeltaSq(ref positions[positions.Length-1][0]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[0][positions.Length-1]),
-                positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
-            };
-            deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                for (int j = 0; j < positions.Length; j++)
+                if (getImageBitmap2 != null)
                 {
-                    positions[i][j].X = (positions[i][j].X - avgV.X) * deltaV;
-                    positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
-                    positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
-                }
-            }
-        }
-
-        public class MOO
-        {
-            public Vector3d[] Vertices { get; private set; }
-            public int[] TriangleIndices { get; private set; }
-            public Vector3d[] VertexNormals { get; private set; }
-            public Vector2d[] VertexRelatives { get; private set; }
-
-            public MOO(Mesh m, Vector3d avgV, double deltaV, StandardChunkMetadata chunkMetadata)
-            {
-                Vertices = m.Vertices;
-                TriangleIndices = m.TriangleIndices;
-                VertexNormals = m.VertexNormals;
-                VertexRelatives = m.Vertices
-                    .Select(p => Trip.Invert(p, avgV, deltaV))
-                    .Select(p =>
+                    try
                     {
-                        var ret = new Vector2d();
-                        ret.X = (p.LonDegrees - chunkMetadata.LonLo.DecimalDegree) / chunkMetadata.LonDelta.DecimalDegree;
-                        ret.Y = 1-(p.LatDegrees - chunkMetadata.LatLo.DecimalDegree) / chunkMetadata.LatDelta.DecimalDegree;
-                        return ret;
-                    })
-                    .ToArray();
-            }
-
-            public struct Vector2d
-            {
-                public double X;
-                public double Y;
-            }
-
-            private class Trip
-            {
-                private const double RadToDeg = 180.0 / Math.PI;
-                public double LatDegrees;
-                public double LonDegrees;
-                public double Height;
-
-                internal static Trip Invert(Vector3d pRel, Vector3d avgV, double deltaV)
-                {
-                    var pX = pRel.X / deltaV + avgV.X;
-                    var pY = pRel.Y / deltaV + avgV.Y;
-                    var pZ = pRel.Z / deltaV + avgV.Z;
-
-                    var x2y2 = pX * pX + pY * pY; // = height^2 * latCos^2
-                    var h = Math.Sqrt(x2y2 + pZ * pZ);
-
-                    var latSin = pZ / h;
-                    // Lat is between -90 and 90 degrees, so latCos is always positive
-                    var hLatCos = h * Math.Sqrt(1.0 - latSin * latSin);
-
-                    var lonCos = pX / hLatCos;
-                    var lonSin = pY / hLatCos;
-
-                    var lon = Math.Asin(lonSin) * RadToDeg;
-                    if (lonCos < 0.0)
-                    {
-                        lon = (lon > 0 ? 180 : -180) - lon;
+                        var pixels = await Images.Current.GetData((StandardChunkMetadata)template, log);
+                        if (pixels != null) getImageBitmap2?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
                     }
-
-                    return new Trip()
+                    catch (Exception ex)
                     {
-                        Height = h - Utils.AlphaMeters,
-                        LatDegrees = Math.Asin(latSin) * RadToDeg,
-                        LonDegrees = lon,
-                    };
+                        log?.WriteLine(ex.Message);
+                    }
                 }
             }
         }
