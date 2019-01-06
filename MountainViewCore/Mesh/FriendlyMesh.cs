@@ -42,7 +42,7 @@ namespace MountainViewDesktopCore.Elevation
             };
 
             CenterAndScale(positions);
-            Mesh m = new Mesh(positions);
+            ComplexMesh m = new ComplexMesh(positions);
             positions = null;
             Vertices = m.Vertices;
             TriangleIndices = m.TriangleIndices;

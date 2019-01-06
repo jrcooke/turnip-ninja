@@ -6,13 +6,13 @@ using System.Linq;
 
 namespace MountainViewDesktopCore.Elevation
 {
-    public class Mesh
+    internal class ComplexMesh
     {
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
 
-        public Mesh(Vector3d[][] grid, double threshold = 0.0001)
+        public ComplexMesh(Vector3d[][] grid, double threshold = 0.0001)
         {
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
@@ -47,13 +47,13 @@ namespace MountainViewDesktopCore.Elevation
                 chunkJs.Add(i);
             }
 
-            if (false)
-            {
-                numChunks = 9;
-                chunkIs = new List<int>() { 0, 1, 2, 3, 4 };
-                chunkJs = new List<int>() { 0, 1, 2, 3, 4 };
-                verbose = true;
-            }
+            //if (false)
+            //{
+            //    numChunks = 9;
+            //    chunkIs = new List<int>() { 0, 1, 2, 3, 4 };
+            //    chunkJs = new List<int>() { 0, 1, 2, 3, 4 };
+            //    verbose = true;
+            //}
 
             var chunkInfos = new ChunkInfo[chunkIs.Count][];
             foreach (int chunkI in chunkIs)

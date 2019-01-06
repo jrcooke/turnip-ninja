@@ -109,25 +109,6 @@ namespace MountainView.Base
                 (byte)(p[2] < 0 ? 0 : p[2] > 255 ? 255 : p[2]));
         }
 
-        public static Bitmap GetPlainBitmap<T>(
-            ChunkHolder<T> colorBuff,
-            Func<T, MyColor> transform)
-        {
-            using (DirectBitmap bm = new DirectBitmap(colorBuff.LonSteps, colorBuff.LatSteps))
-            {
-                for (int i = 0; i < colorBuff.LatSteps; i++)
-                {
-                    var col = colorBuff.Data[i];
-                    for (int j = 0; j < colorBuff.LonSteps; j++)
-                    {
-                        bm.SetPixel(j, i, transform(col[colorBuff.LonSteps - 1 - j]));
-                    }
-                }
-
-                return bm.GetBitmap();
-            }
-        }
-
         public static MemoryStream GetBitmap<T>(
             ChunkHolder<T> colorBuff,
             Func<T, MyColor> transform,
@@ -260,14 +241,6 @@ namespace MountainView.Base
                     *dst++ = color.G;
                     *dst++ = color.R;
                     *dst++ = color.A;
-                }
-            }
-
-            public System.Drawing.Bitmap GetBitmap()
-            {
-                using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
-                {
-                    return bitmap.ToBitmap();
                 }
             }
 
