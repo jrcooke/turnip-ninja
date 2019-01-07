@@ -224,5 +224,25 @@ namespace MountainView.Mesh
                 Corners[i].Z = (Corners[i].Z - avgV.Z + center.Z) * deltaV;
             }
         }
+
+        public void Match(FriendlyMesh mesh)
+        {
+            avgV = mesh.avgV;
+            deltaV = mesh.deltaV;
+
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                Vertices[i].X = (Vertices[i].X - avgV.X) * deltaV;
+                Vertices[i].Y = (Vertices[i].Y - avgV.Y) * deltaV;
+                Vertices[i].Z = (Vertices[i].Z - avgV.Z) * deltaV;
+            }
+
+            for (int i = 0; i < Corners.Length; i++)
+            {
+                Corners[i].X = (Corners[i].X - avgV.X) * deltaV;
+                Corners[i].Y = (Corners[i].Y - avgV.Y) * deltaV;
+                Corners[i].Z = (Corners[i].Z - avgV.Z) * deltaV;
+            }
+        }
     }
 }

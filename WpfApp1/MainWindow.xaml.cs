@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MountainView.Mesh;
+using System;
 using System.Device.Location;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -80,15 +81,65 @@ namespace WpfApp1
                         satImage.EndInit();
                     }));
 
+                // TODO: remove
+                mesh.ExagerateHeight(3.0);
+                mesh.CenterAndScale();
+
                 Dispatcher.Invoke(() =>
                 {
                     mainImage.Source = heightImage;
                     mainImage2.Source = satImage;
                     uc.Blarg(satImage, mesh);
                 });
+
+                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
+                // await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
+                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
             });
         }
 
+        private async Task foo(FriendlyMesh mesh, double lat, double lon)
+        {
+            BitmapImage heightImage = null;
+            BitmapImage satImage = null;
+
+            // Do it again, but move
+            var mesh2 = await MountainView.Program.GetMesh(null, lat, lon, 5);
+
+            await MountainView.Program.GetImages(null, lat, lon, 5,
+                heightMS => Dispatcher.Invoke(() =>
+                {
+                    heightImage = new BitmapImage();
+                    heightImage.BeginInit();
+                    heightImage.StreamSource = heightMS;
+                    heightImage.EndInit();
+                }),
+                imageMS => Dispatcher.Invoke(() =>
+                {
+                    satImage = new BitmapImage();
+                    satImage.BeginInit();
+                    satImage.StreamSource = imageMS;
+                    satImage.EndInit();
+                }));
+
+            // TODO: remove
+            mesh2.ExagerateHeight(3.0);
+            mesh2.Match(mesh);
+
+            Dispatcher.Invoke(() =>
+            {
+                mainImage.Source = heightImage;
+                mainImage2.Source = satImage;
+                uc.Blarg(satImage, mesh2);
+            });
+
+        }
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
             //     getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;

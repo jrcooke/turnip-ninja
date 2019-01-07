@@ -134,10 +134,6 @@ namespace MountainView
                 ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
 
             var m = await Meshes.Current.GetData(template, log);
-
-            // TODO: remove
-            m.ExagerateHeight(10.0);
-            m.CenterAndScale();
             return m;
         }
 
