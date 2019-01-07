@@ -39,7 +39,7 @@ namespace MountainView.Mesh
             float[][] heights)
             : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
         {
-            Vector3d buffv = new Vector3d();
+            GeoPolar3d buffGeoPolar = new GeoPolar3d();
             Vector3d[][] positions = Compute3dPositions(heights);
             origCorners = new Vector3d[]
             {
@@ -61,7 +61,7 @@ namespace MountainView.Mesh
             VertexToImage = new Vector2d[Vertices.Length];
             for (int i = 0; i < VertexToImage.Length; i++)
             {
-                InvertTo(ref Vertices[i], ref VertexToImage[i], ref buffv);
+                InvertTo(ref Vertices[i], ref VertexToImage[i], ref buffGeoPolar);
             }
 
             Corners = new Vector3d[origCorners.Length];
@@ -107,24 +107,24 @@ namespace MountainView.Mesh
             return positions;
         }
 
-        private void ForwardTo(ref Vector3d polar, ref Vector3d cart)
+        private void ForwardTo(ref GeoPolar3d polar, ref Vector3d cart)
         {
-            double height = polar.Z + Utils.AlphaMeters;
-            double cosLat = Math.Cos(polar.X);
-            double sinLat = Math.Sin(polar.X);
-            cart.X = height * cosLat * Math.Cos(polar.Y);
-            cart.Y = height * cosLat * Math.Sin(polar.Y);
+            double height = polar.Height + Utils.AlphaMeters;
+            double cosLat = Math.Cos(polar.Lat / RadToDeg);
+            double sinLat = Math.Sin(polar.Lat / RadToDeg);
+            cart.X = height * cosLat * Math.Cos(polar.Lon / RadToDeg);
+            cart.Y = height * cosLat * Math.Sin(polar.Lon / RadToDeg);
             cart.Z = height * sinLat;
         }
 
-        private void InvertTo(ref Vector3d cart, ref Vector2d ret, ref Vector3d polar)
+        private void InvertTo(ref Vector3d cart, ref Vector2d ret, ref GeoPolar3d polar)
         {
             InvertToFull(ref cart, ref polar);
-            ret.X = (polar.Y - LonLo.DecimalDegree) / LonDelta.DecimalDegree;
-            ret.Y = 1.0 - (polar.X - LatLo.DecimalDegree) / LatDelta.DecimalDegree;
+            ret.X = (polar.Lon - LonLo.DecimalDegree) / LonDelta.DecimalDegree;
+            ret.Y = 1.0 - (polar.Lat - LatLo.DecimalDegree) / LatDelta.DecimalDegree;
         }
 
-        private void InvertToFull(ref Vector3d cart, ref Vector3d polar)
+        private void InvertToFull(ref Vector3d cart, ref GeoPolar3d polar)
         {
             var h = Math.Sqrt(cart.X * cart.X + cart.Y * cart.Y + cart.Z * cart.Z);
             var latSin = cart.Z / h;
@@ -139,9 +139,9 @@ namespace MountainView.Mesh
             var LatDegrees = Math.Asin(latSin) * RadToDeg;
             var LonDegrees = lon;
 
-            polar.X = LatDegrees;
-            polar.Y = LonDegrees;
-            polar.Z = height;
+            polar.Lat = LatDegrees;
+            polar.Lon = LonDegrees;
+            polar.Height = height;
         }
 
         private void CenterAndScale(Vector3d[][] positions)
@@ -175,11 +175,11 @@ namespace MountainView.Mesh
 
         public void ExagerateHeight(double scale)
         {
-            Vector3d polar = new Vector3d();
+            GeoPolar3d polar = new GeoPolar3d();
             for (int i = 0; i < Vertices.Length; i++)
             {
                 InvertToFull(ref Vertices[i], ref polar);
-                polar.Z *= scale;
+                polar.Height *= scale;
                 ForwardTo(ref polar, ref Vertices[i]);
             }
         }

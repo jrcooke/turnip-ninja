@@ -57,10 +57,7 @@ namespace MountainView.Mesh
                 return computedChunk.Item2;
             }
 
-            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
-
-            log?.WriteLine("Starting generation...");
-
+            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName + ", so starting generation...");
             var pixels2 = await Heights.Current.GetData(template, log);
             if (pixels2 == null)
             {
