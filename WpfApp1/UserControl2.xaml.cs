@@ -1,4 +1,4 @@
-﻿using MountainViewDesktopCore.Mesh;
+﻿using MountainView.Mesh;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;

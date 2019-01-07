@@ -4,14 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MountainViewDesktopCore.Mesh
-
+namespace MountainView.Mesh
 {
-    public class FriendlyMesh
+    public class FriendlyMesh : ChunkMetadata
     {
         private const double RadToDeg = 180.0 / Math.PI;
 
-        private StandardChunkMetadata template;
         private Vector3d avgV;
         private double deltaV;
         private Vector3d[] origCorners;
@@ -22,10 +20,26 @@ namespace MountainViewDesktopCore.Mesh
         public Vector2d[] VertexToImage { get; private set; }
         public Vector3d[] Corners { get; private set; }
 
-        public FriendlyMesh(StandardChunkMetadata template, float[][] heights)
+        public FriendlyMesh(
+            Angle latLo, Angle lonLo,
+            Angle latHi, Angle lonHi,
+            int vertexCount, int triangleIndexCount)
+            : base(-1, -1, latLo, lonLo, latHi, lonHi)
         {
-            this.template = template;
+            Vertices = new Vector3d[vertexCount];
+            TriangleIndices = new int[triangleIndexCount];
+            VertexNormals = new Vector3d[vertexCount];
+            VertexToImage = new Vector2d[vertexCount];
+            Corners = new Vector3d[4];
+        }
 
+        public FriendlyMesh(int latSteps, int lonSteps,
+            Angle latLo, Angle lonLo,
+            Angle latHi, Angle lonHi,
+            float[][] heights)
+            : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
+        {
+            Vector3d buffv = new Vector3d();
             Vector3d[][] positions = Compute3dPositions(heights);
             origCorners = new Vector3d[]
             {
@@ -47,7 +61,7 @@ namespace MountainViewDesktopCore.Mesh
             VertexToImage = new Vector2d[Vertices.Length];
             for (int i = 0; i < VertexToImage.Length; i++)
             {
-                InvertTo(ref Vertices[i], ref VertexToImage[i]);
+                InvertTo(ref Vertices[i], ref VertexToImage[i], ref buffv);
             }
 
             Corners = new Vector3d[origCorners.Length];
@@ -57,6 +71,8 @@ namespace MountainViewDesktopCore.Mesh
             }
         }
 
+        //------------------------------------------------
+
         private Vector3d[][] Compute3dPositions(float[][] heights)
         {
             int max = heights.Length;
@@ -65,10 +81,10 @@ namespace MountainViewDesktopCore.Mesh
             Dictionary<int, Tuple<double, double>> lonSinCoses = new Dictionary<int, Tuple<double, double>>();
             for (int i = 0; i < max; i++)
             {
-                var latRad = Math.PI / 180 * (template.LatLo.DecimalDegree + i * template.LatDelta.DecimalDegree / max);
+                var latRad = Math.PI / 180 * (LatLo.DecimalDegree + i * LatDelta.DecimalDegree / max);
                 latSinCoses.Add(i, new Tuple<double, double>(Math.Sin(latRad), Math.Cos(latRad)));
 
-                var lonRad = Math.PI / 180 * (template.LonLo.DecimalDegree + i * template.LonDelta.DecimalDegree / max);
+                var lonRad = Math.PI / 180 * (LonLo.DecimalDegree + i * LonDelta.DecimalDegree / max);
                 lonSinCoses.Add(i, new Tuple<double, double>(Math.Sin(lonRad), Math.Cos(lonRad)));
             }
 
@@ -91,23 +107,41 @@ namespace MountainViewDesktopCore.Mesh
             return positions;
         }
 
-        private void InvertTo(ref Vector3d pRel, ref Vector2d ret)
+        private void ForwardTo(ref Vector3d polar, ref Vector3d cart)
         {
-            var h = Math.Sqrt(pRel.X * pRel.X + pRel.Y * pRel.Y + pRel.Z * pRel.Z);
-            var latSin = pRel.Z / h;
+            double height = polar.Z + Utils.AlphaMeters;
+            double cosLat = Math.Cos(polar.X);
+            double sinLat = Math.Sin(polar.X);
+            cart.X = height * cosLat * Math.Cos(polar.Y);
+            cart.Y = height * cosLat * Math.Sin(polar.Y);
+            cart.Z = height * sinLat;
+        }
+
+        private void InvertTo(ref Vector3d cart, ref Vector2d ret, ref Vector3d polar)
+        {
+            InvertToFull(ref cart, ref polar);
+            ret.X = (polar.Y - LonLo.DecimalDegree) / LonDelta.DecimalDegree;
+            ret.Y = 1.0 - (polar.X - LatLo.DecimalDegree) / LatDelta.DecimalDegree;
+        }
+
+        private void InvertToFull(ref Vector3d cart, ref Vector3d polar)
+        {
+            var h = Math.Sqrt(cart.X * cart.X + cart.Y * cart.Y + cart.Z * cart.Z);
+            var latSin = cart.Z / h;
             var hLatCos = h * Math.Sqrt(1.0 - latSin * latSin);
-            var lon = Math.Asin(pRel.Y / hLatCos) * RadToDeg;
-            if (pRel.X < 0.0)
+            var lon = Math.Asin(cart.Y / hLatCos) * RadToDeg;
+            if (cart.X < 0.0)
             {
                 lon = (lon > 0 ? 180 : -180) - lon;
             }
 
-            // var height = h - Utils.AlphaMeters;
+            var height = h - Utils.AlphaMeters;
             var LatDegrees = Math.Asin(latSin) * RadToDeg;
             var LonDegrees = lon;
 
-            ret.X = (LonDegrees - template.LonLo.DecimalDegree) / template.LonDelta.DecimalDegree;
-            ret.Y = 1.0 - (LatDegrees - template.LatLo.DecimalDegree) / template.LatDelta.DecimalDegree;
+            polar.X = LatDegrees;
+            polar.Y = LonDegrees;
+            polar.Z = height;
         }
 
         private void CenterAndScale(Vector3d[][] positions)
@@ -136,6 +170,17 @@ namespace MountainViewDesktopCore.Mesh
                     positions[i][j].Y = (positions[i][j].Y - avgV.Y) * deltaV;
                     positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
                 }
+            }
+        }
+
+        public void ExagerateHeight(double scale)
+        {
+            Vector3d polar = new Vector3d();
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                InvertToFull(ref Vertices[i], ref polar);
+                polar.Z *= scale;
+                ForwardTo(ref polar, ref Vertices[i]);
             }
         }
 
@@ -173,7 +218,7 @@ namespace MountainViewDesktopCore.Mesh
                 Vertices[i].Z = (Vertices[i].Z - avgV.Z + center.Z) * deltaV;
             }
 
-            for(int i = 0; i < Corners.Length; i++)
+            for (int i = 0; i < Corners.Length; i++)
             {
                 Corners[i].X = (Corners[i].X - avgV.X + center.X) * deltaV;
                 Corners[i].Y = (Corners[i].Y - avgV.Y + center.Y) * deltaV;

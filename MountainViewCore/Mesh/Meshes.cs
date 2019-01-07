@@ -1,254 +1,233 @@
-﻿//using MeshDecimator;
-//using MountainView.Base;
-//using MountainView.ChunkManagement;
-//using System;
-//using System.Collections.Concurrent;
-//using System.Collections.Generic;
-//using System.Diagnostics;
-//using System.IO;
-//using System.Threading.Tasks;
-//using static MountainView.Base.BlobHelper;
+﻿using Microsoft.WindowsAzure.Storage;
+using MountainView.Base;
+using MountainView.ChunkManagement;
+using MountainView.Elevation;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 
-//namespace MountainView.Elevation
-//{
-//    public class Meshes
-//    {
-//        private static readonly string cachedFileTemplate = "{0}.v8.{1}";
-//        private static readonly string cachedFileContainer = "mapv8";
+namespace MountainView.Mesh
+{
+    public class Meshes
+    {
+        private static readonly string cachedFileTemplate = "{0}.v8.{1}";
+        private static readonly string cachedFileContainer = "mapv8";
 
-//        private readonly string fileExt;
-//        private readonly string description;
-//        private readonly int pixelDataSize;
-//        public int SourceDataZoom { get; private set; }
-//        private readonly ConcurrentDictionary<long, string> filenameCache;
+        private readonly string fileExt = "mdata";
+        private readonly string description = "Meshes";
+        private readonly int pixelDataSize = 4;
+        public int SourceDataZoom { get; private set; } = 4;
+        private readonly ConcurrentDictionary<long, string> filenameCache = new ConcurrentDictionary<long, string>();
 
-//        private Meshes()
-//        {
-//            this.fileExt = "mdata";
-//            this.description = "Meshes";
-//            this.pixelDataSize = 4;
-//            this.SourceDataZoom = 4;
+        private static Lazy<Meshes> current = new Lazy<Meshes>(() => new Meshes());
 
-//            this.filenameCache = new ConcurrentDictionary<long, string>();
-//        }
+        public static Meshes Current
+        {
+            get
+            {
+                return current.Value;
+            }
+        }
 
-//        public string GetShortFilename(StandardChunkMetadata template)
-//        {
-//            if (!filenameCache.TryGetValue(template.Key, out string filename))
-//            {
-//                filename = GetBaseFileName(template);
-//                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-//            }
+        private Meshes()
+        {
+        }
 
-//            return filename;
-//        }
+        public string GetShortFilename(StandardChunkMetadata template)
+        {
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            {
+                filename = GetBaseFileName(template);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
+            }
 
-//        public async Task<ChunkHolder<T>> ProcessRawData(StandardChunkMetadata template, TraceListener log)
-//        {
-//            var computedChunk = await GetComputedChunk(template, log);
-//            string fileName = computedChunk.Item1;
-//            ChunkHolder<T> ret = computedChunk.Item2;
-//            if (computedChunk.Item2 != null)
-//            {
-//                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
-//                return computedChunk.Item2;
-//            }
+            return filename;
+        }
 
-//            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+        public async Task<FriendlyMesh> GetData(StandardChunkMetadata template, TraceListener log)
+        {
+            var computedChunk = await GetComputedChunk(template, log);
+            string fileName = computedChunk.Item1;
+            FriendlyMesh ret = computedChunk.Item2;
+            if (computedChunk.Item2 != null)
+            {
+                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                return computedChunk.Item2;
+            }
 
-//            if (template.ZoomLevel > this.SourceDataZoom)
-//            {
-//                // Nothing to do for processing
-//                return null;
-//            }
-//            else if (template.ZoomLevel == this.SourceDataZoom)
-//            {
-//                log?.WriteLine("Starting generation...");
-//                ret = await GenerateData(template, log);
-//                await WriteChunk(ret, fileName, log);
-//                log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-//                return ret;
-//            }
+            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
 
-//            log?.WriteLine("Need to aggregate up from higher zoom data");
-//            var children = template.GetChildChunks();
-//            List<ChunkHolder<T>> chunks = new List<ChunkHolder<T>>();
-//            foreach (var child in children)
-//            {
-//                log?.WriteLine(child);
-//                chunks.Add(await ProcessRawData(child, log));
-//            }
+            log?.WriteLine("Starting generation...");
 
-//            ret = new ChunkHolder<T>(
-//                 template.LatSteps, template.LonSteps,
-//                 template.LatLo, template.LonLo,
-//                 template.LatHi, template.LonHi,
-//                 null,
-//                 toDouble,
-//                 fromDouble);
+            var pixels2 = await Heights.Current.GetData(template, log);
+            if (pixels2 == null)
+            {
+                throw new InvalidOperationException("Source heights not found");
+            }
 
-//            ret.RenderChunksInto(chunks, aggregate, log);
-//            await WriteChunk(ret, fileName, log);
-//            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            ret = new FriendlyMesh(
+                template.LatSteps, template.LonSteps,
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi,
+                pixels2.Data);
 
-//            return ret;
-//        }
+            await WriteChunk(ret, fileName, log);
+            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            return ret;
+        }
 
-//        public async Task<ChunkHolder<T>> GetData(StandardChunkMetadata template, TraceListener log)
-//        {
-//            var computedChunk = await GetComputedChunk(template, log);
-//            string fileName = computedChunk.Item1;
-//            ChunkHolder<T> ret = computedChunk.Item2;
-//            if (computedChunk.Item2 != null)
-//            {
-//                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
-//                return computedChunk.Item2;
-//            }
+        private async Task<Tuple<string, FriendlyMesh>> GetComputedChunk(StandardChunkMetadata template, TraceListener log)
+        {
+            string filename = GetShortFilename(template);
+            Tuple<string, FriendlyMesh> ret = new Tuple<string, FriendlyMesh>(GetFullFileName(template, filename), null);
+            try
+            {
+                using (BlobHelper.DeletableFileStream ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, ret.Item1, log))
+                {
+                    if (ms != null)
+                    {
+                        ret = new Tuple<string, FriendlyMesh>(ret.Item1, ReadChunk(ms, template));
+                    }
+                }
+            }
+            catch (StorageException stex)
+            {
+                if (stex.RequestInformation.HttpStatusCode == 404)
+                {
+                    log?.WriteLine("Blob not found;");
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
-//            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName);
+            return ret;
+        }
 
-//            if (template.ZoomLevel <= this.SourceDataZoom)
-//            {
-//                throw new InvalidOperationException("Source data is missing for chunk " + template.ToString());
+        private string GetFullFileName(StandardChunkMetadata template, string filename)
+        {
+            return string.Format(cachedFileTemplate, filename, fileExt);
+        }
 
-//                //log?.WriteLine("Starting generation...");
-//                //ret = await GenerateData(template);
-//                //await WriteChunk(ret, fileName);
-//                //log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-//                //return ret;
-//            }
+        private static string GetBaseFileName(StandardChunkMetadata template)
+        {
+            return string.Format("{0}{1}{2:D2}",
+                template.LatLo.ToLatString(),
+                template.LonLo.ToLonString(),
+                template.ZoomLevel);
+        }
 
-//            log?.WriteLine("Need to interpolate from lower zoom data");
-//            var parent = template.GetParentChunk();
-//            var chunks = new ChunkHolder<T>[] { await GetData(parent, log) };
+        private async Task WriteChunk(FriendlyMesh ret, string fileName, TraceListener log)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                int vertexCount = ret.Vertices.Length;
+                int triangleIndexCount = ret.TriangleIndices.Length;
 
-//            ret = new ChunkHolder<T>(
-//                 template.LatSteps, template.LonSteps,
-//                 template.LatLo, template.LonLo,
-//                 template.LatHi, template.LonHi,
-//                 null,
-//                 toDouble,
-//                 fromDouble);
-//            ret.RenderChunksInto(chunks, aggregate, log);
-//            await WriteChunk(ret, fileName, log);
-//            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
-//            return ret;
-//        }
+                stream.Write(BitConverter.GetBytes(vertexCount), 0, 4);
+                stream.Write(BitConverter.GetBytes(triangleIndexCount), 0, 4);
 
-//        public async Task<NearestInterpolatingChunk<T>> GetLazySimpleInterpolator(StandardChunkMetadata template, TraceListener log)
-//        {
-//            if (template == null) return null;
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    WriteFloat(stream, ret.Vertices[i].X);
+                    WriteFloat(stream, ret.Vertices[i].Y);
+                    WriteFloat(stream, ret.Vertices[i].Z);
+                }
 
-//            string filename = GetShortFilename(template);
-//            string fullFileName = GetFullFileName(template, filename);
-//            while (
-//                !(await BlobHelper.BlobExists(cachedFileContainer, fullFileName, log)) &&
-//                template.ZoomLevel > SourceDataZoom)
-//            {
-//                template = template.GetParentChunk();
-//                return await GetLazySimpleInterpolator(template, log);
-//            }
+                for (int i = 0; i < triangleIndexCount; i++)
+                {
+                    stream.Write(BitConverter.GetBytes(ret.TriangleIndices[i]), 0, 4);
+                }
 
-//            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
-//            return new NearestInterpolatingChunk<T>(
-//                template.LatLo.DecimalDegree, template.LonLo.DecimalDegree,
-//                template.LatHi.DecimalDegree, template.LonHi.DecimalDegree,
-//                template.LatSteps, template.LonSteps,
-//                cachedFileContainer, fullFileName,
-//                (ms, i, j) =>
-//                {
-//                    ms.Seek(8 + pixelDataSize * (i * template.LatSteps + j), SeekOrigin.Begin);
-//                    return ReadPixel(ms, buffer);
-//                });
-//        }
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    WriteFloat(stream, ret.VertexNormals[i].X);
+                    WriteFloat(stream, ret.VertexNormals[i].Y);
+                    WriteFloat(stream, ret.VertexNormals[i].Z);
+                }
 
-//        private async Task<Tuple<string, ChunkHolder<T>>> GetComputedChunk(StandardChunkMetadata template, TraceListener log)
-//        {
-//            string filename = GetShortFilename(template);
-//            Tuple<string, ChunkHolder<T>> ret = new Tuple<string, ChunkHolder<T>>(GetFullFileName(template, filename), null);
-//            using (var ms = await BlobHelper.TryGetStreamAsync(cachedFileContainer, ret.Item1, log))
-//            {
-//                if (ms != null)
-//                {
-//                    ret = new Tuple<string, ChunkHolder<T>>(ret.Item1, ReadChunk(ms, template));
-//                }
-//            }
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    WriteFloat(stream, ret.VertexToImage[i].X);
+                    WriteFloat(stream, ret.VertexToImage[i].Y);
+                }
 
-//            return ret;
-//        }
+                for (int i = 0; i < 4; i++)
+                {
+                    WriteFloat(stream, ret.Corners[i].X);
+                    WriteFloat(stream, ret.Corners[i].Y);
+                    WriteFloat(stream, ret.Corners[i].Z);
+                }
 
-//        public async Task<bool> ExistsComputedChunk(StandardChunkMetadata template, TraceListener log)
-//        {
-//            string filename = GetShortFilename(template);
-//            return await BlobHelper.BlobExists(cachedFileContainer, GetFullFileName(template, filename), log);
-//        }
+                stream.Position = 0;
+                await BlobHelper.WriteStream(cachedFileContainer, fileName, stream, log);
+            }
+        }
 
-//        public string GetFileName(StandardChunkMetadata template)
-//        {
-//            string baseFileName = GetBaseFileName(template);
-//            return GetFullFileName(template, baseFileName);
-//        }
+        private FriendlyMesh ReadChunk(BlobHelper.DeletableFileStream stream, StandardChunkMetadata template)
+        {
+            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
 
-//        private string GetFullFileName(StandardChunkMetadata template, string filename)
-//        {
-//            return string.Format(cachedFileTemplate, filename, fileExt);
-//        }
+            stream.Read(buffer, 0, 4);
+            int vertexCount = BitConverter.ToInt32(buffer, 0);
 
-//        private static string GetBaseFileName(StandardChunkMetadata template)
-//        {
-//            return string.Format("{0}{1}{2:D2}",
-//                template.LatLo.ToLatString(),
-//                template.LonLo.ToLonString(),
-//                template.ZoomLevel);
-//        }
+            stream.Read(buffer, 0, 4);
+            int triangleIndexCount = BitConverter.ToInt32(buffer, 0);
 
-//        private async Task WriteChunk(ChunkHolder<T> ret, string fileName, TraceListener log)
-//        {
-//            using (MemoryStream stream = new MemoryStream())
-//            {
-//                stream.Write(BitConverter.GetBytes(ret.LatSteps), 0, 4);
-//                stream.Write(BitConverter.GetBytes(ret.LonSteps), 0, 4);
-//                for (int i = 0; i < ret.LatSteps; i++)
-//                {
-//                    for (int j = 0; j < ret.LonSteps; j++)
-//                    {
-//                        WritePixel(stream, ret.Data[i][j]);
-//                    }
-//                }
+            var ret = new FriendlyMesh(
+                template.LatLo, template.LonLo,
+                template.LatHi, template.LonHi,
+                vertexCount, triangleIndexCount);
 
-//                stream.Position = 0;
-//                await BlobHelper.WriteStream(cachedFileContainer, fileName, stream, log);
-//            }
-//        }
+            for (int i = 0; i < vertexCount; i++)
+            {
+                ret.Vertices[i].X = ReadFloat(stream, buffer);
+                ret.Vertices[i].Y = ReadFloat(stream, buffer);
+                ret.Vertices[i].Z = ReadFloat(stream, buffer);
+            }
 
-//        private ChunkHolder<T> ReadChunk(DeletableFileStream stream, StandardChunkMetadata template)
-//        {
-//            byte[] buffer = new byte[Math.Max(4, pixelDataSize)];
-//            stream.Read(buffer, 0, 4);
-//            int width = BitConverter.ToInt32(buffer, 0);
-//            stream.Read(buffer, 0, 4);
-//            int height = BitConverter.ToInt32(buffer, 0);
+            for (int i = 0; i < triangleIndexCount; i++)
+            {
+                stream.Read(buffer, 0, 4);
+                ret.TriangleIndices[i] = BitConverter.ToInt32(buffer, 0);
+            }
 
-//            var ret = new ChunkHolder<T>(width, height,
-//                template.LatLo, template.LonLo,
-//                template.LatHi, template.LonHi,
-//                null, toDouble, fromDouble);
-//            for (int i = 0; i < width; i++)
-//            {
-//                for (int j = 0; j < height; j++)
-//                {
-//                    ret.Data[i][j] = ReadPixel(stream, buffer);
-//                }
-//            }
+            for (int i = 0; i < vertexCount; i++)
+            {
+                ret.VertexNormals[i].X = ReadFloat(stream, buffer);
+                ret.VertexNormals[i].Y = ReadFloat(stream, buffer);
+                ret.VertexNormals[i].Z = ReadFloat(stream, buffer);
+            }
 
-//            return ret;
-//        }
+            for (int i = 0; i < vertexCount; i++)
+            {
+                ret.VertexToImage[i].X = ReadFloat(stream, buffer);
+                ret.VertexToImage[i].Y = ReadFloat(stream, buffer);
+            }
 
-//        protected abstract Task<ChunkHolder<T>> GenerateData(StandardChunkMetadata template, TraceListener log);
-//        protected abstract void WritePixel(MemoryStream stream, T pixel);
-//        //protected abstract Task<T> ReadPixel(DeletableFileStream stream, byte[] buffer);
-//        protected abstract T ReadPixel(DeletableFileStream stream, byte[] buffer);
-//    }
-//}
-//}
-//}
+            for (int i = 0; i < 4; i++)
+            {
+                ret.Corners[i].X = ReadFloat(stream, buffer);
+                ret.Corners[i].Y = ReadFloat(stream, buffer);
+                ret.Corners[i].Z = ReadFloat(stream, buffer);
+            }
+
+            return ret;
+        }
+
+        private float ReadFloat(BlobHelper.DeletableFileStream stream, byte[] buffer)
+        {
+            stream.Read(buffer, 0, 4);
+            return BitConverter.ToSingle(buffer, 0);
+        }
+
+        private void WriteFloat(MemoryStream stream, double pixel)
+        {
+            float f = (float)pixel;
+            stream.Write(BitConverter.GetBytes(f), 0, 4);
+        }
+    }
+}

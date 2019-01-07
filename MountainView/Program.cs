@@ -2,8 +2,8 @@
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
+using MountainView.Mesh;
 using MountainViewCore.Base;
-using MountainViewDesktopCore.Mesh;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -133,8 +133,8 @@ namespace MountainView
                 "\t" + template.LatLo.ToLatString() + "," + template.LonLo.ToLonString() +
                 ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
 
-            var pixels2 = await Heights.Current.GetData(template, log);
-            var m = new FriendlyMesh(template, pixels2.Data);
+            var m = await Meshes.Current.GetData(template, log);
+            m.ExagerateHeight(3);
             m.CenterAndScale();
             return m;
         }

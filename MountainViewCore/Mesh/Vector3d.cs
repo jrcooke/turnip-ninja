@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MountainViewDesktopCore.Mesh
+namespace MountainView.Mesh
 {
     public struct Vector3d
     {
@@ -29,6 +29,11 @@ namespace MountainViewDesktopCore.Mesh
             double dy = Y - a.Y;
             double dz = Z - a.Z;
             return dx * dx + dy * dy + dz * dz;
+        }
+
+        public override string ToString()
+        {
+            return "(" + X + "," + Y + "," + Z + ")";
         }
     }
 }

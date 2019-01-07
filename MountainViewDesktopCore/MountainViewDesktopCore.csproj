@@ -186,6 +186,9 @@
     <Compile Include="..\MountainViewCore\Mesh\Vector3d.cs">
       <Link>Mesh\Vector3d.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Mesh\VectorPolar3d.cs">
+      <Link>Mesh\VectorPolar3d.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

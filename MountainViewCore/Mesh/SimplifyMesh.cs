@@ -51,7 +51,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MountainViewDesktopCore.Mesh
+namespace MountainView.Mesh
 {
     /// <summary>
     /// The fast quadric mesh simplification algorithm.

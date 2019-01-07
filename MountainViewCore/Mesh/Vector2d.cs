@@ -1,4 +1,4 @@
-﻿namespace MountainViewDesktopCore.Mesh
+﻿namespace MountainView.Mesh
 {
     public struct Vector2d
     {
