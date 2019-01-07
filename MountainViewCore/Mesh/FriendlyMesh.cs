@@ -81,10 +81,10 @@ namespace MountainView.Mesh
             Dictionary<int, Tuple<double, double>> lonSinCoses = new Dictionary<int, Tuple<double, double>>();
             for (int i = 0; i < max; i++)
             {
-                var latRad = Math.PI / 180 * (LatLo.DecimalDegree + i * LatDelta.DecimalDegree / max);
+                var latRad = Math.PI / 180 * (LatLo.DecimalDegree + i * LatDelta.DecimalDegree / (max - 1));
                 latSinCoses.Add(i, new Tuple<double, double>(Math.Sin(latRad), Math.Cos(latRad)));
 
-                var lonRad = Math.PI / 180 * (LonLo.DecimalDegree + i * LonDelta.DecimalDegree / max);
+                var lonRad = Math.PI / 180 * (LonHi.DecimalDegree - i * LonDelta.DecimalDegree / (max - 1));
                 lonSinCoses.Add(i, new Tuple<double, double>(Math.Sin(lonRad), Math.Cos(lonRad)));
             }
 
