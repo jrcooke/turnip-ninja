@@ -118,11 +118,11 @@ namespace MountainView.Mesh
                         for (int j = 0; j < jCount - 1; j++)
                         {
                             triangleIncides[tid++] = (i + 0) * jCount + (j + 0);
-                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
                             triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
+                            triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
                             triangleIncides[tid++] = (i + 1) * jCount + (j + 1);
-                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                             triangleIncides[tid++] = (i + 0) * jCount + (j + 1);
+                            triangleIncides[tid++] = (i + 1) * jCount + (j + 0);
                         }
                     }
 

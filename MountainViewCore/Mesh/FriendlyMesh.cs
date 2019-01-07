@@ -73,31 +73,30 @@ namespace MountainView.Mesh
 
         //------------------------------------------------
 
-        private Vector3d[][] Compute3dPositions(float[][] heights)
+        private Vector3d[][] Compute3dPositions(float[][] heights, int reduction = 1)
         {
-            int max = heights.Length;
-
             Dictionary<int, Tuple<double, double>> latSinCoses = new Dictionary<int, Tuple<double, double>>();
             Dictionary<int, Tuple<double, double>> lonSinCoses = new Dictionary<int, Tuple<double, double>>();
-            for (int i = 0; i < max; i++)
+            for (int i = 0; i < heights.Length; i++)
             {
-                var latRad = Math.PI / 180 * (LatLo.DecimalDegree + i * LatDelta.DecimalDegree / (max - 1));
+                var latRad = Math.PI / 180 * (LatLo.DecimalDegree + i * LatDelta.DecimalDegree / (heights.Length - 1));
                 latSinCoses.Add(i, new Tuple<double, double>(Math.Sin(latRad), Math.Cos(latRad)));
 
-                var lonRad = Math.PI / 180 * (LonHi.DecimalDegree - i * LonDelta.DecimalDegree / (max - 1));
+                var lonRad = Math.PI / 180 * (LonHi.DecimalDegree - i * LonDelta.DecimalDegree / (heights.Length - 1));
                 lonSinCoses.Add(i, new Tuple<double, double>(Math.Sin(lonRad), Math.Cos(lonRad)));
             }
 
+            int max = heights.Length / reduction;
             Vector3d[][] positions = new Vector3d[max][];
             for (int i = 0; i < max; i++)
             {
                 positions[i] = new Vector3d[max];
-                var latSinCos = latSinCoses[i];
+                var latSinCos = latSinCoses[i * reduction];
 
                 for (int j = 0; j < max; j++)
                 {
-                    var lonSinCos = lonSinCoses[j];
-                    double height = heights[j][max - 1 - i] + Utils.AlphaMeters;
+                    var lonSinCos = lonSinCoses[j * reduction];
+                    double height = heights[reduction * i][reduction * j] + Utils.AlphaMeters;
                     positions[i][j].X = height * latSinCos.Item2 * lonSinCos.Item2;
                     positions[i][j].Y = height * latSinCos.Item2 * lonSinCos.Item1;
                     positions[i][j].Z = height * latSinCos.Item1;
