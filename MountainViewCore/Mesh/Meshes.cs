@@ -53,15 +53,24 @@ namespace MountainView.Mesh
             FriendlyMesh ret = computedChunk.Item2;
             if (computedChunk.Item2 != null)
             {
-                log?.WriteLine("Cached " + description + " chunk file exists: " + fileName);
+                log?.WriteLine("Cached " + description + " chunk (" + template.ToString() + ") file exists: " + fileName);
                 return computedChunk.Item2;
             }
 
-            log?.WriteLine("Cached " + description + " chunk file does not exist: " + fileName + ", so starting generation...");
-            var pixels2 = await Heights.Current.GetData(template, log);
+            log?.WriteLine("Cached " + description + " chunk (" + template.ToString() + ") file does not exist: " + fileName + ", so starting generation...");
+
+            ChunkHolder<float> pixels2 = null;
+            try
+            {
+                pixels2 = await Heights.Current.GetData(template, log);
+            }
+            catch
+            {
+            }
+
             if (pixels2 == null)
             {
-                throw new InvalidOperationException("Source heights not found");
+                throw new InvalidOperationException("Source heights not found for chunk " + template.ToString());
             }
 
             ret = new FriendlyMesh(
@@ -71,7 +80,7 @@ namespace MountainView.Mesh
                 pixels2.Data);
 
             await WriteChunk(ret, fileName, log);
-            log?.WriteLine("Finished generation of " + description + " cached chunk file: " + fileName);
+            log?.WriteLine("Finished generation of " + description + " cached chunk (" + template.ToString() + ") file: " + fileName);
             return ret;
         }
 

@@ -5,6 +5,7 @@ using MountainView.Imaging;
 using MountainView.Mesh;
 using MountainViewCore.Base;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -125,64 +126,61 @@ namespace MountainView
 
             var lat = Angle.FromDecimalDegrees(latD);
             var lon = Angle.FromDecimalDegrees(lonD);
-
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
             var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-            log?.WriteLine(zoomLevel + "\t" + template.LatDelta +
-                "\t" + template.LatLo.ToLatString() + "," + template.LonLo.ToLonString() +
-                ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
+            log?.WriteLine(template);
 
             var m = await Meshes.Current.GetData(template, log);
             return m;
         }
 
-        public static async Task GetImages(TraceListener log, double latD, double lonD, int zoomLevel,
-            Action<MemoryStream> getHeightBitmap = null,
-            Action<MemoryStream> getImageBitmap2 = null)
+        public static async Task<byte[]> GetImage(TraceListener log, double latD, double lonD, int zoomLevel,
+            bool isHeights = false)
         {
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
             var lat = Angle.FromDecimalDegrees(latD);
             var lon = Angle.FromDecimalDegrees(lonD);
-
             log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
 
             var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-            if (template == null)
+            log?.WriteLine(template);
+
+            MemoryStream ms = null;
+            try
             {
-                log?.WriteLine("Chunk is null");
+                if (isHeights)
+                {
+                    var heights = await Heights.Current.GetData((StandardChunkMetadata)template, log);
+                    if (heights != null)
+                    {
+                        ms = Utils.GetBitmap(heights, a => Utils.GetColorForHeight(a), OutputType.JPEG);
+                    }
+                }
+                else
+                {
+                    var pixels = await Images.Current.GetData((StandardChunkMetadata)template, log);
+                    if (pixels != null)
+                    {
+                        ms = Utils.GetBitmap(pixels, a => a, OutputType.JPEG);
+                    }
+                }
+
+                byte[] imageData = new byte[ms.Length];
+                ms.Seek(0, SeekOrigin.Begin);
+                ms.Read(imageData, 0, imageData.Length);
+                return imageData;
             }
-            else
+
+            catch (Exception ex)
             {
-                log?.Write(zoomLevel + "\t" + template.LatDelta);
-                log?.WriteLine("\t" + template.LatLo.ToLatString() + "," + template.LonLo.ToLonString() + ", " + template.LatHi.ToLatString() + "," + template.LonHi.ToLonString());
-
-                if (getHeightBitmap != null)
-                {
-                    try
-                    {
-                        var heights = await Heights.Current.GetData((StandardChunkMetadata)template, log);
-                        if (heights != null) getHeightBitmap?.Invoke(Utils.GetBitmap(heights, a => Utils.GetColorForHeight(a), OutputType.JPEG));
-                    }
-                    catch (Exception ex)
-                    {
-                        log?.WriteLine(ex.Message);
-                    }
-                }
-
-                if (getImageBitmap2 != null)
-                {
-                    try
-                    {
-                        var pixels = await Images.Current.GetData((StandardChunkMetadata)template, log);
-                        if (pixels != null) getImageBitmap2?.Invoke(Utils.GetBitmap(pixels, a => a, OutputType.JPEG));
-                    }
-                    catch (Exception ex)
-                    {
-                        log?.WriteLine(ex.Message);
-                    }
-                }
+                log?.WriteLine(ex.Message);
+                return null;
+            }
+            finally
+            {
+                if (ms != null) ms.Dispose();
             }
         }
 

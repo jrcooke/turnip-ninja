@@ -12,6 +12,7 @@ namespace MountainView.Mesh
 
         private Vector3d avgV;
         private double deltaV;
+
         private Vector3d[] origCorners;
 
         public Vector3d[] Vertices { get; private set; }
@@ -192,7 +193,8 @@ namespace MountainView.Mesh
                 Vertices[i].Z = Vertices[i].Z / deltaV + avgV.Z;
             }
         }
-        public void CenterAndScale(double maxSideLength = 10.0, Vector3d center = new Vector3d())
+
+        public void GetCenterAndScale(out double deltaV, out Vector3d avgV)
         {
             avgV = new Vector3d(
                 Vertices.Average(p => p.X),
@@ -208,28 +210,11 @@ namespace MountainView.Mesh
                 Corners[3].DeltaSq(ref Corners[2]),
             };
 
-            deltaV = maxSideLength / Math.Sqrt(cornerDistsSq.Max());
-
-            for (int i = 0; i < Vertices.Length; i++)
-            {
-                Vertices[i].X = (Vertices[i].X - avgV.X + center.X) * deltaV;
-                Vertices[i].Y = (Vertices[i].Y - avgV.Y + center.Y) * deltaV;
-                Vertices[i].Z = (Vertices[i].Z - avgV.Z + center.Z) * deltaV;
-            }
-
-            for (int i = 0; i < Corners.Length; i++)
-            {
-                Corners[i].X = (Corners[i].X - avgV.X + center.X) * deltaV;
-                Corners[i].Y = (Corners[i].Y - avgV.Y + center.Y) * deltaV;
-                Corners[i].Z = (Corners[i].Z - avgV.Z + center.Z) * deltaV;
-            }
+            deltaV = 1.0 / Math.Sqrt(cornerDistsSq.Max());
         }
 
-        public void Match(FriendlyMesh mesh)
+        public void Match(Vector3d avgV, double deltaV)
         {
-            avgV = mesh.avgV;
-            deltaV = mesh.deltaV;
-
             for (int i = 0; i < Vertices.Length; i++)
             {
                 Vertices[i].X = (Vertices[i].X - avgV.X) * deltaV;

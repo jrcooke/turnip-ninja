@@ -1,7 +1,12 @@
-﻿using MountainView.Mesh;
+﻿using MountainView.Base;
+using MountainView.ChunkManagement;
+using MountainView.Mesh;
 using System;
+using System.Collections.Generic;
 using System.Device.Location;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -28,7 +33,7 @@ namespace WpfApp1
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
 
-            NewMethod(47.683923371494558, -122.29201376263447);
+            NewMethod(47.683923371494558, -122.29201376263447, 4);
         }
 
 
@@ -52,93 +57,71 @@ namespace WpfApp1
                 double lat = Watcher.Position.Location.Latitude;
                 double lon = Watcher.Position.Location.Longitude;
                 //  th.ButtClick(traceListener =>
-                NewMethod(lat, lon);
+                NewMethod(lat, lon, 4);
             }
         }
 
-        private void NewMethod(double lat, double lon)
+        private void NewMethod(double lat, double lon, int zoomLevel)
         {
+            var template = StandardChunkMetadata.GetRangeContaingPoint(
+                Angle.FromDecimalDegrees(lat),
+                Angle.FromDecimalDegrees(lon),
+                zoomLevel);
+
             Task.Run(async () =>
             {
-                BitmapImage heightImage = null;
-                BitmapImage satImage = null;
-
-                var mesh = await MountainView.Program.GetMesh(null, lat, lon, 5);
-
-                await MountainView.Program.GetImages(null, lat, lon, 5,
-                    heightMS => Dispatcher.Invoke(() =>
-                    {
-                        heightImage = new BitmapImage();
-                        heightImage.BeginInit();
-                        heightImage.StreamSource = heightMS;
-                        heightImage.EndInit();
-                    }),
-                    imageMS => Dispatcher.Invoke(() =>
-                    {
-                        satImage = new BitmapImage();
-                        satImage.BeginInit();
-                        satImage.StreamSource = imageMS;
-                        satImage.EndInit();
-                    }));
-
-                // TODO: remove
-                mesh.ExagerateHeight(3.0);
-                mesh.CenterAndScale();
-
-                Dispatcher.Invoke(() =>
-                {
-                    mainImage.Source = heightImage;
-                    mainImage2.Source = satImage;
-                    uc.Blarg(satImage, mesh);
-                });
-
-                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (-1) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
-                // await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (+0) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (-1) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (+0) * mesh.LonDelta.DecimalDegree);
-                await foo(mesh, lat + (+1) * mesh.LatDelta.DecimalDegree, lon + (+1) * mesh.LonDelta.DecimalDegree);
+                var av = await foo(lat, lon, zoomLevel, new Vector3d(), 0.0);
+                await foo(lat + (-1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (+0) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (+0) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (+1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                await foo(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
             });
         }
 
-        private async Task foo(FriendlyMesh mesh, double lat, double lon)
+        private async Task<Tuple<Vector3d, double>> foo(double lat, double lon, int zoomLevel, Vector3d avgV, double deltaV)
         {
-            BitmapImage heightImage = null;
-            BitmapImage satImage = null;
-
-            // Do it again, but move
-            var mesh2 = await MountainView.Program.GetMesh(null, lat, lon, 5);
-
-            await MountainView.Program.GetImages(null, lat, lon, 5,
-                heightMS => Dispatcher.Invoke(() =>
-                {
-                    heightImage = new BitmapImage();
-                    heightImage.BeginInit();
-                    heightImage.StreamSource = heightMS;
-                    heightImage.EndInit();
-                }),
-                imageMS => Dispatcher.Invoke(() =>
-                {
-                    satImage = new BitmapImage();
-                    satImage.BeginInit();
-                    satImage.StreamSource = imageMS;
-                    satImage.EndInit();
-                }));
+            Tuple<Vector3d, double> ret = new Tuple<Vector3d, double>(new Vector3d(), 0.0);
+            var mesh = await MountainView.Program.GetMesh(null, lat, lon, zoomLevel);
+            if (mesh == null)
+            {
+                return null;
+            }
 
             // TODO: remove
-            mesh2.ExagerateHeight(3.0);
-            mesh2.Match(mesh);
-
-            Dispatcher.Invoke(() =>
+            mesh.ExagerateHeight(3.0);
+            if (deltaV <= 0.0)
             {
-                mainImage.Source = heightImage;
-                mainImage2.Source = satImage;
-                uc.Blarg(satImage, mesh2);
-            });
+                mesh.GetCenterAndScale(out deltaV, out avgV);
+                deltaV *= 4;
+                ret = new Tuple<Vector3d, double>(avgV, deltaV);
+            }
 
+            mesh.Match(avgV, deltaV);
+
+            var imageData = await MountainView.Program.GetImage(null, lat, lon, zoomLevel, false);
+            if ((imageData?.Length ?? 0) > 0)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    BitmapImage image = null;
+                    MemoryStream ms = new MemoryStream();
+                    ms.Write(imageData, 0, imageData.Length);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    image = new BitmapImage();
+                    image.BeginInit();
+                    image.StreamSource = ms;
+                    image.EndInit();
+
+                    mainImage.Source = image;
+                    uc.Blarg(image, mesh);
+                });
+            }
+
+            return ret;
         }
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
