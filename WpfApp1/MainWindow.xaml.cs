@@ -34,18 +34,15 @@ namespace WpfApp1
             Watcher.Start();
 
             NewMethod(47.683923371494558, -122.29201376263447, 4);
+            s1.Value = UserControl2.InitAng;
+            s3.Value = UserControl2.InitM;
         }
-
 
         private void S_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (s1 != null && s3 != null && uc?.myCamera != null)
             {
-                var theta = s1.Value * 2.0 * Math.PI;
-                var x = (s3.Value) * Math.Sin(theta);
-                var y = (s3.Value) * Math.Cos(theta);
-                uc.myCamera.Position = new Point3D(0, -2 * x, -2 * y);
-                uc.myCamera.LookDirection = new Vector3D(0, x, y);
+                uc.NewMethod1(s1.Value, s3.Value);
                 //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
             }
         }
@@ -82,7 +79,7 @@ namespace WpfApp1
             });
         }
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(double lat, double lon, int zoomLevel,  FriendlyMesh.NormalizeSettings norm = null)
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null)
         {
             var mesh = await MountainView.Program.GetMesh(null, lat, lon, zoomLevel);
             if (mesh == null)
@@ -94,7 +91,7 @@ namespace WpfApp1
             mesh.ExagerateHeight(3.0);
             if (norm == null)
             {
-                norm = mesh.GetCenterAndScale(4);
+                norm = mesh.GetCenterAndScale(lat, lon, 4);
             }
 
             mesh.Match(norm);

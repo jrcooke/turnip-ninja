@@ -1,4 +1,5 @@
 ﻿using MountainView.Mesh;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,24 +14,38 @@ namespace WpfApp1
         public PerspectiveCamera myCamera;
         public DirectionalLight myDirectionalLight;
         private Model3DGroup myModel3DGroup;
+        public const double InitAng = 0.45;
+        public const double InitM = 5;
+
+        public void NewMethod1(double ang, double m)
+        {
+            var theta = ang * 2.0 * Math.PI;
+            var x = m * Math.Sin(theta);
+            var y = m * Math.Cos(theta);
+            myCamera.Position = new Point3D(x, y, 0);
+            myCamera.LookDirection = new Vector3D(
+                -myCamera.Position.X,
+                -myCamera.Position.Y,
+                -myCamera.Position.Z);
+        }
 
         public UserControl2()
         {
             myCamera = new PerspectiveCamera()
             {
-                Position = new Point3D(0, -06.66, 01.35),
-                LookDirection = new Vector3D(0, 06.66, -01.35),
                 FieldOfView = 60,
             };
 
+            NewMethod1(InitAng, InitM);
+
             myModel3DGroup = new Model3DGroup();
 
-            if (true)
+            if (false)
             {
                 myDirectionalLight = new DirectionalLight()
                 {
                     Color = Colors.White,
-                    Direction = new Vector3D(0, 0, 500),
+                    Direction = new Vector3D(0, 500, 0),
                 };
 
                 myModel3DGroup.Children.Add(myDirectionalLight);
