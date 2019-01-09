@@ -10,9 +10,6 @@ namespace MountainView.Mesh
     {
         private const double RadToDeg = 180.0 / Math.PI;
 
-        private Vector3d avgV;
-        private double deltaV;
-
         private Vector3d[] origCorners;
 
         public Vector3d[] Vertices { get; private set; }
@@ -51,13 +48,13 @@ namespace MountainView.Mesh
                 positions[positions.Length-1][positions.Length-1],
             };
 
-            CenterAndScale(positions);
+            var norm = CenterAndScale(positions);
             ComplexMesh m = new ComplexMesh(positions);
             positions = null;
             Vertices = m.Vertices;
             TriangleIndices = m.TriangleIndices;
             VertexNormals = m.VertexNormals;
-            RevertCenterAndScale();
+            RevertCenterAndScale(norm);
             m = null;
 
             VertexToImage = new Vector2d[Vertices.Length];
@@ -145,12 +142,12 @@ namespace MountainView.Mesh
             polar.Height = height;
         }
 
-        private void CenterAndScale(Vector3d[][] positions)
+        private NormalizeSettings CenterAndScale(Vector3d[][] positions)
         {
-            avgV = new Vector3d(
-                positions.SelectMany(p => p).Average(p => p.X),
-                positions.SelectMany(p => p).Average(p => p.Y),
-                positions.SelectMany(p => p).Average(p => p.Z));
+            var avgV = new Vector3d(
+                       positions.SelectMany(p => p).Average(p => p.X),
+                       positions.SelectMany(p => p).Average(p => p.Y),
+                       positions.SelectMany(p => p).Average(p => p.Z));
 
             // Find the max dist between adjacent corners. This will the the characteristic length.
             var cornerDistsSq = new double[]
@@ -161,7 +158,7 @@ namespace MountainView.Mesh
                 positions[positions.Length-1][positions.Length-1].DeltaSq(ref positions[positions.Length-1][0]),
             };
 
-            deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
+            var deltaV = 10.0 / Math.Sqrt(cornerDistsSq.Max());
 
             for (int i = 0; i < positions.Length; i++)
             {
@@ -172,6 +169,8 @@ namespace MountainView.Mesh
                     positions[i][j].Z = (positions[i][j].Z - avgV.Z) * deltaV;
                 }
             }
+
+            return new NormalizeSettings(deltaV, avgV);
         }
 
         public void ExagerateHeight(double scale)
@@ -185,19 +184,19 @@ namespace MountainView.Mesh
             }
         }
 
-        private void RevertCenterAndScale()
+        private void RevertCenterAndScale(NormalizeSettings norm)
         {
             for (int i = 0; i < Vertices.Length; i++)
             {
-                Vertices[i].X = Vertices[i].X / deltaV + avgV.X;
-                Vertices[i].Y = Vertices[i].Y / deltaV + avgV.Y;
-                Vertices[i].Z = Vertices[i].Z / deltaV + avgV.Z;
+                Vertices[i].X = Vertices[i].X / norm.DeltaV + norm.AvgV.X;
+                Vertices[i].Y = Vertices[i].Y / norm.DeltaV + norm.AvgV.Y;
+                Vertices[i].Z = Vertices[i].Z / norm.DeltaV + norm.AvgV.Z;
             }
         }
 
-        public void GetCenterAndScale(out double deltaV, out Vector3d avgV)
+        public NormalizeSettings GetCenterAndScale(double scale)
         {
-            avgV = new Vector3d(
+            var avgV = new Vector3d(
                 Vertices.Average(p => p.X),
                 Vertices.Average(p => p.Y),
                 Vertices.Average(p => p.Z));
@@ -211,23 +210,36 @@ namespace MountainView.Mesh
                 Corners[3].DeltaSq(ref Corners[2]),
             };
 
-            deltaV = 1.0 / Math.Sqrt(cornerDistsSq.Max());
+            var deltaV = scale / Math.Sqrt(cornerDistsSq.Max());
+            return new NormalizeSettings(deltaV, avgV);
         }
 
-        public void Match(Vector3d avgV, double deltaV)
+        public void Match(NormalizeSettings norm)
         {
             for (int i = 0; i < Vertices.Length; i++)
             {
-                Vertices[i].X = (Vertices[i].X - avgV.X) * deltaV;
-                Vertices[i].Y = (Vertices[i].Y - avgV.Y) * deltaV;
-                Vertices[i].Z = (Vertices[i].Z - avgV.Z) * deltaV;
+                Vertices[i].X = (Vertices[i].X - norm.AvgV.X) * norm.DeltaV;
+                Vertices[i].Y = (Vertices[i].Y - norm.AvgV.Y) * norm.DeltaV;
+                Vertices[i].Z = (Vertices[i].Z - norm.AvgV.Z) * norm.DeltaV;
             }
 
             for (int i = 0; i < Corners.Length; i++)
             {
-                Corners[i].X = (Corners[i].X - avgV.X) * deltaV;
-                Corners[i].Y = (Corners[i].Y - avgV.Y) * deltaV;
-                Corners[i].Z = (Corners[i].Z - avgV.Z) * deltaV;
+                Corners[i].X = (Corners[i].X - norm.AvgV.X) * norm.DeltaV;
+                Corners[i].Y = (Corners[i].Y - norm.AvgV.Y) * norm.DeltaV;
+                Corners[i].Z = (Corners[i].Z - norm.AvgV.Z) * norm.DeltaV;
+            }
+        }
+
+        public class NormalizeSettings
+        {
+            public double DeltaV { get; private set; }
+            public Vector3d AvgV { get; private set; }
+
+            public NormalizeSettings(double deltaV, Vector3d avgV)
+            {
+                DeltaV = deltaV;
+                AvgV = avgV;
             }
         }
     }

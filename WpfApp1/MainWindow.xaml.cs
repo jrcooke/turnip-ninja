@@ -70,21 +70,20 @@ namespace WpfApp1
 
             Task.Run(async () =>
             {
-                var av = await DoChunk(lat, lon, zoomLevel, new Vector3d(), 0.0);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, av.Item1, av.Item2);
+                var norm = await DoChunk(lat, lon, zoomLevel);
+                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
             });
         }
 
-        private async Task<Tuple<Vector3d, double>> DoChunk(double lat, double lon, int zoomLevel, Vector3d avgV, double deltaV)
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(double lat, double lon, int zoomLevel,  FriendlyMesh.NormalizeSettings norm = null)
         {
-            Tuple<Vector3d, double> ret = new Tuple<Vector3d, double>(new Vector3d(), 0.0);
             var mesh = await MountainView.Program.GetMesh(null, lat, lon, zoomLevel);
             if (mesh == null)
             {
@@ -93,14 +92,12 @@ namespace WpfApp1
 
             // TODO: remove
             mesh.ExagerateHeight(3.0);
-            if (deltaV <= 0.0)
+            if (norm == null)
             {
-                mesh.GetCenterAndScale(out deltaV, out avgV);
-                deltaV *= 4;
-                ret = new Tuple<Vector3d, double>(avgV, deltaV);
+                norm = mesh.GetCenterAndScale(4);
             }
 
-            mesh.Match(avgV, deltaV);
+            mesh.Match(norm);
 
             MemoryStream ms = new MemoryStream();
             ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
@@ -117,7 +114,7 @@ namespace WpfApp1
                 uc.Blarg(image, mesh);
             });
 
-            return ret;
+            return norm;
         }
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
