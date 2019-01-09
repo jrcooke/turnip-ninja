@@ -12,7 +12,7 @@ namespace MountainView.Mesh
 {
     public class Meshes
     {
-        private static readonly string cachedFileTemplate = "{0}.v8.{1}";
+        private static readonly string cachedFileTemplate = "{0}.v9.{1}";
         private static readonly string cachedFileContainer = "mapv8";
 
         private readonly string fileExt = "mdata";
@@ -133,9 +133,11 @@ namespace MountainView.Mesh
             {
                 int vertexCount = ret.Vertices.Length;
                 int triangleIndexCount = ret.TriangleIndices.Length;
+                int edgeIndicesCount = ret.EdgeIndices.Length;
 
                 stream.Write(BitConverter.GetBytes(vertexCount), 0, 4);
                 stream.Write(BitConverter.GetBytes(triangleIndexCount), 0, 4);
+                stream.Write(BitConverter.GetBytes(edgeIndicesCount), 0, 4);
 
                 for (int i = 0; i < vertexCount; i++)
                 {
@@ -147,6 +149,11 @@ namespace MountainView.Mesh
                 for (int i = 0; i < triangleIndexCount; i++)
                 {
                     stream.Write(BitConverter.GetBytes(ret.TriangleIndices[i]), 0, 4);
+                }
+
+                for (int i = 0; i < edgeIndicesCount; i++)
+                {
+                    stream.Write(BitConverter.GetBytes(ret.EdgeIndices[i]), 0, 4);
                 }
 
                 for (int i = 0; i < vertexCount; i++)
@@ -184,16 +191,25 @@ namespace MountainView.Mesh
             stream.Read(buffer, 0, 4);
             int triangleIndexCount = BitConverter.ToInt32(buffer, 0);
 
+            stream.Read(buffer, 0, 4);
+            int edgeIndicesCount = BitConverter.ToInt32(buffer, 0);
+
             var ret = new FriendlyMesh(
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi,
-                vertexCount, triangleIndexCount);
+                vertexCount, triangleIndexCount, edgeIndicesCount);
 
             for (int i = 0; i < vertexCount; i++)
             {
                 ret.Vertices[i].X = ReadFloat(stream, buffer);
                 ret.Vertices[i].Y = ReadFloat(stream, buffer);
                 ret.Vertices[i].Z = ReadFloat(stream, buffer);
+            }
+
+            for (int i = 0; i < triangleIndexCount; i++)
+            {
+                stream.Read(buffer, 0, 4);
+                ret.TriangleIndices[i] = BitConverter.ToInt32(buffer, 0);
             }
 
             for (int i = 0; i < triangleIndexCount; i++)

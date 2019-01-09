@@ -9,6 +9,7 @@ namespace MountainView.Mesh
     {
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
+        public int[] EdgeIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
 
         public ComplexMesh(Vector3d[][] grid, double threshold = 0.0001)
@@ -16,7 +17,6 @@ namespace MountainView.Mesh
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
             var reducedExternalIndices = new List<int>();
-            var reducedCornerIndices = new List<int>();
 
             var max = grid.Length;
 
@@ -46,14 +46,6 @@ namespace MountainView.Mesh
                 chunkJs.Add(i);
             }
 
-            //if (false)
-            //{
-            //    numChunks = 9;
-            //    chunkIs = new List<int>() { 0, 1, 2, 3, 4 };
-            //    chunkJs = new List<int>() { 0, 1, 2, 3, 4 };
-            //    verbose = true;
-            //}
-
             var chunkInfos = new ChunkInfo[chunkIs.Count][];
             foreach (int chunkI in chunkIs)
             {
@@ -75,7 +67,6 @@ namespace MountainView.Mesh
                     List<int> edgeIndices = new List<int>();
                     List<Vector3d> edges = new List<Vector3d>();
                     List<Vector3d> exteriors = new List<Vector3d>();
-                    List<Vector3d> corners = new List<Vector3d>();
                     for (int i = iMin; i < iMax; i++)
                     {
                         for (int j = jMin; j < jMax; j++)
@@ -96,14 +87,6 @@ namespace MountainView.Mesh
                                 (chunkJ == chunkJs.Max() && j == jMax - 1))
                             {
                                 exteriors.Add(v);
-                            }
-
-                            if ((chunkI == chunkIs.Min() && i == iMin + 0 && chunkJ == chunkJs.Min() && j == jMin + 0) ||
-                                (chunkI == chunkIs.Max() && i == iMax - 1 && chunkJ == chunkJs.Max() && j == jMax - 1) ||
-                                (chunkI == chunkIs.Min() && i == iMin + 0 && chunkJ == chunkJs.Max() && j == jMax - 1) ||
-                                (chunkI == chunkIs.Max() && i == iMax - 1 && chunkJ == chunkJs.Min() && j == jMin + 0))
-                            {
-                                corners.Add(v);
                             }
 
                             positions[vid++] = v;
@@ -137,12 +120,10 @@ namespace MountainView.Mesh
                     reducedPositions.AddRange(vertices);
                     chunkInfo.EdgeIndices.AddRange(GetVertexIndices(vertices, edges, fudgeSq).Select(ei => ei + startIndex));
                     reducedExternalIndices.AddRange(GetVertexIndices(vertices, exteriors, fudgeSq).Select(exti => exti + startIndex));
-                    reducedCornerIndices.AddRange(GetVertexIndices(vertices, corners, fudgeSq).Select(exti => exti + startIndex));
                     reducedTriangleIndices.AddRange(md.GetIndices().Select(ti => ti + startIndex));
                     vertices = null;
                     edges = null;
                     exteriors = null;
-                    corners = null;
                     md = null;
 
                     chunkInfos[chunkI - chunkIs.Min()][chunkJ - chunkJs.Min()] = chunkInfo;
@@ -155,39 +136,27 @@ namespace MountainView.Mesh
             var reducedTriangleIndicesArray = reducedTriangleIndices.ToArray();
             reducedTriangleIndices = null;
 
-            Vector3d[] cornerArray = reducedCornerIndices.Select(p => reducedPositionsArray[p]).ToArray();
-            reducedCornerIndices = null;
+            var edgePoints = reducedExternalIndices.Select(p => reducedPositionsArray[p]).ToArray();
 
             GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudgeSq);
 
-            Vector3d[] psFinal = reducedPositionsArray;
-            int[] tisFinal = reducedTriangleIndicesArray;
-            Vector3d[] vertexNormals = null;
-            if (true)
-            {
-                var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
-                reducedPositionsArray = null;
-                reducedTriangleIndicesArray = null;
+//            Vector3d[] psFinal = reducedPositionsArray;
+//            int[] tisFinal = reducedTriangleIndicesArray;
+//            Vector3d[] vertexNormals = null;
 
-                mdFinal.SimplifyMeshByThreshold(threshold);
-                psFinal = mdFinal.GetVertices();
-                tisFinal = mdFinal.GetIndices();
-                vertexNormals = mdFinal.GetVertexNormals();
-                mdFinal = null;
-            }
+            var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
+            reducedPositionsArray = null;
+            reducedTriangleIndicesArray = null;
 
-            var cornersFinal = GetVertexIndices(psFinal, cornerArray, fudgeSq).ToArray();
-
-            Vertices = psFinal;
-            TriangleIndices = tisFinal;
-            VertexNormals = vertexNormals;
-            if (VertexNormals == null)
-            {
-                VertexNormals = psFinal.Select(p => new Vector3d(0, 0, 1)).ToArray();
-            }
+            mdFinal.SimplifyMeshByThreshold(threshold);
+            Vertices = mdFinal.GetVertices();
+            TriangleIndices = mdFinal.GetIndices();
+            EdgeIndices = GetVertexIndices(Vertices, edgePoints, fudgeSq).ToArray();
+            VertexNormals = mdFinal.GetVertexNormals();
+            mdFinal = null;
         }
 
-        private static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudgeSq)
+        public static IEnumerable<int> GetVertexIndices(Vector3d[] vertices, IEnumerable<Vector3d> edges, double fudgeSq)
         {
             foreach (var e in edges)
             {

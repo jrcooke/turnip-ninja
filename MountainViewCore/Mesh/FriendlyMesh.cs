@@ -14,6 +14,7 @@ namespace MountainView.Mesh
 
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
+        public int[] EdgeIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
         public Vector2d[] VertexToImage { get; private set; }
         public Vector3d[] Corners { get; private set; }
@@ -22,11 +23,12 @@ namespace MountainView.Mesh
         public FriendlyMesh(
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
-            int vertexCount, int triangleIndexCount)
+            int vertexCount, int triangleIndexCount, int edgeIndicesCount)
             : base(-1, -1, latLo, lonLo, latHi, lonHi)
         {
             Vertices = new Vector3d[vertexCount];
             TriangleIndices = new int[triangleIndexCount];
+            EdgeIndices = new int[edgeIndicesCount];
             VertexNormals = new Vector3d[vertexCount];
             VertexToImage = new Vector2d[vertexCount];
             Corners = new Vector3d[4];
@@ -53,6 +55,7 @@ namespace MountainView.Mesh
             positions = null;
             Vertices = m.Vertices;
             TriangleIndices = m.TriangleIndices;
+            EdgeIndices = m.EdgeIndices;
             VertexNormals = m.VertexNormals;
             RevertCenterAndScale(norm);
             m = null;
@@ -71,6 +74,33 @@ namespace MountainView.Mesh
         }
 
         //------------------------------------------------
+
+        public void SimplifyMesh(double threshold, bool verbose)
+        {
+            var edgePoints = EdgeIndices.Select(p => Vertices[p]).ToArray();
+            double fudgeSq = double.MaxValue;
+            for (int i = 1; i < edgePoints.Length; i++)
+            {
+                fudgeSq = Math.Min(fudgeSq, edgePoints[i].DeltaSq(ref edgePoints[i - 1]));
+            }
+
+            fudgeSq /= 100.0;
+            var mdFinal = new SimplifyMesh(Vertices, TriangleIndices, EdgeIndices, verbose);
+            mdFinal.SimplifyMeshByThreshold(threshold);
+            Vertices = mdFinal.GetVertices();
+            TriangleIndices = mdFinal.GetIndices();
+            VertexNormals = mdFinal.GetVertexNormals();
+            mdFinal = null;
+
+            EdgeIndices = ComplexMesh.GetVertexIndices(Vertices, edgePoints, fudgeSq).ToArray();
+
+            VertexToImage = new Vector2d[Vertices.Length];
+            GeoPolar3d buffGeoPolar = new GeoPolar3d();
+            for (int i = 0; i < VertexToImage.Length; i++)
+            {
+                InvertTo(ref Vertices[i], ref VertexToImage[i], ref buffGeoPolar);
+            }
+        }
 
         private Vector3d[][] Compute3dPositions(float[][] heights, int reduction = 1)
         {

@@ -72,11 +72,11 @@ namespace WpfApp1
                 Angle.FromDecimalDegrees(lat),
                 Angle.FromDecimalDegrees(lon),
                 zoomLevel);
-            int n = 2;
+            int n = 1;
 
             Task.Run(async () =>
             {
-                var norm = await DoChunk(log, lat, lon, zoomLevel);
+                var norm = await DoChunk(log, lat, lon, zoomLevel, 0.0001);
                 for (int i = -n; i <= n; i++)
                     for (int j = -n; j <= n; j++)
                         if (i != 0 || j != 0)
@@ -85,7 +85,9 @@ namespace WpfApp1
                                 log,
                                 lat + i * template.LatDelta.DecimalDegree,
                                 lon + j * template.LonDelta.DecimalDegree,
-                                zoomLevel, norm);
+                                zoomLevel,
+                                0.0001 * Math.Pow(10, (i * i + j * j)),
+                                norm);
                         }
             });
         }
@@ -103,7 +105,7 @@ namespace WpfApp1
             }
         }
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null)
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, double threshold, FriendlyMesh.NormalizeSettings norm = null)
         {
             var mesh = await MountainView.Program.GetMesh(log, lat, lon, zoomLevel);
             if (mesh == null)
@@ -112,6 +114,8 @@ namespace WpfApp1
             }
 
             // TODO: remove
+            mesh.SimplifyMesh(threshold, true);
+
             mesh.ExagerateHeight(3.0);
             if (norm == null)
             {
