@@ -102,24 +102,20 @@ namespace WpfApp1
 
             mesh.Match(avgV, deltaV);
 
-            var imageData = await MountainView.Program.GetImage(null, lat, lon, zoomLevel, false);
-            if ((imageData?.Length ?? 0) > 0)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    BitmapImage image = null;
-                    MemoryStream ms = new MemoryStream();
-                    ms.Write(imageData, 0, imageData.Length);
-                    ms.Seek(0, SeekOrigin.Begin);
-                    image = new BitmapImage();
-                    image.BeginInit();
-                    image.StreamSource = ms;
-                    image.EndInit();
+            MemoryStream ms = new MemoryStream();
+            ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
+            ms.Seek(0, SeekOrigin.Begin);
 
-                    mainImage.Source = image;
-                    uc.Blarg(image, mesh);
-                });
-            }
+            Dispatcher.Invoke(() =>
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.StreamSource = ms;
+                image.EndInit();
+
+                mainImage.Source = image;
+                uc.Blarg(image, mesh);
+            });
 
             return ret;
         }

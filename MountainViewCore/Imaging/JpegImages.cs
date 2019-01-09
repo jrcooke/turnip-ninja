@@ -18,7 +18,6 @@ namespace MountainView.Imaging
 
         private readonly string fileExt = "jpegdata";
         private readonly string description = "JpegImages";
-        private readonly int pixelDataSize = 3;
         public int SourceDataZoom { get; private set; } = 5;
         private readonly ConcurrentDictionary<long, string> filenameCache = new ConcurrentDictionary<long, string>();
 

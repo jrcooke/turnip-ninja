@@ -66,11 +66,13 @@ namespace WpfApp1
             ib.ViewportUnits = BrushMappingMode.Absolute;
             Material myMaterial = new DiffuseMaterial(ib);
 
-            MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D();
-            myMeshGeometry3D.Positions = new Point3DCollection(m.Vertices.Select(p => new Point3D(p.X, p.Y, p.Z)));
-            myMeshGeometry3D.TextureCoordinates = new PointCollection(m.VertexToImage.Select(p => new Point(p.X, p.Y)));
-            myMeshGeometry3D.Normals = new Vector3DCollection(m.VertexNormals.Select(p => new Vector3D(p.X, p.Y, p.Z)));
-            myMeshGeometry3D.TriangleIndices = new Int32Collection(m.TriangleIndices);
+            MeshGeometry3D myMeshGeometry3D = new MeshGeometry3D
+            {
+                Positions = new Point3DCollection(m.Vertices.Select(p => new Point3D(p.X, p.Y, p.Z))),
+                TextureCoordinates = new PointCollection(m.VertexToImage.Select(p => new Point(p.X, p.Y))),
+                Normals = new Vector3DCollection(m.VertexNormals.Select(p => new Vector3D(p.X, p.Y, p.Z))),
+                TriangleIndices = new Int32Collection(m.TriangleIndices)
+            };
 
             var myGeometryModel = new GeometryModel3D()
             {

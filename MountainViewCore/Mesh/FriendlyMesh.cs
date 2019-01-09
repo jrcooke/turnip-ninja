@@ -20,6 +20,7 @@ namespace MountainView.Mesh
         public Vector3d[] VertexNormals { get; private set; }
         public Vector2d[] VertexToImage { get; private set; }
         public Vector3d[] Corners { get; private set; }
+        public byte[] ImageData { get; set; }
 
         public FriendlyMesh(
             Angle latLo, Angle lonLo,

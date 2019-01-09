@@ -46,8 +46,7 @@ namespace MountainView.Base
         public static MyColor GetColorForHeight(float a)
         {
             int i = (int)a;
-            MyColor value;
-            if (!heightCache.TryGetValue(i, out value))
+            if (!heightCache.TryGetValue(i, out MyColor value))
             {
                 value = new MyColor(
                     (byte)((Math.Sin(a / 10.000) + 1.0) * 128.0),
@@ -217,7 +216,7 @@ namespace MountainView.Base
         {
             private readonly int width;
             private readonly int height;
-            private byte[] bits;
+            private readonly byte[] bits;
             private bool disposed;
             private GCHandle bitsHandle;
             private IntPtr arrayPtr;

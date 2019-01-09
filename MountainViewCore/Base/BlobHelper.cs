@@ -89,7 +89,7 @@ namespace MountainView.Base
 
         public class DeletableFileStream : IDisposable
         {
-            private string localFileName;
+            private readonly string localFileName;
             public FileStream Stream { get; private set; }
 
             public DeletableFileStream(string localFileName, FileStream fs)

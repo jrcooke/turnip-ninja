@@ -132,22 +132,7 @@ namespace MountainView
             log?.WriteLine(template);
 
             var m = await Meshes.Current.GetData(template, log);
-            return m;
-        }
-
-        public static async Task<byte[]> GetImage(TraceListener log, double latD, double lonD, int zoomLevel,
-            bool isHeights = false)
-        {
-            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
-
-            var lat = Angle.FromDecimalDegrees(latD);
-            var lon = Angle.FromDecimalDegrees(lonD);
-            log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
-
-            var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-            log?.WriteLine(template);
-
-            var m = await JpegImages.Current.GetData(template, log);
+            m.ImageData = await JpegImages.Current.GetData(template, log);
             return m;
         }
 
