@@ -33,7 +33,12 @@ namespace WpfApp1
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
 
+            // Mt. Ranier
+            //NewMethod(46.853100, -121.759100, 4);
+
+            // Home
             NewMethod(47.683923371494558, -122.29201376263447, 4);
+
             s1.Value = UserControl2.InitAng;
             s3.Value = UserControl2.InitM;
         }
