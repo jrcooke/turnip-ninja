@@ -132,7 +132,11 @@ namespace MountainView
             log?.WriteLine(template);
 
             var m = await Meshes.Current.GetData(template, log);
-            m.ImageData = await JpegImages.Current.GetData(template, log);
+            if (m != null)
+            {
+                m.ImageData = await JpegImages.Current.GetData(template, log);
+            }
+
             return m;
         }
 

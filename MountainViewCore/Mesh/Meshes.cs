@@ -59,7 +59,8 @@ namespace MountainView.Mesh
 
             if (pixels2 == null)
             {
-                throw new InvalidOperationException("Source heights not found for chunk " + template.ToString());
+                //                throw new InvalidOperationException("Source heights not found for chunk " + template.ToString());
+                return null;
             }
 
             ret = new FriendlyMesh(

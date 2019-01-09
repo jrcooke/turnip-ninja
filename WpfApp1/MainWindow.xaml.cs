@@ -37,7 +37,9 @@ namespace WpfApp1
             //NewMethod(46.853100, -121.759100, 4);
 
             // Home
-            NewMethod(47.683923371494558, -122.29201376263447, 4);
+
+            DebugTraceListener log = new DebugTraceListener();
+            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
 
             s1.Value = UserControl2.InitAng;
             s3.Value = UserControl2.InitM;
@@ -59,11 +61,12 @@ namespace WpfApp1
                 double lat = Watcher.Position.Location.Latitude;
                 double lon = Watcher.Position.Location.Longitude;
                 //  th.ButtClick(traceListener =>
-                NewMethod(lat, lon, 4);
+                DebugTraceListener log = new DebugTraceListener();
+                NewMethod(log, lat, lon, 4);
             }
         }
 
-        private void NewMethod(double lat, double lon, int zoomLevel)
+        private void NewMethod(TraceListener log, double lat, double lon, int zoomLevel)
         {
             var template = StandardChunkMetadata.GetRangeContaingPoint(
                 Angle.FromDecimalDegrees(lat),
@@ -73,12 +76,13 @@ namespace WpfApp1
 
             Task.Run(async () =>
             {
-                var norm = await DoChunk(lat, lon, zoomLevel);
+                var norm = await DoChunk(log, lat, lon, zoomLevel);
                 for (int i = -n; i <= n; i++)
                     for (int j = -n; j <= n; j++)
                         if (i != 0 || j != 0)
                         {
                             await DoChunk(
+                                log,
                                 lat + i * template.LatDelta.DecimalDegree,
                                 lon + j * template.LonDelta.DecimalDegree,
                                 zoomLevel, norm);
@@ -86,9 +90,22 @@ namespace WpfApp1
             });
         }
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null)
+        private class DebugTraceListener : TraceListener
         {
-            var mesh = await MountainView.Program.GetMesh(null, lat, lon, zoomLevel);
+            public override void Write(string message)
+            {
+                Debug.Write(message);
+            }
+
+            public override void WriteLine(string message)
+            {
+                Debug.WriteLine(message);
+            }
+        }
+
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null)
+        {
+            var mesh = await MountainView.Program.GetMesh(log, lat, lon, zoomLevel);
             if (mesh == null)
             {
                 return null;
