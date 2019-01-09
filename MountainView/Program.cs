@@ -147,41 +147,8 @@ namespace MountainView
             var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
             log?.WriteLine(template);
 
-            MemoryStream ms = null;
-            try
-            {
-                if (isHeights)
-                {
-                    var heights = await Heights.Current.GetData((StandardChunkMetadata)template, log);
-                    if (heights != null)
-                    {
-                        ms = Utils.GetBitmap(heights, a => Utils.GetColorForHeight(a), OutputType.JPEG);
-                    }
-                }
-                else
-                {
-                    var pixels = await Images.Current.GetData((StandardChunkMetadata)template, log);
-                    if (pixels != null)
-                    {
-                        ms = Utils.GetBitmap(pixels, a => a, OutputType.JPEG);
-                    }
-                }
-
-                byte[] imageData = new byte[ms.Length];
-                ms.Seek(0, SeekOrigin.Begin);
-                ms.Read(imageData, 0, imageData.Length);
-                return imageData;
-            }
-
-            catch (Exception ex)
-            {
-                log?.WriteLine(ex.Message);
-                return null;
-            }
-            finally
-            {
-                if (ms != null) ms.Dispose();
-            }
+            var m = await JpegImages.Current.GetData(template, log);
+            return m;
         }
 
         public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)

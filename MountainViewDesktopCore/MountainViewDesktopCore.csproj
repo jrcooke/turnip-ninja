@@ -153,6 +153,9 @@
     <Compile Include="..\MountainViewCore\Imaging\Images.cs">
       <Link>Imaging\Images.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Imaging\JpegImages.cs">
+      <Link>Imaging\JpegImages.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Imaging\UsgsRawImageChunks.cs">
       <Link>Imaging\UsgsRawImageChunks.cs</Link>
     </Compile>

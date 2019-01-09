@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using static MountainView.Base.BlobHelper;
 
 namespace MountainView.Imaging
 {
@@ -32,7 +31,7 @@ namespace MountainView.Imaging
             }
         }
 
-        protected override async Task< ChunkHolder<MyColor>> GenerateData(StandardChunkMetadata template, TraceListener log)
+        protected override async Task<ChunkHolder<MyColor>> GenerateData(StandardChunkMetadata template, TraceListener log)
         {
             var ret = new ChunkHolder<MyColor>(
                 template.LatSteps, template.LonSteps,
@@ -45,7 +44,7 @@ namespace MountainView.Imaging
             var targetChunks = (await UsgsRawImageChunks.GetChunkMetadata(log))
                 .Select(p => new
                 {
-                    p = p,
+                    p,
                     Chunk = new ChunkMetadata(0, 0,
                         Angle.FromDecimalDegrees(p.Points.Min(q => q.Item1)),
                         Angle.FromDecimalDegrees(p.Points.Min(q => q.Item2)),
@@ -80,7 +79,7 @@ namespace MountainView.Imaging
             stream.WriteByte(pixel.B);
         }
 
-        protected override MyColor ReadPixel(DeletableFileStream stream, byte[] buffer)
+        protected override MyColor ReadPixel(BlobHelper.DeletableFileStream stream, byte[] buffer)
         {
             return new MyColor(
                 (byte)stream.ReadByte(),

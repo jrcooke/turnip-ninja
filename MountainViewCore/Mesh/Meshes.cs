@@ -35,17 +35,6 @@ namespace MountainView.Mesh
         {
         }
 
-        public string GetShortFilename(StandardChunkMetadata template)
-        {
-            if (!filenameCache.TryGetValue(template.Key, out string filename))
-            {
-                filename = GetBaseFileName(template);
-                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
-            }
-
-            return filename;
-        }
-
         public async Task<FriendlyMesh> GetData(StandardChunkMetadata template, TraceListener log)
         {
             var computedChunk = await GetComputedChunk(template, log);
@@ -111,6 +100,17 @@ namespace MountainView.Mesh
             }
 
             return ret;
+        }
+
+        private string GetShortFilename(StandardChunkMetadata template)
+        {
+            if (!filenameCache.TryGetValue(template.Key, out string filename))
+            {
+                filename = GetBaseFileName(template);
+                filenameCache.AddOrUpdate(template.Key, filename, (a, b) => b);
+            }
+
+            return filename;
         }
 
         private string GetFullFileName(StandardChunkMetadata template, string filename)
