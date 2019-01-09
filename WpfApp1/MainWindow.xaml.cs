@@ -64,18 +64,20 @@ namespace WpfApp1
                 Angle.FromDecimalDegrees(lat),
                 Angle.FromDecimalDegrees(lon),
                 zoomLevel);
+            int n = 2;
 
             Task.Run(async () =>
             {
                 var norm = await DoChunk(lat, lon, zoomLevel);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (-1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (+0) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (-1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+0) * template.LonDelta.DecimalDegree, zoomLevel, norm);
-                await DoChunk(lat + (+1) * template.LatDelta.DecimalDegree, lon + (+1) * template.LonDelta.DecimalDegree, zoomLevel, norm);
+                for (int i = -n; i <= n; i++)
+                    for (int j = -n; j <= n; j++)
+                        if (i != 0 || j != 0)
+                        {
+                            await DoChunk(
+                                lat + i * template.LatDelta.DecimalDegree,
+                                lon + j * template.LonDelta.DecimalDegree,
+                                zoomLevel, norm);
+                        }
             });
         }
 
