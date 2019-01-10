@@ -60,7 +60,7 @@ namespace MountainView.Mesh
     {
         private const int maxIterationCount = 100;
 
-        private bool verbose;
+        private readonly bool verbose;
         private ResizableArray<Triangle> triangles;
         private ResizableArray<Vertex> vertices;
         private ResizableArray<Ref> refs;
@@ -139,6 +139,15 @@ namespace MountainView.Mesh
             }
 
             return verticesOut;
+        }
+
+        public int[] GetEdgeIndices()
+        {
+            return vertices.Data
+                .Select((p, i) => new { i, p.IsEdge })
+                .Where(p => p.IsEdge && p.i < vertices.Length)
+                .Select(p => p.i)
+                .ToArray();
         }
 
         public Vector3d[] GetVertexNormals()
@@ -550,6 +559,7 @@ namespace MountainView.Mesh
                     if (dst != i)
                     {
                         vertices.Data[dst].p = v.p;
+                        vertices.Data[dst].IsEdge = v.IsEdge;
                     }
 
                     dst++;
@@ -717,9 +727,9 @@ namespace MountainView.Mesh
         /// <typeparam name="T">The item type.</typeparam>
         internal class ResizableArray<T>
         {
-            private string name;
+            private readonly string name;
             public T[] Data;
-            private bool verbose;
+            private readonly bool verbose;
 
             /// <summary>
             /// Gets the length of this array.

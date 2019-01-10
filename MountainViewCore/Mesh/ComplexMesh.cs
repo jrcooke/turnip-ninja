@@ -140,10 +140,6 @@ namespace MountainView.Mesh
 
             GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudgeSq);
 
-//            Vector3d[] psFinal = reducedPositionsArray;
-//            int[] tisFinal = reducedTriangleIndicesArray;
-//            Vector3d[] vertexNormals = null;
-
             var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
             reducedPositionsArray = null;
             reducedTriangleIndicesArray = null;

@@ -81,7 +81,11 @@ namespace MountainView.Mesh
             double fudgeSq = double.MaxValue;
             for (int i = 1; i < edgePoints.Length; i++)
             {
-                fudgeSq = Math.Min(fudgeSq, edgePoints[i].DeltaSq(ref edgePoints[i - 1]));
+                var d = edgePoints[i].DeltaSq(ref edgePoints[i - 1]);
+                if (d > 1.0E-10)
+                {
+                    fudgeSq = Math.Min(fudgeSq, d);
+                }
             }
 
             fudgeSq /= 100.0;
@@ -90,9 +94,8 @@ namespace MountainView.Mesh
             Vertices = mdFinal.GetVertices();
             TriangleIndices = mdFinal.GetIndices();
             VertexNormals = mdFinal.GetVertexNormals();
+            EdgeIndices = mdFinal.GetEdgeIndices();
             mdFinal = null;
-
-            EdgeIndices = ComplexMesh.GetVertexIndices(Vertices, edgePoints, fudgeSq).ToArray();
 
             VertexToImage = new Vector2d[Vertices.Length];
             GeoPolar3d buffGeoPolar = new GeoPolar3d();
