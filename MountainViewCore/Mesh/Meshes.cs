@@ -12,7 +12,7 @@ namespace MountainView.Mesh
 {
     public class Meshes
     {
-        private static readonly string cachedFileTemplate = "{0}.v9.{1}";
+        private static readonly string cachedFileTemplate = "{0}.v10.{1}";
         private static readonly string cachedFileContainer = "mapv8";
 
         private readonly string fileExt = "mdata";
@@ -212,10 +212,10 @@ namespace MountainView.Mesh
                 ret.TriangleIndices[i] = BitConverter.ToInt32(buffer, 0);
             }
 
-            for (int i = 0; i < triangleIndexCount; i++)
+            for (int i = 0; i < edgeIndicesCount; i++)
             {
                 stream.Read(buffer, 0, 4);
-                ret.TriangleIndices[i] = BitConverter.ToInt32(buffer, 0);
+                ret.EdgeIndices[i] = BitConverter.ToInt32(buffer, 0);
             }
 
             for (int i = 0; i < vertexCount; i++)
