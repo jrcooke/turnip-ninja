@@ -76,7 +76,7 @@ namespace WpfApp1
 
             Task.Run(async () =>
             {
-                var norm = await DoChunk(log, lat, lon, zoomLevel, 0.0001);
+                var norm = await DoChunk(log, lat, lon, zoomLevel);
                 for (int i = -n; i <= n; i++)
                     for (int j = -n; j <= n; j++)
                         if (i != 0 || j != 0)
@@ -86,7 +86,6 @@ namespace WpfApp1
                                 lat + i * template.LatDelta.DecimalDegree,
                                 lon + j * template.LonDelta.DecimalDegree,
                                 zoomLevel,
-                                0.0001 * Math.Pow(10, (i * i + j * j)),
                                 norm);
                         }
             });
@@ -105,7 +104,7 @@ namespace WpfApp1
             }
         }
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, double threshold, FriendlyMesh.NormalizeSettings norm = null)
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null, double threshold = 1.0E-3)
         {
             var mesh = await MountainView.Program.GetMesh(log, lat, lon, zoomLevel);
             if (mesh == null)
