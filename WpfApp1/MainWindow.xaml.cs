@@ -33,14 +33,6 @@ namespace WpfApp1
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
 
-            // Mt. Ranier
-            //NewMethod(46.853100, -121.759100, 4);
-
-            // Home
-
-            DebugTraceListener log = new DebugTraceListener();
-            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
-
             s1.Value = UserControl2.InitAng;
             s3.Value = UserControl2.InitM;
         }
@@ -60,6 +52,13 @@ namespace WpfApp1
             {
                 double lat = Watcher.Position.Location.Latitude;
                 double lon = Watcher.Position.Location.Longitude;
+
+                // Mt. Ranier
+                //NewMethod(46.853100, -121.759100, 4);
+
+                // Home
+                // NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
+
                 //  th.ButtClick(traceListener =>
                 DebugTraceListener log = new DebugTraceListener();
                 NewMethod(log, lat, lon, 4);
@@ -142,7 +141,7 @@ namespace WpfApp1
         }
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
-            //     getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
+            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
         }
     }
 

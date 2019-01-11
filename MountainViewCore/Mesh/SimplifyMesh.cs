@@ -206,7 +206,7 @@ namespace MountainView.Mesh
         }
 
         /// <summary>
-        /// Simplift the mesh with a specified error threshold.
+        /// Simplify the mesh with a specified error threshold.
         /// </summary>
         public void SimplifyMeshByThreshold(double threshold = 1.0E-3)
         {
@@ -704,7 +704,7 @@ namespace MountainView.Mesh
                 double nY = d1Z * d2X - d1X * d2Z;
                 double nZ = d1X * d2Y - d1Y * d2X;
 
-                // Bulk normarize
+                // Bulk normalize
                 double norm1 = Math.Sqrt(d1X * d1X + d1Y * d1Y + d1Z * d1Z);
                 double norm2 = Math.Sqrt(d2X * d2X + d2Y * d2Y + d2Z * d2Z);
                 double normN = Math.Sqrt(nX * nX + nY * nY + nZ * nZ);
@@ -883,7 +883,7 @@ namespace MountainView.Mesh
             }
 
             /// <summary>
-            /// Adds two matrixes together.
+            /// Adds two matrices together.
             /// </summary>
             /// <param name="a">The left hand side.</param>
             /// <param name="b">The right hand side.</param>
