@@ -192,6 +192,15 @@
     <Compile Include="..\MountainViewCore\Mesh\VectorPolar3d.cs">
       <Link>Mesh\VectorPolar3d.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Render\Vector2f.cs">
+      <Link>Render\Vector2f.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\Vector3f.cs">
+      <Link>Render\Vector3f.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\Vector3fProj.cs">
+      <Link>Render\Vector3fProj.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config.tempate" />
