@@ -111,6 +111,9 @@
     <Compile Include="..\MountainViewCore\Base\ConfigurationManager.cs">
       <Link>Base\ConfigurationManager.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Base\DirectBitmap.cs">
+      <Link>Base\DirectBitmap.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Base\KDNode.cs">
       <Link>Base\KDNode.cs</Link>
     </Compile>

@@ -1,11 +1,7 @@
-﻿using FreeImageAPI;
-using MountainView.ChunkManagement;
+﻿using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace MountainView.Base
 {
@@ -209,74 +205,6 @@ namespace MountainView.Base
                 {
                     bm.WriteFile(outputType, stream);
                 }
-            }
-        }
-
-        private class DirectBitmap : IDisposable
-        {
-            private readonly int width;
-            private readonly int height;
-            private readonly byte[] bits;
-            private bool disposed;
-            private GCHandle bitsHandle;
-            private IntPtr arrayPtr;
-
-            public DirectBitmap(int width, int height)
-            {
-                this.width = width;
-                this.height = height;
-                bits = new byte[width * height * 4];
-                bitsHandle = GCHandle.Alloc(bits, GCHandleType.Pinned);
-                arrayPtr = bitsHandle.AddrOfPinnedObject();
-            }
-
-            public void SetPixel(int i, int j, MyColor color)
-            {
-                unsafe
-                {
-                    byte* dst = (byte*)arrayPtr.ToPointer();
-                    dst += 4 * ((height - 1 - j) * width + i);
-                    *dst++ = color.B;
-                    *dst++ = color.G;
-                    *dst++ = color.R;
-                    *dst++ = color.A;
-                }
-            }
-
-            public void WriteFile(OutputType outputType, Stream stream)
-            {
-                using (var bitmap = new FreeImageBitmap(width, height, width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
-                {
-                    switch (outputType)
-                    {
-                        case OutputType.JPEG:
-                            // JPEG_QUALITYGOOD is 75 JPEG.
-                            // JPEG_BASELINE strips metadata (EXIF, etc.)
-                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_JPEG,
-                                FREE_IMAGE_SAVE_FLAGS.JPEG_QUALITYGOOD |
-                                FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
-                            break;
-                        case OutputType.PNG:
-                            // JPEG_QUALITYGOOD is 75 JPEG.
-                            // JPEG_BASELINE strips metadata (EXIF, etc.)
-                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_PNG);
-                            break;
-                        case OutputType.Bitmap:
-                            // JPEG_QUALITYGOOD is 75 JPEG.
-                            // JPEG_BASELINE strips metadata (EXIF, etc.)
-                            bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_BMP);
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException("outputType");
-                    }
-                }
-            }
-
-            public void Dispose()
-            {
-                if (disposed) return;
-                disposed = true;
-                bitsHandle.Free();
             }
         }
     }
