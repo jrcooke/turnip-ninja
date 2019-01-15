@@ -1,6 +1,8 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
 using MountainView.Mesh;
+using MountainView.Render;
+using SoftEngine;
 using System;
 using System.Collections.Generic;
 using System.Device.Location;
@@ -22,6 +24,8 @@ namespace WpfApp1
         // The coordinate watcher.
         private GeoCoordinateWatcher Watcher = null;
 
+        private Device device;
+
         //   private TextHolder th = new TextHolder();
         public MainWindow()
         {
@@ -35,14 +39,73 @@ namespace WpfApp1
 
             s1.Value = UserControl2.InitAng;
             s3.Value = UserControl2.InitM;
+
+            // Choose the back buffer resolution here
+            var bmp = new DirectBitmap(640, 480);
+
+            var camera = new SoftEngine.Camera
+            {
+                Position = new Vector3f(0, 0, 10.0f),
+                Target = new Vector3f()
+            };
+
+            device = new Device(bmp)
+            {
+                Meshes = true ? Mesh.MakeCube() : Mesh.LoadJSONFile("monkey.babylon"),
+                Camera = camera,
+                AmbientLight = 0.5f,
+                DirectLight = 1.0f
+            };
+
+            S_ValueChanged(null, null);
         }
 
         private void S_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (s1 != null && s3 != null && uc?.myCamera != null)
+            if (s1 != null && s3 != null)
             {
-                uc.NewMethod1(s1.Value, s3.Value);
-                //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
+                if (uc?.myCamera != null)
+                {
+                    uc.NewMethod1(s1.Value, s3.Value);
+                    //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
+                }
+
+                if (device != null)
+                {
+                    var lm = ls3.Value;
+                    var ltheta = (ls1.Value) * 2.0 * Math.PI;
+                    var lphi = ls2.Value * 2.0 * Math.PI;
+                    var lx = lm * Math.Cos(lphi) * Math.Sin(ltheta);
+                    var lz = lm * Math.Cos(lphi) * Math.Cos(ltheta);
+                    var ly = lm * Math.Sin(lphi);
+                    var lightPos = new Vector3f((float)lx, (float)ly, (float)lz);
+
+                    var m = s3.Value;
+                    var theta = (s1.Value) * 2.0 * Math.PI;
+                    var phi = s2.Value * 2.0 * Math.PI;
+                    var x = m * Math.Cos(phi) * Math.Sin(theta);
+                    var z = m * Math.Cos(phi) * Math.Cos(theta);
+                    var y = m * Math.Sin(phi);
+                    device.Camera = new SoftEngine.Camera()
+                    {
+                        Position = new Vector3f((float)x, (float)y, (float)z),
+                        Target = device.Camera.Target,
+                    };
+
+                    device.Light = lightPos;
+
+                    using (var ms = device.Render())
+                    {
+                        BitmapImage image;
+                        image = new BitmapImage();
+                        image.BeginInit();
+                        image.CacheOption = BitmapCacheOption.OnLoad;
+                        image.StreamSource = ms;
+                        image.EndInit();
+                        image1.Source = image;
+                    };
+
+                }
             }
         }
 
