@@ -195,6 +195,33 @@
     <Compile Include="..\MountainViewCore\Mesh\VectorPolar3d.cs">
       <Link>Mesh\VectorPolar3d.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Render\SharpDX\Matrix.cs">
+      <Link>Render\SharpDX\Matrix.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Camera.cs">
+      <Link>Render\SoftEngine\Camera.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Device.cs">
+      <Link>Render\SoftEngine\Device.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Face.cs">
+      <Link>Render\SoftEngine\Face.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Material.cs">
+      <Link>Render\SoftEngine\Material.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Mesh.cs">
+      <Link>Render\SoftEngine\Mesh.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Texture.cs">
+      <Link>Render\SoftEngine\Texture.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\Vertex.cs">
+      <Link>Render\SoftEngine\Vertex.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\Render\SoftEngine\VertexProj.cs">
+      <Link>Render\SoftEngine\VertexProj.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Render\Vector2f.cs">
       <Link>Render\Vector2f.cs</Link>
     </Compile>

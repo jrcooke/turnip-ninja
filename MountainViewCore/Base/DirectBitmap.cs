@@ -37,6 +37,25 @@ namespace MountainView.Base
             }
         }
 
+        public static DirectBitmap ReadFile(Stream stream)
+        {
+            DirectBitmap bmp;
+            using (var bmp2 = new FreeImageBitmap(stream))
+            {
+                bmp = new DirectBitmap(bmp2.Width, bmp2.Height);
+                for (int i = 0; i < bmp2.Width; i++)
+                {
+                    for (int j = 0; j < bmp2.Height; j++)
+                    {
+                        var oldColor = bmp2.GetPixel(i, j);
+                        bmp.SetPixel(i, j, new MyColor(oldColor.R, oldColor.G, oldColor.B, oldColor.A));
+                    }
+                }
+            }
+
+            return bmp;
+        }
+
         public void WriteFile(OutputType outputType, Stream stream)
         {
             using (var bitmap = new FreeImageBitmap(Width, Height, Width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
