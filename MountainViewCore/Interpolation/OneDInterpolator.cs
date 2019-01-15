@@ -8,11 +8,11 @@ namespace MountainViewDesktop.Interpolation
 {
     public class OneDInterpolator
     {
-        InterpolatonType type;
-        private int n;
+        readonly InterpolatonType type;
+        private readonly int n;
         private double[] xa;
-        private double[] ya;
-        private double[] y2a;
+        private readonly double[] ya;
+        private readonly double[] y2a;
 
         /// <summary>
         /// Given arrays x[0..n-1] and y[0..n-1] containing a tabulated function, i.e., y[i] = f(x[i]), with
@@ -172,7 +172,7 @@ namespace MountainViewDesktop.Interpolation
             if (success) throw new InvalidOperationException();
             if (Math.Abs(y) > 1.0e-10) throw new InvalidOperationException();
 
-            Func<double, double> cubic = (x_) => (x_ - 2) * (x_ + 3) * (x_ - 1);
+            double cubic(double x_) => (x_ - 2) * (x_ + 3) * (x_ - 1);
 
             for (int i = 0; i < n; i++)
             {
