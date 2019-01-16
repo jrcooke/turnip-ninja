@@ -12,6 +12,13 @@ namespace SoftEngine
         private readonly int width;
         private readonly int height;
 
+        public Texture(DirectBitmap bmp)
+        {
+            width = bmp.Width;
+            height = bmp.Height;
+            internalBuffer = bmp.PixelBuffer;
+        }
+
         public Texture(string filename)
         {
             using (var stream = System.IO.File.OpenRead(filename))

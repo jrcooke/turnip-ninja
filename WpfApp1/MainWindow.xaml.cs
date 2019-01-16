@@ -53,17 +53,9 @@ namespace WpfApp1
             {
                 Camera = camera,
                 AmbientLight = 0.5f,
-                DirectLight = 1.0f
+                DirectLight = 1.0f,
+                Light = new Vector3f(0, 0, 20),
             };
-
-            if (true)
-            {
-                device.Meshes.Add(Mesh.MakeCube());
-            }
-            else
-            {
-                device.Meshes.Add(Mesh.LoadJSONFile("monkey.babylon"));
-            }
 
             S_ValueChanged(null, null);
         }
@@ -81,43 +73,18 @@ namespace WpfApp1
 
                 if (uc?.myCamera != null)
                 {
-                    {
-                        uc.myCamera.Position = new Point3D(0,0,5);
-                        uc.myCamera.LookDirection = new Vector3D(
-                            -x,
-                            -y,
-                            -z);
-
-                        Debug.WriteLine(uc.myCamera.Position);
-                        //if (device?.Camera != null)
-                        //{
-                        //    uc.myCamera.LookDirection = new Vector3D(
-                        //        device.Camera.Target.X,
-                        //        device.Camera.Target.Y,
-                        //        device.Camera.Target.Z);
-                        //}
-                    }
-
-                    //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
+                    uc.myCamera.Position = new Point3D(x, y, z);
+                    uc.myCamera.LookDirection = new Vector3D(-x, -y, -z);
+                    Debug.WriteLine(uc.myCamera.Position);
                 }
 
                 if (device != null)
                 {
-                    var lm = ls3.Value;
-                    var ltheta = (ls1.Value) * 2.0 * Math.PI;
-                    var lphi = ls2.Value * 2.0 * Math.PI;
-                    var lx = lm * Math.Cos(lphi) * Math.Sin(ltheta);
-                    var lz = lm * Math.Cos(lphi) * Math.Cos(ltheta);
-                    var ly = lm * Math.Sin(lphi);
-                    var lightPos = new Vector3f((float)lx, (float)ly, (float)lz);
-
                     device.Camera = new SoftEngine.Camera()
                     {
                         Position = new Vector3f((float)x, (float)y, (float)z),
                         Target = device.Camera.Target,
                     };
-
-                    device.Light = lightPos;
 
                     using (var ms = device.Render())
                     {
@@ -129,7 +96,6 @@ namespace WpfApp1
                         image.EndInit();
                         image1.Source = image;
                     };
-
                 }
             }
         }
@@ -159,7 +125,7 @@ namespace WpfApp1
                 Angle.FromDecimalDegrees(lat),
                 Angle.FromDecimalDegrees(lon),
                 zoomLevel);
-            int n = 1;
+            int n = 0;
 
             Task.Run(async () =>
             {
@@ -216,6 +182,17 @@ namespace WpfApp1
             ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
             ms.Seek(0, SeekOrigin.Begin);
 
+            using (MemoryStream ms2 = new MemoryStream())
+            {
+                ms2.Write(mesh.ImageData, 0, mesh.ImageData.Length);
+                ms2.Seek(0, SeekOrigin.Begin);
+                using (DirectBitmap bm = DirectBitmap.ReadFile(ms2))
+                {
+                    var renderMesh = Mesh.GetMesh(bm, mesh);
+                    device.Meshes.Add(renderMesh);
+                }
+            }
+
             Dispatcher.Invoke(() =>
             {
                 var image = new BitmapImage();
@@ -225,6 +202,10 @@ namespace WpfApp1
 
                 mainImage.Source = image;
                 uc.Blarg(image, mesh);
+
+
+                S_ValueChanged(null, null);
+
             });
 
             return norm;

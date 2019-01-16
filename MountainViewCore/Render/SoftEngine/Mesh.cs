@@ -1,6 +1,8 @@
 ﻿// Much of this code is based on what is in
 // https://www.davrous.com/2013/07/18/tutorial-part-6-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-texture-mapping-back-face-culling-webgl/
 
+using MountainView.Base;
+using MountainView.Mesh;
 using MountainView.Render;
 using System.Collections.Generic;
 using System.IO;
@@ -10,21 +12,18 @@ namespace SoftEngine
 {
     public class Mesh
     {
-        public string Name { get; set; }
         public Vertex[] Vertices { get; set; }
         public Face[] Faces { get; set; }
         public Texture Texture { get; set; }
 
-        public Mesh(string name, int verticesCount, int facesCount)
+        public Mesh(int verticesCount, int facesCount)
         {
-            Name = name;
             Vertices = new Vertex[verticesCount];
             Faces = new Face[facesCount];
         }
 
-        public Mesh(string name, Vector3f[] vertices, Vector3f[] normals, int[] triangleIndices)
+        public Mesh(Vector3f[] vertices, Vector3f[] normals, int[] triangleIndices)
         {
-            Name = name;
             Vertices = new Vertex[vertices.Length];
             for (int i = 0; i < vertices.Length; i++)
             {
@@ -136,7 +135,24 @@ namespace SoftEngine
             {
                 Vector3f.AvgAndNorm(x[vertInd].Select(p => Faces[p]).Select(p => p.Normal).ToArray(), ref Vertices[vertInd].Normal);
             }
+        }
 
+        public static Mesh GetMesh(DirectBitmap bm, FriendlyMesh mesh)
+        {
+            var ret = new Mesh(
+                mesh.Vertices.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
+                mesh.VertexNormals.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
+                mesh.TriangleIndices);
+
+            ret.Texture = new Texture(bm);
+
+            for (int i = 0; i < mesh.VertexToImage.Length; i++)
+            {
+                var orig = mesh.VertexToImage[i];
+                ret.Vertices[i].TextureCoordinates = new Vector2f((float)orig.X, (float)orig.Y);
+            }
+
+            return ret;
         }
 
         public static Mesh MakeCube()
@@ -169,11 +185,10 @@ namespace SoftEngine
                 new Vector3f(-1, -1, -1),
             };
 
-            var mesh = new Mesh("Cube", vertices.ToArray(), vertices.ToArray(), triangleIndices.ToArray());
+            var mesh = new Mesh(vertices.ToArray(), vertices.ToArray(), triangleIndices.ToArray());
             return mesh;
 
         }
-
 
         // Loading the JSON file
         public static Mesh LoadJSONFile(string fileName)
@@ -195,7 +210,8 @@ namespace SoftEngine
                 materials.Add(material.ID, material);
             }
 
-            for (var meshIndex = 0; meshIndex < jsonObject.meshes.Count; meshIndex++)
+            //for (
+            var meshIndex = 0; //meshIndex < jsonObject.meshes.Count; meshIndex++)
             {
                 var verticesArray = jsonObject.meshes[meshIndex].vertices;
                 // Faces

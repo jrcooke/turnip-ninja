@@ -39,7 +39,7 @@ namespace SoftEngine
             // Clipping what's visible on screen
             if (x >= 0 && x < renderWidth && y >= 0 && y < renderHeight)
             {
-                var index = (x + y * renderWidth);
+                var index = ((renderWidth - 1 - x) + y * renderWidth);
                 var index4 = index * 4;
 
                 if (depthBuffer[index] > z)
@@ -91,7 +91,7 @@ namespace SoftEngine
             // The transformed coordinates will be based on coordinate system
             // starting on the center of the screen. But drawing on screen normally starts
             // from top left. We then need to transform them again to have x:0, y:0 on top left.
-            point2d.X = +point2d.X * renderWidth + renderWidth / 2.0f;
+            point2d.X = point2d.X * renderWidth + renderWidth / 2.0f;
             point2d.Y = -point2d.Y * renderHeight + renderHeight / 2.0f;
 
             return new VertexProj
@@ -252,7 +252,7 @@ namespace SoftEngine
 
             for (var y = p1.Y; y <= p3.Y; y++)
             {
-                //if (data.currentY < 0 || data.currentY >= renderHeight) continue;
+                if (y < 0 || y >= renderHeight) continue;
                 if (useFirst)
                 {
                     if (y < p2.Y)
