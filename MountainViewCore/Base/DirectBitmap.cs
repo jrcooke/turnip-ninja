@@ -15,6 +15,8 @@ namespace MountainView.Base
         private GCHandle bitsHandle;
         private IntPtr arrayPtr;
 
+        private FreeImageBitmap srcBitmap;
+
         public DirectBitmap(int width, int height)
         {
             Width = width;
@@ -22,6 +24,13 @@ namespace MountainView.Base
             PixelBuffer = new byte[4 * width * height];
             bitsHandle = GCHandle.Alloc(PixelBuffer, GCHandleType.Pinned);
             arrayPtr = bitsHandle.AddrOfPinnedObject();
+        }
+
+        public DirectBitmap(Stream stream)
+        {
+            srcBitmap = new FreeImageBitmap(stream);
+            Width = srcBitmap.Width;
+            Height = srcBitmap.Height;
         }
 
         public void SetPixel(int i, int j, MyColor color)
@@ -37,23 +46,22 @@ namespace MountainView.Base
             }
         }
 
-        public static DirectBitmap ReadFile(Stream stream)
+        internal MyColor GetPixel(int x, int y)
         {
-            DirectBitmap bmp;
-            using (var bmp2 = new FreeImageBitmap(stream))
+            if (srcBitmap != null)
             {
-                bmp = new DirectBitmap(bmp2.Width, bmp2.Height);
-                for (int i = 0; i < bmp2.Width; i++)
-                {
-                    for (int j = 0; j < bmp2.Height; j++)
-                    {
-                        var oldColor = bmp2.GetPixel(i, j);
-                        bmp.SetPixel(i, j, new MyColor(oldColor.R, oldColor.G, oldColor.B, oldColor.A));
-                    }
-                }
+                var oldColor = srcBitmap.GetPixel(x, y);
+                return new MyColor(oldColor.R, oldColor.G, oldColor.B, oldColor.A);
             }
-
-            return bmp;
+            else
+            {
+                int pos = (x + y * Width) * 4;
+                byte b = PixelBuffer[pos++];
+                byte g = PixelBuffer[pos++];
+                byte r = PixelBuffer[pos++];
+                byte a = PixelBuffer[pos++];
+                return new MyColor(r, g, b, a);
+            }
         }
 
         public void WriteFile(OutputType outputType, Stream stream)

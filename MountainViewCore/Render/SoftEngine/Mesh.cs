@@ -142,9 +142,10 @@ namespace SoftEngine
             var ret = new Mesh(
                 mesh.Vertices.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
                 mesh.VertexNormals.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
-                mesh.TriangleIndices);
-
-            ret.Texture = new Texture(bm);
+                mesh.TriangleIndices)
+            {
+                Texture = new Texture(bm)
+            };
 
             for (int i = 0; i < mesh.VertexToImage.Length; i++)
             {

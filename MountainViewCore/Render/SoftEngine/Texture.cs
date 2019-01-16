@@ -8,25 +8,24 @@ namespace SoftEngine
 {
     public class Texture
     {
-        private readonly byte[] internalBuffer;
+        private readonly DirectBitmap bmp;
         private readonly int width;
         private readonly int height;
 
         public Texture(DirectBitmap bmp)
         {
+            this.bmp = bmp;
             width = bmp.Width;
             height = bmp.Height;
-            internalBuffer = bmp.PixelBuffer;
         }
 
         public Texture(string filename)
         {
             using (var stream = System.IO.File.OpenRead(filename))
             {
-                var bmp = DirectBitmap.ReadFile(stream);
+                bmp = new DirectBitmap(stream);
                 width = bmp.Width;
                 height = bmp.Height;
-                internalBuffer = bmp.PixelBuffer;
             }
         }
 
@@ -38,17 +37,8 @@ namespace SoftEngine
             int u = Math.Abs((int)(tu * width) % width);
             int v = Math.Abs((int)(tv * height) % height);
 
-            int pos = (u + v * width) * 4;
-            byte b = internalBuffer[pos++];
-            byte g = internalBuffer[pos++];
-            byte r = internalBuffer[pos++];
-            byte a = internalBuffer[pos++];
-
-            return new MyColor(
-                (byte)(r * scale),
-                (byte)(g * scale),
-                (byte)(b * scale),
-                (byte)(a * scale));
+            var color = bmp.GetPixel(u, v);
+            return color.Scale(scale);
         }
     }
 }

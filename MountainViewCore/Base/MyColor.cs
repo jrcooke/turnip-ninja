@@ -2,18 +2,11 @@
 {
     public struct MyColor
     {
-        public byte R;// { get; private set; }
-        public byte G;// { get; private set; }
-        public byte B;// { get; private set; }
-        public byte A;// { get; private set; }
-
-        public MyColor(float x)
-        {
-            R = (byte)(255 * x);
-            G = R;
-            B = R;
-            A = R;
-        }
+        public static readonly MyColor White = new MyColor(255, 255, 255, 255);
+        public readonly byte R;
+        public readonly byte G;
+        public readonly byte B;
+        public readonly byte A;
 
         public MyColor(byte r, byte g, byte b) : this(r, g, b, 255)
         {
@@ -25,6 +18,15 @@
             G = g;
             B = b;
             A = a;
+        }
+
+        public MyColor Scale(float scale)
+        {
+            return new MyColor(
+                (byte)(R * scale),
+                (byte)(G * scale),
+                (byte)(B * scale),
+                (byte)(A * scale));
         }
 
         public override string ToString()

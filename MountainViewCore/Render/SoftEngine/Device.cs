@@ -168,7 +168,7 @@ namespace SoftEngine
                 // changing the native color value using the cosine of the angle
                 // between the light vector and the normal vector
                 // and the texture color
-                MyColor textureColor = texture?.Map(u, v, ndotl) ?? new MyColor(ndotl);
+                MyColor textureColor = texture?.Map(u, v, ndotl) ?? MyColor.White.Scale(ndotl);
                 PutPixel(x, currentY, z, textureColor);
             }
         }
