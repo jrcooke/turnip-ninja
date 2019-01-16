@@ -5,6 +5,7 @@ using MountainView.Base;
 using MountainView.Render;
 using SharpDX;
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 
 namespace SoftEngine
@@ -22,7 +23,7 @@ namespace SoftEngine
         public Vector3f Light { get; set; }
         public double DirectLight { get; set; }
         public double AmbientLight { get; set; }
-        public Mesh[] Meshes { get; set; }
+        public Collection<Mesh> Meshes { get; set; } = new Collection<Mesh>();
 
         public Device(DirectBitmap bmp)
         {

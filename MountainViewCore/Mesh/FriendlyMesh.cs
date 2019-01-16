@@ -191,6 +191,29 @@ namespace MountainView.Mesh
             polar.Height = height;
         }
 
+        public void Rotate()
+        {
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                var tmp = Vertices[i].X;
+                Vertices[i].X = Vertices[i].Y;
+                Vertices[i].Y = Vertices[i].Z;
+                Vertices[i].Z = tmp;
+
+                tmp = VertexNormals[i].X;
+                VertexNormals[i].X = VertexNormals[i].Y;
+                VertexNormals[i].Y = VertexNormals[i].Z;
+                VertexNormals[i].Z = tmp;
+            }
+
+            for (int i = 0; i < Corners.Length; i++)
+            {
+                var tmp = Corners[i].X;
+                Corners[i].X = Corners[i].Y;
+                Corners[i].Y = Corners[i].Z;
+                Corners[i].Z = tmp;
+            }
+        }
         private NormalizeSettingsBasic CenterAndScale(Vector3d[][] positions)
         {
             var avgV = new Vector3d(

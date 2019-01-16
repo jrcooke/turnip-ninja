@@ -51,11 +51,19 @@ namespace WpfApp1
 
             device = new Device(bmp)
             {
-                Meshes = true ? Mesh.MakeCube() : Mesh.LoadJSONFile("monkey.babylon"),
                 Camera = camera,
                 AmbientLight = 0.5f,
                 DirectLight = 1.0f
             };
+
+            if (true)
+            {
+                device.Meshes.Add(Mesh.MakeCube());
+            }
+            else
+            {
+                device.Meshes.Add(Mesh.LoadJSONFile("monkey.babylon"));
+            }
 
             S_ValueChanged(null, null);
         }
@@ -64,9 +72,32 @@ namespace WpfApp1
         {
             if (s1 != null && s3 != null)
             {
+                var m = s3.Value;
+                var theta = (s1.Value) * 2.0 * Math.PI;
+                var phi = s2.Value * 2.0 * Math.PI;
+                var x = m * Math.Sin(phi) * Math.Sin(theta);
+                var y = m * Math.Sin(phi) * Math.Cos(theta);
+                var z = m * Math.Cos(phi);
+
                 if (uc?.myCamera != null)
                 {
-                    uc.NewMethod1(s1.Value, s3.Value);
+                    {
+                        uc.myCamera.Position = new Point3D(0,0,5);
+                        uc.myCamera.LookDirection = new Vector3D(
+                            -x,
+                            -y,
+                            -z);
+
+                        Debug.WriteLine(uc.myCamera.Position);
+                        //if (device?.Camera != null)
+                        //{
+                        //    uc.myCamera.LookDirection = new Vector3D(
+                        //        device.Camera.Target.X,
+                        //        device.Camera.Target.Y,
+                        //        device.Camera.Target.Z);
+                        //}
+                    }
+
                     //uc.myDirectionalLight.Direction = new Vector3D(x, y, 0);
                 }
 
@@ -80,12 +111,6 @@ namespace WpfApp1
                     var ly = lm * Math.Sin(lphi);
                     var lightPos = new Vector3f((float)lx, (float)ly, (float)lz);
 
-                    var m = s3.Value;
-                    var theta = (s1.Value) * 2.0 * Math.PI;
-                    var phi = s2.Value * 2.0 * Math.PI;
-                    var x = m * Math.Cos(phi) * Math.Sin(theta);
-                    var z = m * Math.Cos(phi) * Math.Cos(theta);
-                    var y = m * Math.Sin(phi);
                     device.Camera = new SoftEngine.Camera()
                     {
                         Position = new Vector3f((float)x, (float)y, (float)z),
@@ -184,6 +209,8 @@ namespace WpfApp1
             }
 
             mesh.Match(norm);
+
+            mesh.Rotate();
 
             MemoryStream ms = new MemoryStream();
             ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);

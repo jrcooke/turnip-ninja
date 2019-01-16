@@ -132,14 +132,14 @@ namespace SoftEngine
                 .GroupBy(p => p.Ind)
                 .Select(p => new { VertInd = p.Key, TriInds = p.Select(q => q.i).ToArray() })
                 .ToDictionary(p => p.VertInd, p => p.TriInds);
-            foreach(int vertInd in x.Keys)
+            foreach (int vertInd in x.Keys)
             {
                 Vector3f.AvgAndNorm(x[vertInd].Select(p => Faces[p]).Select(p => p.Normal).ToArray(), ref Vertices[vertInd].Normal);
             }
 
         }
 
-        public static Mesh[] MakeCube()
+        public static Mesh MakeCube()
         {
             var triangleIndices = new List<int>()
             {
@@ -170,15 +170,14 @@ namespace SoftEngine
             };
 
             var mesh = new Mesh("Cube", vertices.ToArray(), vertices.ToArray(), triangleIndices.ToArray());
-            return new Mesh[] { mesh };
+            return mesh;
 
         }
 
 
         // Loading the JSON file
-        public static Mesh[] LoadJSONFile(string fileName)
+        public static Mesh LoadJSONFile(string fileName)
         {
-            var meshes = new List<Mesh>();
             var materials = new Dictionary<string, Material>();
             var data = File.ReadAllText(fileName);
             dynamic jsonObject = Newtonsoft.Json.JsonConvert.DeserializeObject(data);
@@ -280,9 +279,9 @@ namespace SoftEngine
                         ref mesh.Faces[faceIndex].Normal);
                 };
 
-                meshes.Add(mesh);
+                return mesh;
             }
-            return meshes.ToArray();
+            return null;
         }
 
     }
