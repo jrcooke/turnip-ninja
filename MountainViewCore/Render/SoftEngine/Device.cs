@@ -290,7 +290,7 @@ namespace SoftEngine
             }
 
             MemoryStream stream = new MemoryStream();
-            bmp.WriteFile(OutputType.Bitmap, stream);
+            bmp.WriteFile(OutputType.JPEG, stream);
             // Rewind the stream...
             stream.Seek(0, SeekOrigin.Begin);
 

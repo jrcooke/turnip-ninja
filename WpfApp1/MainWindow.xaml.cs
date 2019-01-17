@@ -186,7 +186,7 @@ namespace WpfApp1
             {
                 ms2.Write(mesh.ImageData, 0, mesh.ImageData.Length);
                 ms2.Seek(0, SeekOrigin.Begin);
-                using (DirectBitmap bm = DirectBitmap.ReadFile(ms2))
+                using (DirectBitmap bm = new DirectBitmap(ms2))
                 {
                     var renderMesh = Mesh.GetMesh(bm, mesh);
                     device.Meshes.Add(renderMesh);

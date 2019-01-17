@@ -1,5 +1,6 @@
 ﻿using FreeImageAPI;
 using System;
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -15,8 +16,6 @@ namespace MountainView.Base
         private GCHandle bitsHandle;
         private IntPtr arrayPtr;
 
-        private FreeImageBitmap srcBitmap;
-
         public DirectBitmap(int width, int height)
         {
             Width = width;
@@ -28,9 +27,31 @@ namespace MountainView.Base
 
         public DirectBitmap(Stream stream)
         {
-            srcBitmap = new FreeImageBitmap(stream);
-            Width = srcBitmap.Width;
-            Height = srcBitmap.Height;
+            using (var srcBitmap = new FreeImageBitmap(stream))
+            {
+                Width = srcBitmap.Width;
+                Height = srcBitmap.Height;
+                PixelBuffer = new byte[4 * Width * Height];
+                bitsHandle = GCHandle.Alloc(PixelBuffer, GCHandleType.Pinned);
+                arrayPtr = bitsHandle.AddrOfPinnedObject();
+
+                var srcBits = srcBitmap.Bits;
+                unsafe
+                {
+                    byte* dst = (byte*)arrayPtr.ToPointer();
+                    for (int y = 0; y < Height; y++)
+                    {
+                        byte* src1 = (byte*)srcBits.ToPointer() + srcBitmap.Pitch * (Height - y - 1);
+                        for (int x = 0; x < Width; x++)
+                        {
+                            *dst++ = *src1++;
+                            *dst++ = *src1++;
+                            *dst++ = *src1++;
+                            *dst++ = 255;
+                        }
+                    }
+                }
+            }
         }
 
         public void SetPixel(int i, int j, MyColor color)
@@ -48,20 +69,12 @@ namespace MountainView.Base
 
         internal MyColor GetPixel(int x, int y)
         {
-            if (srcBitmap != null)
-            {
-                var oldColor = srcBitmap.GetPixel(x, y);
-                return new MyColor(oldColor.R, oldColor.G, oldColor.B, oldColor.A);
-            }
-            else
-            {
-                int pos = (x + y * Width) * 4;
-                byte b = PixelBuffer[pos++];
-                byte g = PixelBuffer[pos++];
-                byte r = PixelBuffer[pos++];
-                byte a = PixelBuffer[pos++];
-                return new MyColor(r, g, b, a);
-            }
+            int pos = (x + y * Width) * 4;
+            byte b = PixelBuffer[pos++];
+            byte g = PixelBuffer[pos++];
+            byte r = PixelBuffer[pos++];
+            byte a = PixelBuffer[pos++];
+            return new MyColor(r, g, b, a);
         }
 
         public void WriteFile(OutputType outputType, Stream stream)
