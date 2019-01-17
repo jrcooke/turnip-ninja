@@ -178,26 +178,9 @@ namespace SoftEngine
             // Sorting the points in order to always have this order on screen p1, p2 & p3
             // with p1 always up (thus having the Y the lowest possible to be near the top screen)
             // then p2 between p1 & p3
-            if (v1.Coordinates.Y > v2.Coordinates.Y)
-            {
-                var temp = v2;
-                v2 = v1;
-                v1 = temp;
-            }
-
-            if (v2.Coordinates.Y > v3.Coordinates.Y)
-            {
-                var temp = v2;
-                v2 = v3;
-                v3 = temp;
-            }
-
-            if (v1.Coordinates.Y > v2.Coordinates.Y)
-            {
-                var temp = v2;
-                v2 = v1;
-                v1 = temp;
-            }
+            if (v1.Coordinates.Y > v2.Coordinates.Y) Swap(ref v1, ref v2);
+            if (v2.Coordinates.Y > v3.Coordinates.Y) Swap(ref v2, ref v3);
+            if (v1.Coordinates.Y > v2.Coordinates.Y) Swap(ref v1, ref v2);
 
             // computing the cos of the angle between the light vector and the normal vector
             // it will return a value between 0 and 1 that will be used as the intensity of the color
@@ -211,9 +194,6 @@ namespace SoftEngine
             Vector3fProj p1 = v1.Coordinates;
             Vector3fProj p2 = v2.Coordinates;
             Vector3fProj p3 = v3.Coordinates;
-
-            float? invSlopeP1P2 = (p2.Y - p1.Y > 0) ? (p2.X - p1.X) * 1.0f / (p2.Y - p1.Y) : (float?)null;
-            float? invSlopeP1P3 = (p3.Y - p1.Y > 0) ? (p3.X - p1.X) * 1.0f / (p3.Y - p1.Y) : (float?)null;
 
             // When the slope is zero, it doesn't give good
             // information. Then have to check manually
@@ -229,30 +209,22 @@ namespace SoftEngine
             // branch   |  /      branch    \  |
             // is for   | /       is for     \ |
             //          P3                    P3
-            // And when dP1P3 == null
-            //          P1                    P1
-            // First    | \       Second     / |
-            // branch   |  \      branch    /  |
-            // is for   |   \     is for   /   |
-            //          P3--P2            P2--P3
+            // And dP1P3 cant be null without DP1P2 null first.
 
             bool useFirst;
-            if (!invSlopeP1P2.HasValue)
+            if (p1.Y == p2.Y)
             {
                 useFirst = p1.X < p2.X;
             }
-            else if (!invSlopeP1P3.HasValue)
-            {
-                useFirst = p3.X < p2.X;
-            }
             else
             {
+                float invSlopeP1P2 = (p2.X - p1.X) * 1.0f / (p2.Y - p1.Y);
+                float invSlopeP1P3 = (p3.X - p1.X) * 1.0f / (p3.Y - p1.Y);
                 useFirst = invSlopeP1P2 > invSlopeP1P3;
             }
 
-            for (var y = p1.Y; y <= p3.Y; y++)
+            for (var y = Math.Max(0, p1.Y); y <= Math.Min(renderHeight, p3.Y); y++)
             {
-                if (y < 0 || y >= renderHeight) continue;
                 if (useFirst)
                 {
                     if (y < p2.Y)
@@ -268,6 +240,13 @@ namespace SoftEngine
                         ProcessScanLine(y, ref v2, ref v3, ref v1, ref v3, texture);
                 }
             }
+        }
+
+        private static void Swap(ref VertexProj v1, ref VertexProj v2)
+        {
+            var temp = v2;
+            v2 = v1;
+            v1 = temp;
         }
 
         // The main method of the engine that re-compute each vertex projection
