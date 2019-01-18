@@ -12,11 +12,6 @@ namespace SoftEngine
 {
     public class Device
     {
-        private readonly float[] depthBuffer;
-        private DirectBitmap bmp;
-        private readonly int renderWidth;
-        private readonly int renderHeight;
-
         private static readonly Vector3f UnitY = new Vector3f(0, 1, 0);
 
         public Camera Camera { get; set; }
@@ -25,55 +20,34 @@ namespace SoftEngine
         public double AmbientLight { get; set; }
         public Collection<Mesh> Meshes { get; set; } = new Collection<Mesh>();
 
-        public Device(DirectBitmap bmp)
+        public Device()
         {
-            this.bmp = bmp;
-            renderWidth = bmp.Width;
-            renderHeight = bmp.Height;
-            depthBuffer = new float[renderWidth * renderHeight];
         }
 
         // Called to put a pixel on screen at a specific X,Y coordinates
-        public void PutPixel(int x, int y, float z, MyColor color)
+        private void PutPixel(RenderState state, int x, int y, float z, MyColor color)
         {
             // Clipping what's visible on screen
-            if (x >= 0 && x < renderWidth && y >= 0 && y < renderHeight)
+            if (x >= 0 && x < state.renderWidth && y >= 0 && y < state.renderHeight)
             {
-                var index = ((renderWidth - 1 - x) + y * renderWidth);
+                var index = ((state.renderWidth - 1 - x) + y * state.renderWidth);
                 var index4 = index * 4;
 
-                if (depthBuffer[index] > z)
+                if (state.depthBuffer[index] > z)
                 {
-                    depthBuffer[index] = z;
-
-                    bmp.PixelBuffer[index4] = color.B;
-                    bmp.PixelBuffer[index4 + 1] = color.G;
-                    bmp.PixelBuffer[index4 + 2] = color.R;
-                    bmp.PixelBuffer[index4 + 3] = color.A;
+                    state.depthBuffer[index] = z;
+                    state.bmp.PixelBuffer[index4] = color.B;
+                    state.bmp.PixelBuffer[index4 + 1] = color.G;
+                    state.bmp.PixelBuffer[index4 + 2] = color.R;
+                    state.bmp.PixelBuffer[index4 + 3] = color.A;
                 }
-            }
-        }
-
-        // This method is called to clear the back buffer with a specific color
-        public void Clear()
-        {
-            // Clearing Back Buffer
-            for (var index = 0; index < bmp.PixelBuffer.Length; index++)
-            {
-                bmp.PixelBuffer[index] = 255;
-            }
-
-            // Clearing Depth Buffer
-            for (var index = 0; index < depthBuffer.Length; index++)
-            {
-                depthBuffer[index] = float.MaxValue;
             }
         }
 
         // Interpolating the value between 2 vertices
         // min is the starting point, max the ending point
         // and gradient the % between the 2 points
-        float Interpolate(float min, float max, float gradient)
+        private float Interpolate(float min, float max, float gradient)
         {
             return min + (max - min) * (gradient > 1.0f ? 1.0f : gradient < 0.0f ? 0.0f : gradient);
         }
@@ -82,7 +56,7 @@ namespace SoftEngine
         // in 2D coordinates using the transformation matrix
         // It also transform the same coordinates and the normal to the vertex
         // in the 3D world
-        public VertexProj Project(ref Vertex vertex, ref Matrix transMat)
+        private VertexProj Project(RenderState state, ref Vertex vertex, ref Matrix transMat)
         {
             // transforming the coordinates into 2D space
             Vector3f point2d = new Vector3f();
@@ -91,8 +65,8 @@ namespace SoftEngine
             // The transformed coordinates will be based on coordinate system
             // starting on the center of the screen. But drawing on screen normally starts
             // from top left. We then need to transform them again to have x:0, y:0 on top left.
-            point2d.X = point2d.X * renderWidth + renderWidth / 2.0f;
-            point2d.Y = -point2d.Y * renderHeight + renderHeight / 2.0f;
+            point2d.X = +point2d.X * state.renderWidth + state.renderWidth / 2.0f;
+            point2d.Y = -point2d.Y * state.renderHeight + state.renderHeight / 2.0f;
 
             return new VertexProj
             {
@@ -116,7 +90,7 @@ namespace SoftEngine
         // drawing line between 2 points from left to right
         // papb -> pcpd
         // pa, pb, pc, pd must then be sorted before
-        void ProcessScanLine(int currentY, ref VertexProj va, ref VertexProj vb, ref VertexProj vc, ref VertexProj vd, Texture texture)
+        void ProcessScanLine(RenderState state, int currentY, ref VertexProj va, ref VertexProj vb, ref VertexProj vc, ref VertexProj vd, Texture texture)
         {
             Vector3fProj pa = va.Coordinates;
             Vector3fProj pb = vb.Coordinates;
@@ -155,7 +129,7 @@ namespace SoftEngine
             }
 
             // drawing a line from left (sx) to right (ex), but only for what is visable on scree.
-            for (int x = Math.Max(sx, 0); x < Math.Min(ex, renderWidth); x++)
+            for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.renderWidth); x++)
             {
                 float gradient = (x - sx) / (float)(ex - sx);
 
@@ -169,11 +143,11 @@ namespace SoftEngine
                 // between the light vector and the normal vector
                 // and the texture color
                 MyColor textureColor = texture?.Map(u, v, ndotl) ?? MyColor.White.Scale(ndotl);
-                PutPixel(x, currentY, z, textureColor);
+                PutPixel(state, x, currentY, z, textureColor);
             }
         }
 
-        public void DrawTriangle(ref VertexProj v1, ref VertexProj v2, ref VertexProj v3, Texture texture, ref Vector3f buffv)
+        private void DrawTriangle(RenderState state, ref VertexProj v1, ref VertexProj v2, ref VertexProj v3, Texture texture, ref Vector3f buffv)
         {
             // Sorting the points in order to always have this order on screen p1, p2 & p3
             // with p1 always up (thus having the Y the lowest possible to be near the top screen)
@@ -223,21 +197,21 @@ namespace SoftEngine
                 useFirst = invSlopeP1P2 > invSlopeP1P3;
             }
 
-            for (var y = Math.Max(0, p1.Y); y <= Math.Min(renderHeight, p3.Y); y++)
+            for (var y = Math.Max(0, p1.Y); y <= Math.Min(state.renderHeight, p3.Y); y++)
             {
                 if (useFirst)
                 {
                     if (y < p2.Y)
-                        ProcessScanLine(y, ref v1, ref v3, ref v1, ref v2, texture);
+                        ProcessScanLine(state, y, ref v1, ref v3, ref v1, ref v2, texture);
                     else
-                        ProcessScanLine(y, ref v1, ref v3, ref v2, ref v3, texture);
+                        ProcessScanLine(state, y, ref v1, ref v3, ref v2, ref v3, texture);
                 }
                 else
                 {
                     if (y < p2.Y)
-                        ProcessScanLine(y, ref v1, ref v2, ref v1, ref v3, texture);
+                        ProcessScanLine(state, y, ref v1, ref v2, ref v1, ref v3, texture);
                     else
-                        ProcessScanLine(y, ref v2, ref v3, ref v1, ref v3, texture);
+                        ProcessScanLine(state, y, ref v2, ref v3, ref v1, ref v3, texture);
                 }
             }
         }
@@ -251,15 +225,15 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public MemoryStream Render()
+        public void RenderInto(DirectBitmap bmp)
         {
-            Clear();
+            RenderState state = new RenderState(bmp);
 
             // To understand this part, please read the prerequisites resources
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, UnitY);
             var projectionMatrix = Matrix.PerspectiveFovLH(
                 0.78f,
-                (float)renderWidth / renderHeight,
+                (float)state.renderWidth / state.renderHeight,
                 0.01f,
                 1.0f);
 
@@ -280,21 +254,40 @@ namespace SoftEngine
                     //if (transformedNormalZ < 0.0f)
                     {
                         // Render this face
-                        var pixelA = Project(ref mesh.Vertices[face.A], ref transformMatrix);
-                        var pixelB = Project(ref mesh.Vertices[face.B], ref transformMatrix);
-                        var pixelC = Project(ref mesh.Vertices[face.C], ref transformMatrix);
+                        var pixelA = Project(state, ref mesh.Vertices[face.A], ref transformMatrix);
+                        var pixelB = Project(state, ref mesh.Vertices[face.B], ref transformMatrix);
+                        var pixelC = Project(state, ref mesh.Vertices[face.C], ref transformMatrix);
 
-                        DrawTriangle(ref pixelA, ref pixelB, ref pixelC, mesh.Texture, ref buffv);
+                        DrawTriangle(state, ref pixelA, ref pixelB, ref pixelC, mesh.Texture, ref buffv);
                     }
                 }
             }
-
-            MemoryStream stream = new MemoryStream();
-            bmp.WriteFile(OutputType.JPEG, stream);
-            // Rewind the stream...
-            stream.Seek(0, SeekOrigin.Begin);
-
-            return stream;
         }
+
+        private class RenderState
+        {
+            public DirectBitmap bmp;
+            public float[] depthBuffer;
+            public int renderWidth;
+            public int renderHeight;
+
+            public RenderState(DirectBitmap bmp)
+            {
+                this.bmp = bmp;
+                renderWidth = bmp.Width;
+                renderHeight = bmp.Height;
+                depthBuffer = new float[renderWidth * renderHeight];
+
+                // Clearing Back Buffer
+                bmp.SetAllPixels(MyColor.White);
+
+                // Clearing Depth Buffer
+                for (var index = 0; index < depthBuffer.Length; index++)
+                {
+                    depthBuffer[index] = float.MaxValue;
+                }
+            }
+        }
+
     }
 }

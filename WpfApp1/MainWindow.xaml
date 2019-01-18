@@ -34,14 +34,14 @@
             <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />-->
             <Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
             <Slider Name="s2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
-            <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="100" Value="10" />
-            <Slider Name="ls1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
+            <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="20" Value="10" />
+            <!--<Slider Name="ls1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
             <Slider Name="ls2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
-            <Slider Name="ls3" ValueChanged="S_ValueChanged" Maximum="100" Value="10" />
+            <Slider Name="ls3" ValueChanged="S_ValueChanged" Maximum="100" Value="10" />-->
             <Image Name="mainImage" HorizontalAlignment="Left" VerticalAlignment="Top" />
             <Image Name="mainImage2" HorizontalAlignment="Left" VerticalAlignment="Top" />
         </StackPanel>
         <local:UserControl2 x:Name="uc" Grid.Column="1" />
-        <Image Grid.Column="2" Name="image1" />
+        <Image Grid.Column="2" Name="image1" Stretch="Fill"   />
     </Grid>
 </Window>

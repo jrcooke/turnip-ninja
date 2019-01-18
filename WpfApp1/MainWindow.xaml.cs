@@ -25,6 +25,7 @@ namespace WpfApp1
         private GeoCoordinateWatcher Watcher = null;
 
         private Device device;
+        private DirectBitmap bmp;
 
         //   private TextHolder th = new TextHolder();
         public MainWindow()
@@ -49,7 +50,7 @@ namespace WpfApp1
                 Target = new Vector3f()
             };
 
-            device = new Device(bmp)
+            device = new Device()
             {
                 Camera = camera,
                 AmbientLight = 0.5f,
@@ -83,19 +84,39 @@ namespace WpfApp1
                     device.Camera = new SoftEngine.Camera()
                     {
                         Position = new Vector3f((float)x, (float)y, (float)z),
-                        Target = device.Camera.Target,
+                        Target = new Vector3f(-(float)x, -(float)y, -(float)z),
                     };
 
-                    using (var ms = device.Render())
+                    int subpixel = 3;
+                    int effWidth = image1.ActualWidth < 1 ? 60 : (int)image1.ActualWidth;
+                    int effHeight = image1.ActualHeight < 1 ? 60 : (int)image1.ActualHeight;
+                    if (bmp == null ||
+                        Math.Abs(bmp.Width / subpixel - effWidth) > 2 ||
+                        Math.Abs(bmp.Height / subpixel - effHeight) > 2)
                     {
-                        BitmapImage image;
-                        image = new BitmapImage();
-                        image.BeginInit();
-                        image.CacheOption = BitmapCacheOption.OnLoad;
-                        image.StreamSource = ms;
-                        image.EndInit();
-                        image1.Source = image;
-                    };
+                        var oldBmp = bmp;
+                        bmp = new DirectBitmap(subpixel * effWidth, subpixel * effHeight);
+                        if (oldBmp != null)
+                        {
+                            oldBmp.Dispose();
+                        }
+                    }
+
+                    if (bmp != null)
+                    {
+                        device.RenderInto(bmp);
+                        using (var ms = new MemoryStream())
+                        {
+                            bmp.WriteFile(OutputType.JPEG, ms);
+                            ms.Position = 0;
+                            BitmapImage image = new BitmapImage();
+                            image.BeginInit();
+                            image.CacheOption = BitmapCacheOption.OnLoad;
+                            image.StreamSource = ms;
+                            image.EndInit();
+                            image1.Source = image;
+                        };
+                    }
                 }
             }
         }

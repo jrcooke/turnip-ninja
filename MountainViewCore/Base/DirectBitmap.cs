@@ -67,6 +67,21 @@ namespace MountainView.Base
             }
         }
 
+        internal void SetAllPixels(MyColor color)
+        {
+            unsafe
+            {
+                byte* dst = (byte*)arrayPtr.ToPointer();
+                for (int i = 0; i <= Width * Height; i++)
+                {
+                    *dst++ = color.B;
+                    *dst++ = color.G;
+                    *dst++ = color.R;
+                    *dst++ = color.A;
+                }
+            }
+        }
+
         internal MyColor GetPixel(int x, int y)
         {
             int pos = (x + y * Width) * 4;

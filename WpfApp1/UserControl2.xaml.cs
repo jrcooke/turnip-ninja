@@ -17,7 +17,7 @@ namespace WpfApp1
 
         public UserControl2()
         {
-            myCamera = new PerspectiveCamera() { FieldOfView = 60, };
+            myCamera = new PerspectiveCamera() { FieldOfView = 15, };
 
             myModel3DGroup = new Model3DGroup();
             myModel3DGroup.Children.Add(new AmbientLight(Colors.White));
