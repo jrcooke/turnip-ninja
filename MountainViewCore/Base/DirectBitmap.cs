@@ -82,14 +82,16 @@ namespace MountainView.Base
             }
         }
 
-        internal MyColor GetPixel(int x, int y)
+        internal void GetPixel(int x, int y, ref MyColor color)
         {
-            int pos = (x + y * Width) * 4;
-            byte b = PixelBuffer[pos++];
-            byte g = PixelBuffer[pos++];
-            byte r = PixelBuffer[pos++];
-            byte a = PixelBuffer[pos++];
-            return new MyColor(r, g, b, a);
+            unsafe
+            {
+                int pos = (x + y * Width) * 4;
+                color.B = PixelBuffer[pos++];
+                color.G = PixelBuffer[pos++];
+                color.R = PixelBuffer[pos++];
+                color.A = PixelBuffer[pos++];
+            }
         }
 
         public void WriteFile(OutputType outputType, Stream stream)

@@ -4,7 +4,6 @@ using MountainView.Mesh;
 using MountainView.Render;
 using SoftEngine;
 using System;
-using System.Collections.Generic;
 using System.Device.Location;
 using System.Diagnostics;
 using System.IO;
@@ -192,12 +191,12 @@ namespace WpfApp1
             mesh.ExagerateHeight(3.0);
             if (norm == null)
             {
-                norm = mesh.GetCenterAndScale(lat, lon, 4);
+                norm = mesh.GetCenterAndScale(lat, lon, 4, 10);
             }
-
-            mesh.Match(norm);
-
-            mesh.Rotate();
+            else
+            {
+                mesh.Match(norm);
+            }
 
             MemoryStream ms = new MemoryStream();
             ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);

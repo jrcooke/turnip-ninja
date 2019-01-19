@@ -34,7 +34,7 @@
             <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />-->
             <Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
             <Slider Name="s2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
-            <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="20" Value="10" />
+            <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="5" Value="5" />
             <!--<Slider Name="ls1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
             <Slider Name="ls2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
             <Slider Name="ls3" ValueChanged="S_ValueChanged" Maximum="100" Value="10" />-->

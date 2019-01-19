@@ -191,7 +191,7 @@ namespace MountainView.Mesh
             polar.Height = height;
         }
 
-        public void Rotate()
+        private void Rotate()
         {
             for (int i = 0; i < Vertices.Length; i++)
             {
@@ -217,9 +217,9 @@ namespace MountainView.Mesh
         private NormalizeSettingsBasic CenterAndScale(Vector3d[][] positions)
         {
             var avgV = new Vector3d(
-                       positions.SelectMany(p => p).Average(p => p.X),
-                       positions.SelectMany(p => p).Average(p => p.Y),
-                       positions.SelectMany(p => p).Average(p => p.Z));
+                positions.SelectMany(p => p).Average(p => p.X),
+                positions.SelectMany(p => p).Average(p => p.Y),
+                positions.SelectMany(p => p).Average(p => p.Z));
 
             // Find the max dist between adjacent corners. This will the the characteristic length.
             var cornerDistsSq = new double[]
@@ -266,7 +266,7 @@ namespace MountainView.Mesh
             }
         }
 
-        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale)
+        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale, double elevation)
         {
             double cosLat = Math.Cos(lat / RadToDeg);
             double sinLat = Math.Sin(lat / RadToDeg);
@@ -290,10 +290,28 @@ namespace MountainView.Mesh
             };
 
             var deltaV = scale / Math.Sqrt(cornerDistsSq.Max());
-            return new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV);
+            var elePrime = elevation * deltaV;
+            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV);
+
+            MatchWorker(norm);
+            Rotate();
+            norm.Height = Vertices
+                .Select(p => new { R = p.X * p.X + p.Y * p.Y, H = p.Z })
+                .OrderBy(p => p.R)
+                .First().H;
+            MatchHeight(norm.Height - elePrime);
+
+            return norm;
         }
 
         public void Match(NormalizeSettings norm)
+        {
+            MatchWorker(norm);
+            Rotate();
+            MatchHeight(norm.Height);
+        }
+
+        public void MatchWorker(NormalizeSettings norm)
         {
             for (int i = 0; i < Vertices.Length; i++)
             {
@@ -311,10 +329,22 @@ namespace MountainView.Mesh
                 Corners[i].Z = (Corners[i].Z - norm.AvgV.Z) * norm.DeltaV;
             }
 
-
             for (int i = 0; i < VertexNormals.Length; i++)
             {
                 RotatePointToNormal(norm.CosLat, norm.SinLat, norm.CosLon, norm.SinLon, ref VertexNormals[i]);
+            }
+        }
+
+        public void MatchHeight(double height)
+        {
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                Vertices[i].Z -= height;
+            }
+
+            for (int i = 0; i < Corners.Length; i++)
+            {
+                Corners[i].Z -= height;
             }
         }
 
@@ -336,6 +366,7 @@ namespace MountainView.Mesh
             public double SinLon { get; private set; }
             public double CosLat { get; private set; }
             public double SinLat { get; private set; }
+            public double Height { get; set; }
 
             public NormalizeSettings(
                 double cosLat, double sinLat,

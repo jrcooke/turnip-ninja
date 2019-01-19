@@ -8,9 +8,9 @@ namespace SoftEngine
 {
     public class Texture
     {
-        private readonly DirectBitmap bmp;
-        private readonly int width;
-        private readonly int height;
+        public readonly DirectBitmap bmp;
+        public readonly int width;
+        public readonly int height;
 
         public Texture(DirectBitmap bmp)
         {
@@ -27,18 +27,6 @@ namespace SoftEngine
                 width = bmp.Width;
                 height = bmp.Height;
             }
-        }
-
-        // Takes the U & V coordinates exported by Blender
-        // and return the corresponding pixel color in the texture
-        public MyColor Map(float tu, float tv, float scale)
-        {
-            // using a % operator to cycle/repeat the texture if needed
-            int u = Math.Abs((int)(tu * width) % width);
-            int v = Math.Abs((int)(tv * height) % height);
-
-            var color = bmp.GetPixel(u, v);
-            return color.Scale(scale);
         }
     }
 }

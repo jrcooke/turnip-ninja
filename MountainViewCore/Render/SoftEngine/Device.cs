@@ -100,11 +100,14 @@ namespace SoftEngine
             // Thanks to current Y, we can compute the gradient to compute others values like
             // the starting X (sx) and ending X (ex) to draw between
             // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
-            var gradient1 = Math.Abs(pa.Y - pb.Y) > 0.0001 ? (currentY - pa.Y) * 1.0f / (pb.Y - pa.Y) : 1;
-            var gradient2 = Math.Abs(pc.Y - pd.Y) > 0.0001 ? (currentY - pc.Y) * 1.0f / (pd.Y - pc.Y) : 1;
+            var gradient1 = Math.Abs(pa.Y - pb.Y) > 0.0001 ? Clamp((currentY - pa.Y) * 1.0f / (pb.Y - pa.Y)) : 1;
+            var gradient2 = Math.Abs(pc.Y - pd.Y) > 0.0001 ? Clamp((currentY - pc.Y) * 1.0f / (pd.Y - pc.Y)) : 1;
 
             int sx = (int)Interpolate(pa.X, pb.X, gradient1);
             int ex = (int)Interpolate(pc.X, pd.X, gradient2);
+            sx = sx < 0 ? 0 : sx;
+            ex = ex >= state.renderWidth ? state.renderWidth - 1 : ex;
+            if (ex < sx) return;
 
             // starting Z & ending Z
             float z1 = Interpolate(pa.Z, pb.Z, gradient1);
@@ -122,29 +125,44 @@ namespace SoftEngine
             // Interpolating texture coordinates on Y
             if (texture != null)
             {
-                su = Interpolate(va.TextureCoordinates.X, vb.TextureCoordinates.X, gradient1);
-                eu = Interpolate(vc.TextureCoordinates.X, vd.TextureCoordinates.X, gradient2);
-                sv = Interpolate(va.TextureCoordinates.Y, vb.TextureCoordinates.Y, gradient1);
-                ev = Interpolate(vc.TextureCoordinates.Y, vd.TextureCoordinates.Y, gradient2);
+                su = Interpolate(va.TextureCoordinates.X, vb.TextureCoordinates.X, gradient1) * texture.width;
+                eu = Interpolate(vc.TextureCoordinates.X, vd.TextureCoordinates.X, gradient2) * texture.width;
+                sv = Interpolate(va.TextureCoordinates.Y, vb.TextureCoordinates.Y, gradient1) * texture.height;
+                ev = Interpolate(vc.TextureCoordinates.Y, vd.TextureCoordinates.Y, gradient2) * texture.height;
             }
 
             // drawing a line from left (sx) to right (ex), but only for what is visable on scree.
             for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.renderWidth); x++)
             {
-                float gradient = (x - sx) / (float)(ex - sx);
+                float gradient =  Clamp((x - sx) / (float)(ex - sx));
 
                 // Interpolating Z, normal and texture coordinates on X
                 var z = Interpolate(z1, z2, gradient);
                 var ndotl = Interpolate(snl, enl, gradient);
-                var u = Interpolate(su, eu, gradient);
-                var v = Interpolate(sv, ev, gradient);
+                var u = Math.Max(0, Math.Min(texture.width - 1, (int)Interpolate(su, eu, gradient)));
+                var v = Math.Max(0, Math.Min(texture.height - 1, (int)Interpolate(sv, ev, gradient)));
 
                 // changing the native color value using the cosine of the angle
                 // between the light vector and the normal vector
                 // and the texture color
-                MyColor textureColor = texture?.Map(u, v, ndotl) ?? MyColor.White.Scale(ndotl);
+                MyColor textureColor = new MyColor();
+                if (texture != null)
+                {
+                    texture.bmp.GetPixel(u, v, ref textureColor);
+                    textureColor.ScaleSelf(ndotl);
+                }
+                else
+                {
+                    textureColor.WhiteScale(ndotl);
+                }
+
                 PutPixel(state, x, currentY, z, textureColor);
             }
+        }
+
+        private float Clamp(float v)
+        {
+            return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
         }
 
         private void DrawTriangle(RenderState state, ref VertexProj v1, ref VertexProj v2, ref VertexProj v3, Texture texture, ref Vector3f buffv)
