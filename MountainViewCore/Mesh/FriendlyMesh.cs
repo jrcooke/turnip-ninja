@@ -2,6 +2,7 @@
 using MountainView.ChunkManagement;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MountainView.Mesh
@@ -191,29 +192,6 @@ namespace MountainView.Mesh
             polar.Height = height;
         }
 
-        private void Rotate()
-        {
-            for (int i = 0; i < Vertices.Length; i++)
-            {
-                var tmp = Vertices[i].X;
-                Vertices[i].X = Vertices[i].Y;
-                Vertices[i].Y = Vertices[i].Z;
-                Vertices[i].Z = tmp;
-
-                tmp = VertexNormals[i].X;
-                VertexNormals[i].X = VertexNormals[i].Y;
-                VertexNormals[i].Y = VertexNormals[i].Z;
-                VertexNormals[i].Z = tmp;
-            }
-
-            for (int i = 0; i < Corners.Length; i++)
-            {
-                var tmp = Corners[i].X;
-                Corners[i].X = Corners[i].Y;
-                Corners[i].Y = Corners[i].Z;
-                Corners[i].Z = tmp;
-            }
-        }
         private NormalizeSettingsBasic CenterAndScale(Vector3d[][] positions)
         {
             var avgV = new Vector3d(
@@ -272,11 +250,29 @@ namespace MountainView.Mesh
             double sinLat = Math.Sin(lat / RadToDeg);
             double cosLon = Math.Cos(lon / RadToDeg);
             double sinLon = Math.Sin(lon / RadToDeg);
+            Vector3d avgV = new Vector3d();
 
-            var avgV = new Vector3d(
-                Vertices.Average(p => p.X),
-                Vertices.Average(p => p.Y),
-                Vertices.Average(p => p.Z));
+            // Find the triangle that contains lat lon
+            // First transform all points to ones centered on lat lon
+            Vector3d[] xformed = new Vector3d[Vertices.Length];
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                xformed[i] = Vertices[i];
+                RotatePointToNormal(cosLat, sinLat, cosLon, sinLon, ref xformed[i]);
+            }
+
+            // Look find the triangles that contain that contain the origin
+            for (int i = 0; i < TriangleIndices.Length; i += 3)
+            {
+                var pointH = TriangleContainsOrigin(xformed, i);
+                if (pointH.HasValue)
+                {
+                    GeoPolar3d polar = new GeoPolar3d(lat, lon, pointH.Value);
+                    ForwardTo(ref polar, ref avgV);
+                    // Interpolate the height at the origin.
+                    Debug.WriteLine(avgV);
+                }
+            }
 
             RotatePointToNormal(cosLat, sinLat, cosLon, sinLon, ref avgV);
 
@@ -290,29 +286,72 @@ namespace MountainView.Mesh
             };
 
             var deltaV = scale / Math.Sqrt(cornerDistsSq.Max());
-            var elePrime = elevation * deltaV;
-            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV);
 
-            MatchWorker(norm);
-            Rotate();
-            norm.Height = Vertices
-                .Select(p => new { R = p.X * p.X + p.Y * p.Y, H = p.Z })
-                .OrderBy(p => p.R)
-                .First().H;
-            MatchHeight(norm.Height - elePrime);
+            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV, elevation);
+
+            Match(norm);
 
             return norm;
         }
 
-        public void Match(NormalizeSettings norm)
+        // https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+        private double Sign(Vector3d p2, Vector3d p3)
         {
-            MatchWorker(norm);
-            Rotate();
-            MatchHeight(norm.Height);
+            return (-p3.Y) * (p2.Z - p3.Z) - (p2.Y - p3.Y) * (-p3.Z);
         }
 
-        public void MatchWorker(NormalizeSettings norm)
+        private double? TriangleContainsOrigin(Vector3d[] xformed, int i)
         {
+            Vector3d v1 = xformed[TriangleIndices[i + 0]];
+            Vector3d v2 = xformed[TriangleIndices[i + 1]];
+            Vector3d v3 = xformed[TriangleIndices[i + 2]];
+
+            double d1 = Sign(v1, v2);
+            double d2 = Sign(v2, v3);
+            double d3 = Sign(v3, v1);
+
+            bool has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+            bool has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+            if (!(has_neg && has_pos))
+            {
+                // Contains origin!
+                List<double> hs = new List<double>();
+                List<double> zs = new List<double>();
+                double grad = 0.0;
+                if (v1.Y * v2.Y < 0.0)
+                {
+                    grad = -v2.Y / (v1.Y - v2.Y);
+                    hs.Add(v1.X * grad + v2.X * (1 - grad));
+                    zs.Add(v1.Z * grad + v2.Z * (1 - grad));
+                }
+
+                if (v1.Y * v3.Y < 0.0)
+                {
+                    grad = -v3.Y / (v1.Y - v3.Y);
+                    hs.Add(v1.X * grad + v3.X * (1 - grad));
+                    zs.Add(v1.Z * grad + v3.Z * (1 - grad));
+                }
+
+                if (v2.Y * v3.Y < 0.0)
+                {
+                    grad = -v3.Y / (v2.Y - v3.Y);
+                    hs.Add(v2.X * grad + v3.X * (1 - grad));
+                    zs.Add(v2.Z * grad + v3.Z * (1 - grad));
+                }
+
+                grad = zs[1] / (zs[0] - zs[1]);
+                var h = hs[0] * grad + hs[1] * (1 - grad);
+
+                return h - Utils.AlphaMeters;
+            }
+
+            return null;
+        }
+
+        public void Match(NormalizeSettings norm)
+        {
+            // MatchWorker
             for (int i = 0; i < Vertices.Length; i++)
             {
                 RotatePointToNormal(norm.CosLat, norm.SinLat, norm.CosLon, norm.SinLon, ref Vertices[i]);
@@ -333,18 +372,38 @@ namespace MountainView.Mesh
             {
                 RotatePointToNormal(norm.CosLat, norm.SinLat, norm.CosLon, norm.SinLon, ref VertexNormals[i]);
             }
-        }
 
-        public void MatchHeight(double height)
-        {
+            // Rotate()
             for (int i = 0; i < Vertices.Length; i++)
             {
-                Vertices[i].Z -= height;
+                var tmp = Vertices[i].X;
+                Vertices[i].X = Vertices[i].Y;
+                Vertices[i].Y = Vertices[i].Z;
+                Vertices[i].Z = tmp;
+
+                tmp = VertexNormals[i].X;
+                VertexNormals[i].X = VertexNormals[i].Y;
+                VertexNormals[i].Y = VertexNormals[i].Z;
+                VertexNormals[i].Z = tmp;
             }
 
             for (int i = 0; i < Corners.Length; i++)
             {
-                Corners[i].Z -= height;
+                var tmp = Corners[i].X;
+                Corners[i].X = Corners[i].Y;
+                Corners[i].Y = Corners[i].Z;
+                Corners[i].Z = tmp;
+            }
+
+            // MatchHeight
+            for (int i = 0; i < Vertices.Length; i++)
+            {
+                Vertices[i].Z += norm.Height;
+            }
+
+            for (int i = 0; i < Corners.Length; i++)
+            {
+                Corners[i].Z += norm.Height;
             }
         }
 
@@ -371,12 +430,13 @@ namespace MountainView.Mesh
             public NormalizeSettings(
                 double cosLat, double sinLat,
                 double cosLon, double sinLon,
-                double deltaV, Vector3d avgV) : base(deltaV, avgV)
+                double deltaV, Vector3d avgV, double height) : base(deltaV, avgV)
             {
                 CosLon = cosLon;
                 SinLon = sinLon;
                 CosLat = cosLat;
                 SinLat = sinLat;
+                Height = height * deltaV;
             }
         }
     }
