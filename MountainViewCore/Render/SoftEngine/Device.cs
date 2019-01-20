@@ -105,8 +105,6 @@ namespace SoftEngine
 
             int sx = (int)Interpolate(pa.X, pb.X, gradient1);
             int ex = (int)Interpolate(pc.X, pd.X, gradient2);
-            sx = sx < 0 ? 0 : sx;
-            ex = ex >= state.renderWidth ? state.renderWidth - 1 : ex;
             if (ex < sx) return;
 
             // starting Z & ending Z
@@ -134,7 +132,7 @@ namespace SoftEngine
             // drawing a line from left (sx) to right (ex), but only for what is visable on scree.
             for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.renderWidth); x++)
             {
-                float gradient =  Clamp((x - sx) / (float)(ex - sx));
+                float gradient = Clamp((x - sx) / (float)(ex - sx));
 
                 // Interpolating Z, normal and texture coordinates on X
                 var z = Interpolate(z1, z2, gradient);
@@ -256,12 +254,27 @@ namespace SoftEngine
                 1.0f);
 
             Vector3f buffv = new Vector3f();
+            Vector3f cameraTarget = Camera.Target;
+            Vector3f cameraPos = Camera.Position;
+            Vector3f lookDir = new Vector3f();
+            Vector3f.SubAndNorm(ref cameraTarget, ref cameraPos, ref lookDir);
             foreach (Mesh mesh in Meshes)
             {
                 var transformMatrix = Matrix.Mul(viewMatrix, projectionMatrix);
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
                 {
                     var face = mesh.Faces[faceIndex];
+
+                    // First, check to see if all the vertices are *behind* the camera.
+                    // We don't care about those.
+                    if (IsBehind(ref mesh.Vertices[face.A].Coordinates, ref cameraPos, ref lookDir, ref buffv) ||
+                        IsBehind(ref mesh.Vertices[face.B].Coordinates, ref cameraPos, ref lookDir, ref buffv) ||
+                        IsBehind(ref mesh.Vertices[face.C].Coordinates, ref cameraPos, ref lookDir, ref buffv))
+                    {
+                        // It is possible we will get a gap when the triangle straddles the
+                        // viewer's plane, but should be fine in most cases.
+                        continue;
+                    }
 
                     // This appears to be over agressive, blocking triangles from being render that shoudl be
                     //// Face-back culling
@@ -280,6 +293,12 @@ namespace SoftEngine
                     }
                 }
             }
+        }
+
+        private bool IsBehind(ref Vector3f vertex, ref Vector3f cameraPos, ref Vector3f lookDir, ref Vector3f buffv)
+        {
+            Vector3f.SubAndNorm(ref vertex, ref cameraPos, ref buffv);
+            return Vector3f.Dot(ref lookDir, ref buffv) < 0.00001;
         }
 
         private class RenderState
