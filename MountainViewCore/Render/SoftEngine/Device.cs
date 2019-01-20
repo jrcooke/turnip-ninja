@@ -246,7 +246,7 @@ namespace SoftEngine
             RenderState state = new RenderState(bmp);
 
             // To understand this part, please read the prerequisites resources
-            var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, UnitY);
+            var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
             var projectionMatrix = Matrix.PerspectiveFovLH(
                 0.78f,
                 (float)state.renderWidth / state.renderHeight,

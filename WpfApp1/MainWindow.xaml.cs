@@ -57,6 +57,13 @@ namespace WpfApp1
                 Light = new Vector3f(0, 0, 20),
             };
 
+            // Mt. Ranier
+            //NewMethod(46.853100, -121.759100, 4);
+
+            DebugTraceListener log = new DebugTraceListener();
+            //            Home
+            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
+
             S_ValueChanged(null, null);
         }
 
@@ -67,14 +74,14 @@ namespace WpfApp1
                 var m = s3.Value;
                 var theta = (s1.Value) * 2.0 * Math.PI;
                 var phi = s2.Value * 2.0 * Math.PI;
-                var x = m * Math.Sin(phi) * Math.Sin(theta);
-                var y = m * Math.Sin(phi) * Math.Cos(theta);
-                var z = m * Math.Cos(phi);
+                var x =  Math.Sin(theta);
+                var y =  Math.Cos(theta);
+                var z = 0.01 * m; // 0.005;// m * Math.Cos(phi);
 
                 if (uc?.myCamera != null)
                 {
-                    uc.myCamera.Position = new Point3D(x, y, z);
-                    uc.myCamera.LookDirection = new Vector3D(-x, -y, -z);
+                    uc.myCamera.Position = new Point3D(0, 0, z);// x, y, z);
+                    uc.myCamera.LookDirection = new Vector3D(-x, -y,z);
                     Debug.WriteLine(uc.myCamera.Position);
                 }
 
@@ -82,8 +89,9 @@ namespace WpfApp1
                 {
                     device.Camera = new SoftEngine.Camera()
                     {
-                        Position = new Vector3f((float)x, (float)y, (float)z),
-                        Target = new Vector3f(-(float)x, -(float)y, -(float)z),
+                        Position = new Vector3f(0, 0, (float)z), // (float)x, (float)y, (float)z),
+                        Target = new Vector3f(-(float)x, -(float)y, (float)z),
+                        UpDirection = new Vector3f(0, 0, 1),
                     };
 
                     int subpixel = 3;
