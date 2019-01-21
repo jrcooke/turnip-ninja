@@ -1,7 +1,9 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
+using MountainView.Imaging;
 using MountainView.Mesh;
 using MountainView.Render;
+using MountainViewCore.Base;
 using SoftEngine;
 using System;
 using System.Device.Location;
@@ -62,9 +64,91 @@ namespace WpfApp1
 
             DebugTraceListener log = new DebugTraceListener();
             //            Home
-            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
+            //            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
+
+            Task.Run(async () => await Doit(log));
 
             S_ValueChanged(null, null);
+        }
+
+
+        public async Task Doit(TraceListener log)
+        {
+            DateTime start = DateTime.Now;
+            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+            //Config c = Config.Rainer();
+            //Config config = Config.JuanetaAll();
+            Config config = Config.Juaneta();
+
+            var chunks = View.GetRelevantChunkKeys(config, log);
+
+            var lastChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
+            var norm = await DoChunk2(log, config.Lat.DecimalDegree, config.Lon.DecimalDegree, lastChunk);
+            device.Meshes.Clear();
+
+            int counter = 0;
+            foreach (var chunkKey in chunks)
+            {
+                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+                if (chunk == null)
+                {
+                    continue;
+                }
+
+                await DoChunk2(log, config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk, norm);
+
+            //    await Task.Delay(10000);
+                counter++;
+                Console.WriteLine(counter);
+            }
+
+            DateTime end = DateTime.Now;
+            Console.WriteLine(start);
+            Console.WriteLine(end);
+            Console.WriteLine(end - start);
+        }
+
+
+        private async Task<FriendlyMesh.NormalizeSettings> DoChunk2(
+            TraceListener log,
+            double lat, double lon,
+            StandardChunkMetadata template,
+            FriendlyMesh.NormalizeSettings norm = null, double threshold = 1.0E-3)
+        {
+            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+            var mesh = await Meshes.Current.GetData(template, log);
+            if (mesh == null)
+            {
+                return norm;
+            }
+
+            mesh.ImageData = await JpegImages.Current.GetData(template, log);
+
+            if (norm == null)
+            {
+                norm = mesh.GetCenterAndScale(lat, lon, 4, 10);
+            }
+            else
+            {
+                mesh.Match(norm);
+            }
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
+                ms.Seek(0, SeekOrigin.Begin);
+                using (DirectBitmap bm = new DirectBitmap(ms))
+                {
+                    var renderMesh = Mesh.GetMesh(bm, mesh);
+                    device.Meshes.Clear();
+                    device.Meshes.Add(renderMesh);
+                    Dispatcher.Invoke(() => S_ValueChanged(null, null));
+                }
+            }
+
+            return norm;
         }
 
         private void S_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -74,16 +158,16 @@ namespace WpfApp1
                 var m = s3.Value;
                 var theta = (s1.Value) * 2.0 * Math.PI;
                 var phi = s2.Value * 2.0 * Math.PI;
-                var x =  Math.Sin(theta);
-                var y =  Math.Cos(theta);
+                var x = Math.Sin(theta);
+                var y = Math.Cos(theta);
                 var z = 0.01 * m; // 0.005;// m * Math.Cos(phi);
 
-                if (uc?.myCamera != null)
-                {
-                    uc.myCamera.Position = new Point3D(0, 0, z);// x, y, z);
-                    uc.myCamera.LookDirection = new Vector3D(-x, -y,z);
-                    Debug.WriteLine(uc.myCamera.Position);
-                }
+                //if (uc?.myCamera != null)
+                //{
+                //    uc.myCamera.Position = new Point3D(0, 0, z);// x, y, z);
+                //    uc.myCamera.LookDirection = new Vector3D(-x, -y, z);
+                //    Debug.WriteLine(uc.myCamera.Position);
+                //}
 
                 if (device != null)
                 {
@@ -221,20 +305,20 @@ namespace WpfApp1
                 }
             }
 
-            Dispatcher.Invoke(() =>
-            {
-                var image = new BitmapImage();
-                image.BeginInit();
-                image.StreamSource = ms;
-                image.EndInit();
+            //Dispatcher.Invoke(() =>
+            //{
+            //    var image = new BitmapImage();
+            //    image.BeginInit();
+            //    image.StreamSource = ms;
+            //    image.EndInit();
 
-                mainImage.Source = image;
-                uc.Blarg(image, mesh);
+            //    mainImage.Source = image;
+            //    uc.Blarg(image, mesh);
 
 
-                S_ValueChanged(null, null);
+            //    S_ValueChanged(null, null);
 
-            });
+            //});
 
             return norm;
         }

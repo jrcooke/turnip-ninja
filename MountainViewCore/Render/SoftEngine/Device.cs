@@ -7,6 +7,7 @@ using SharpDX;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 
 namespace SoftEngine
 {
@@ -258,7 +259,7 @@ namespace SoftEngine
             Vector3f cameraPos = Camera.Position;
             Vector3f lookDir = new Vector3f();
             Vector3f.SubAndNorm(ref cameraTarget, ref cameraPos, ref lookDir);
-            foreach (Mesh mesh in Meshes)
+            foreach (Mesh mesh in Meshes.ToArray())
             {
                 var transformMatrix = Matrix.Mul(viewMatrix, projectionMatrix);
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
