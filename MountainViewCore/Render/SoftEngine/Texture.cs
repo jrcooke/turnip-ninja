@@ -3,6 +3,7 @@
 
 using MountainView.Base;
 using System;
+using System.IO;
 
 namespace SoftEngine
 {
@@ -12,9 +13,15 @@ namespace SoftEngine
         public readonly int width;
         public readonly int height;
 
-        public Texture(DirectBitmap bmp)
+        public Texture(byte[] bits)
         {
-            this.bmp = bmp;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ms.Write(bits, 0, bits.Length);
+                ms.Position = 0;
+                bmp = new DirectBitmap(ms);
+            }
+
             width = bmp.Width;
             height = bmp.Height;
         }

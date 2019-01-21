@@ -26,7 +26,7 @@ namespace WpfApp1
         private GeoCoordinateWatcher Watcher = null;
 
         private Device device;
-        private DirectBitmap bmp;
+        //    private DirectBitmap bmp;
 
         //   private TextHolder th = new TextHolder();
         public MainWindow()
@@ -39,8 +39,8 @@ namespace WpfApp1
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
 
-            s1.Value = UserControl2.InitAng;
-            s3.Value = UserControl2.InitM;
+            //s1.Value = UserControl2.InitAng;
+            //s3.Value = UserControl2.InitM;
 
             // Choose the back buffer resolution here
             var bmp = new DirectBitmap(640, 480);
@@ -66,39 +66,84 @@ namespace WpfApp1
             //            Home
             //            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
 
-            Task.Run(async () => await Doit(log));
+            //Config c = Config.Rainer();
+            //Config config = Config.JuanetaAll();
+            Config config = Config.Juaneta();
+            config.Width = 600;
+            config.Height = 300;
 
-            S_ValueChanged(null, null);
+            Task.Run(async () => await Doit(config, log));
+
+            //            S_ValueChanged(null, null);
         }
 
 
-        public async Task Doit(TraceListener log)
+        public async Task Doit(Config config, TraceListener log)
         {
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            //Config c = Config.Rainer();
-            //Config config = Config.JuanetaAll();
-            Config config = Config.Juaneta();
+            var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
+            var z = 0.05f;
+            int subpixel = 3;
 
-            var chunks = View.GetRelevantChunkKeys(config, log);
+            device.Camera = new SoftEngine.Camera()
+            {
+                Position = new Vector3f(0, 0, z),
+                Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
+                UpDirection = new Vector3f(0, 0, 1),
+            };
 
-            var lastChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
-            var norm = await DoChunk2(log, config.Lat.DecimalDegree, config.Lon.DecimalDegree, lastChunk);
-            device.Meshes.Clear();
-
+            var chunks = View.GetRelevantChunkKeys(config, log).Reverse();
+            FriendlyMesh.NormalizeSettings norm = null;
             int counter = 0;
             foreach (var chunkKey in chunks)
             {
                 StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                if (chunk == null)
+                if (chunk == null) continue;
+
+                var mesh = await Meshes.Current.GetData(chunk, log);
+                if (mesh == null) continue;
+
+                if (norm == null)
                 {
-                    continue;
+                    norm = mesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk.ZoomLevel, 10);
+                }
+                else
+                {
+                    mesh.Match(norm);
                 }
 
-                await DoChunk2(log, config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk, norm);
+                mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
+                var renderMesh = Mesh.GetMesh(mesh.ImageData, mesh);
+                device.Meshes.Clear();
+                device.Meshes.Add(renderMesh);
 
-            //    await Task.Delay(10000);
+                using (var bmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height))
+                {
+                    device.RenderInto(bmp);
+                    using (var ms2 = new MemoryStream())
+                    {
+                        bmp.WriteFile(OutputType.JPEG, ms2);
+                        ms2.Position = 0;
+                        Dispatcher.Invoke(() =>
+                        {
+                            BitmapImage image = new BitmapImage();
+                            image.BeginInit();
+                            image.CacheOption = BitmapCacheOption.OnLoad;
+                            image.StreamSource = ms2;
+                            image.EndInit();
+                            image1.Source = image;
+                        });
+                    }
+
+                    using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
+                    {
+                        bmp.WriteFile(OutputType.JPEG, fs);
+                    }
+
+                }
+
                 counter++;
                 Console.WriteLine(counter);
             }
@@ -109,152 +154,49 @@ namespace WpfApp1
             Console.WriteLine(end - start);
         }
 
+        //private void ButtClick2(object sender, RoutedEventArgs e)
+        //{
+        //    if (Watcher.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown)
+        //    {
+        //        double lat = Watcher.Position.Location.Latitude;
+        //        double lon = Watcher.Position.Location.Longitude;
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk2(
-            TraceListener log,
-            double lat, double lon,
-            StandardChunkMetadata template,
-            FriendlyMesh.NormalizeSettings norm = null, double threshold = 1.0E-3)
-        {
-            BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+        //        // Mt. Ranier
+        //        //NewMethod(46.853100, -121.759100, 4);
 
-            var mesh = await Meshes.Current.GetData(template, log);
-            if (mesh == null)
-            {
-                return norm;
-            }
+        //        // Home
+        //        // NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
 
-            mesh.ImageData = await JpegImages.Current.GetData(template, log);
+        //        //  th.ButtClick(traceListener =>
+        //        DebugTraceListener log = new DebugTraceListener();
+        //        NewMethod(log, lat, lon, 4);
+        //    }
+        //}
 
-            if (norm == null)
-            {
-                norm = mesh.GetCenterAndScale(lat, lon, 4, 10);
-            }
-            else
-            {
-                mesh.Match(norm);
-            }
+        //private void NewMethod(TraceListener log, double lat, double lon, int zoomLevel)
+        //{
+        //    var template = StandardChunkMetadata.GetRangeContaingPoint(
+        //        Angle.FromDecimalDegrees(lat),
+        //        Angle.FromDecimalDegrees(lon),
+        //        zoomLevel);
+        //    int n = 0;
 
-            using (MemoryStream ms = new MemoryStream())
-            {
-                ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
-                ms.Seek(0, SeekOrigin.Begin);
-                using (DirectBitmap bm = new DirectBitmap(ms))
-                {
-                    var renderMesh = Mesh.GetMesh(bm, mesh);
-                    device.Meshes.Clear();
-                    device.Meshes.Add(renderMesh);
-                    Dispatcher.Invoke(() => S_ValueChanged(null, null));
-                }
-            }
-
-            return norm;
-        }
-
-        private void S_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (s1 != null && s3 != null)
-            {
-                var m = s3.Value;
-                var theta = (s1.Value) * 2.0 * Math.PI;
-                var phi = s2.Value * 2.0 * Math.PI;
-                var x = Math.Sin(theta);
-                var y = Math.Cos(theta);
-                var z = 0.01 * m; // 0.005;// m * Math.Cos(phi);
-
-                //if (uc?.myCamera != null)
-                //{
-                //    uc.myCamera.Position = new Point3D(0, 0, z);// x, y, z);
-                //    uc.myCamera.LookDirection = new Vector3D(-x, -y, z);
-                //    Debug.WriteLine(uc.myCamera.Position);
-                //}
-
-                if (device != null)
-                {
-                    device.Camera = new SoftEngine.Camera()
-                    {
-                        Position = new Vector3f(0, 0, (float)z), // (float)x, (float)y, (float)z),
-                        Target = new Vector3f(-(float)x, -(float)y, (float)z),
-                        UpDirection = new Vector3f(0, 0, 1),
-                    };
-
-                    int subpixel = 3;
-                    int effWidth = image1.ActualWidth < 1 ? 60 : (int)image1.ActualWidth;
-                    int effHeight = image1.ActualHeight < 1 ? 60 : (int)image1.ActualHeight;
-                    if (bmp == null ||
-                        Math.Abs(bmp.Width / subpixel - effWidth) > 2 ||
-                        Math.Abs(bmp.Height / subpixel - effHeight) > 2)
-                    {
-                        var oldBmp = bmp;
-                        bmp = new DirectBitmap(subpixel * effWidth, subpixel * effHeight);
-                        if (oldBmp != null)
-                        {
-                            oldBmp.Dispose();
-                        }
-                    }
-
-                    if (bmp != null)
-                    {
-                        device.RenderInto(bmp);
-                        using (var ms = new MemoryStream())
-                        {
-                            bmp.WriteFile(OutputType.JPEG, ms);
-                            ms.Position = 0;
-                            BitmapImage image = new BitmapImage();
-                            image.BeginInit();
-                            image.CacheOption = BitmapCacheOption.OnLoad;
-                            image.StreamSource = ms;
-                            image.EndInit();
-                            image1.Source = image;
-                        };
-                    }
-                }
-            }
-        }
-
-        private void ButtClick2(object sender, RoutedEventArgs e)
-        {
-            if (Watcher.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown)
-            {
-                double lat = Watcher.Position.Location.Latitude;
-                double lon = Watcher.Position.Location.Longitude;
-
-                // Mt. Ranier
-                //NewMethod(46.853100, -121.759100, 4);
-
-                // Home
-                // NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
-
-                //  th.ButtClick(traceListener =>
-                DebugTraceListener log = new DebugTraceListener();
-                NewMethod(log, lat, lon, 4);
-            }
-        }
-
-        private void NewMethod(TraceListener log, double lat, double lon, int zoomLevel)
-        {
-            var template = StandardChunkMetadata.GetRangeContaingPoint(
-                Angle.FromDecimalDegrees(lat),
-                Angle.FromDecimalDegrees(lon),
-                zoomLevel);
-            int n = 0;
-
-            Task.Run(async () =>
-            {
-                var norm = await DoChunk(log, lat, lon, zoomLevel);
-                for (int i = -n; i <= n; i++)
-                    for (int j = -n; j <= n; j++)
-                        if (i != 0 || j != 0)
-                        {
-                            await DoChunk(
-                                log,
-                                lat + i * template.LatDelta.DecimalDegree,
-                                lon + j * template.LonDelta.DecimalDegree,
-                                zoomLevel,
-                                norm);
-                        }
-            });
-        }
+        //    Task.Run(async () =>
+        //    {
+        //        var norm = await DoChunk(log, lat, lon, zoomLevel);
+        //        for (int i = -n; i <= n; i++)
+        //            for (int j = -n; j <= n; j++)
+        //                if (i != 0 || j != 0)
+        //                {
+        //                    await DoChunk(
+        //                        log,
+        //                        lat + i * template.LatDelta.DecimalDegree,
+        //                        lon + j * template.LonDelta.DecimalDegree,
+        //                        zoomLevel,
+        //                        norm);
+        //                }
+        //    });
+        //}
 
         private class DebugTraceListener : TraceListener
         {
@@ -269,62 +211,48 @@ namespace WpfApp1
             }
         }
 
-        private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null, double threshold = 1.0E-3)
-        {
-            var mesh = await MountainView.Program.GetMesh(log, lat, lon, zoomLevel);
-            if (mesh == null)
-            {
-                return null;
-            }
+        //private async Task<FriendlyMesh.NormalizeSettings> DoChunk(TraceListener log, double lat, double lon, int zoomLevel, FriendlyMesh.NormalizeSettings norm = null, double threshold = 1.0E-3)
+        //{
+        //    var mesh = await MountainView.Program.GetMesh(log, lat, lon, zoomLevel);
+        //    if (mesh == null)
+        //    {
+        //        return null;
+        //    }
 
-            // TODO: remove
-            mesh.SimplifyMesh(threshold, true);
+        //    // TODO: remove
+        //    mesh.SimplifyMesh(threshold, true);
 
-            mesh.ExagerateHeight(3.0);
-            if (norm == null)
-            {
-                norm = mesh.GetCenterAndScale(lat, lon, 4, 10);
-            }
-            else
-            {
-                mesh.Match(norm);
-            }
+        //    mesh.ExagerateHeight(3.0);
+        //    if (norm == null)
+        //    {
+        //        norm = mesh.GetCenterAndScale(lat, lon, 4, 10);
+        //    }
+        //    else
+        //    {
+        //        mesh.Match(norm);
+        //    }
 
-            MemoryStream ms = new MemoryStream();
-            ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
-            ms.Seek(0, SeekOrigin.Begin);
+        //    MemoryStream ms = new MemoryStream();
+        //    ms.Write(mesh.ImageData, 0, mesh.ImageData.Length);
+        //    ms.Seek(0, SeekOrigin.Begin);
 
-            using (MemoryStream ms2 = new MemoryStream())
-            {
-                ms2.Write(mesh.ImageData, 0, mesh.ImageData.Length);
-                ms2.Seek(0, SeekOrigin.Begin);
-                using (DirectBitmap bm = new DirectBitmap(ms2))
-                {
-                    var renderMesh = Mesh.GetMesh(bm, mesh);
-                    device.Meshes.Add(renderMesh);
-                }
-            }
+        //    using (MemoryStream ms2 = new MemoryStream())
+        //    {
+        //        ms2.Write(mesh.ImageData, 0, mesh.ImageData.Length);
+        //        ms2.Seek(0, SeekOrigin.Begin);
+        //        using (DirectBitmap bm = new DirectBitmap(ms2))
+        //        {
+        //            var renderMesh = Mesh.GetMesh(bm, mesh);
+        //            device.Meshes.Add(renderMesh);
+        //        }
+        //    }
 
-            //Dispatcher.Invoke(() =>
-            //{
-            //    var image = new BitmapImage();
-            //    image.BeginInit();
-            //    image.StreamSource = ms;
-            //    image.EndInit();
+        //    return norm;
+        //}
 
-            //    mainImage.Source = image;
-            //    uc.Blarg(image, mesh);
-
-
-            //    S_ValueChanged(null, null);
-
-            //});
-
-            return norm;
-        }
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
-            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
+            //            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
         }
     }
 

@@ -137,7 +137,7 @@ namespace SoftEngine
             }
         }
 
-        public static Mesh GetMesh(DirectBitmap bm, FriendlyMesh mesh)
+        public static Mesh GetMesh(byte[] bm, FriendlyMesh mesh)
         {
             var ret = new Mesh(
                 mesh.Vertices.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),

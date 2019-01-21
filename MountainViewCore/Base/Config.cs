@@ -5,6 +5,9 @@
         public double R = 100000;
         public double DeltaR = 5;
 
+        public int Width { get; set; }
+        public int Height { get; set; }
+
         public Angle Lat { get; set; }
         public Angle Lon { get; set; }
         public Angle MinAngle { get; set; }
