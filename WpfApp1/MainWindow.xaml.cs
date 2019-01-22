@@ -48,8 +48,10 @@ namespace WpfApp1
                 Width = 600,
                 Lat = Angle.FromDecimalDegrees(47.637546),
                 Lon = Angle.FromDecimalDegrees(-122.132786),
-                MaxAngle = Angle.FromDecimalDegrees(0),
-                MinAngle = Angle.FromDecimalDegrees(45),
+                MinAngle = Angle.FromDecimalDegrees(0),
+                MaxAngle = Angle.FromDecimalDegrees(15),
+                MaxZoom = 5,
+                MinZoom = 3,
             };
 
             Task.Run(async () => await Program.Doit(config, log, DrawToScreen));

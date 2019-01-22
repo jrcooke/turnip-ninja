@@ -31,6 +31,9 @@
             }
         }
 
+        public int MaxZoom { get; set; } = 6;
+        public int MinZoom { get; set; } = 3;
+
         public static Config Juaneta()
         {
             return new Config()
