@@ -48,8 +48,8 @@ namespace WpfApp1
                 Width = 600,
                 Lat = Angle.FromDecimalDegrees(47.637546),
                 Lon = Angle.FromDecimalDegrees(-122.132786),
-                MinAngle = Angle.FromDecimalDegrees(0),
-                MaxAngle = Angle.FromDecimalDegrees(15),
+                MinAngle = Angle.FromDecimalDegrees(25),
+                MaxAngle = Angle.FromDecimalDegrees(35),
                 MaxZoom = 5,
                 MinZoom = 3,
             };

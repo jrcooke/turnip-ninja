@@ -9,7 +9,15 @@
         public int Height { get; set; }
         public Angle Lat { get; set; }
         public Angle Lon { get; set; }
+
+        /// <summary>
+        /// 0 is facing north. 90 degrees is facing east.
+        /// </summary>
         public Angle MinAngle { get; set; }
+
+        /// <summary>
+        /// 0 is facing north. 90 degrees is facing east.
+        /// </summary>
         public Angle MaxAngle { get; set; }
 
         public Angle FOV { get { return Angle.Subtract(MaxAngle, MinAngle); } }

@@ -169,7 +169,28 @@ namespace MountainView
                 }
 
                 mesh.Match(norm);
-                mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
+
+                try
+                {
+                    mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
+                }
+                catch
+                {
+                }
+
+                if (mesh.ImageData == null)
+                {
+                    DirectBitmap tmp = new DirectBitmap(10, 10);
+                    tmp.SetAllPixels(new MyColor(0, 0, 0, 255));
+                    using (var mss = new MemoryStream())
+                    {
+                        tmp.WriteFile(OutputType.PNG, mss);
+                        mss.Position = 0;
+                        mesh.ImageData = new byte[mss.Length];
+                        mss.Read(mesh.ImageData, 0, mesh.ImageData.Length);
+                    }
+                }
+
                 var renderMesh = SoftEngine.Mesh.GetMesh(mesh.ImageData, mesh);
                 foreach (var oldMesh in device.Meshes)
                 {
