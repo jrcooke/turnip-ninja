@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MountainView.Render
+﻿namespace MountainView.Render
 {
     public struct Vector3fProj
     {

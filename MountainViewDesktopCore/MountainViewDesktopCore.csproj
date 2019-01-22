@@ -207,9 +207,6 @@
     <Compile Include="..\MountainViewCore\Render\SoftEngine\Face.cs">
       <Link>Render\SoftEngine\Face.cs</Link>
     </Compile>
-    <Compile Include="..\MountainViewCore\Render\SoftEngine\Material.cs">
-      <Link>Render\SoftEngine\Material.cs</Link>
-    </Compile>
     <Compile Include="..\MountainViewCore\Render\SoftEngine\Mesh.cs">
       <Link>Render\SoftEngine\Mesh.cs</Link>
     </Compile>
