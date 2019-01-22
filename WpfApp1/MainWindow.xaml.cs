@@ -24,8 +24,6 @@ namespace WpfApp1
         // The coordinate watcher.
         private GeoCoordinateWatcher Watcher = null;
 
-        private Device device;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -33,14 +31,6 @@ namespace WpfApp1
             Watcher = new GeoCoordinateWatcher();
             Watcher.StatusChanged += Watcher_StatusChanged;
             Watcher.Start();
-
-            device = new Device()
-            {
-                Camera = new SoftEngine.Camera(),
-                AmbientLight = 0.5f,
-                DirectLight = 1.0f,
-                Light = new Vector3f(0, 0, 20),
-            };
 
             // Mt. Ranier
             //NewMethod(46.853100, -121.759100, 4);
@@ -76,12 +66,18 @@ namespace WpfApp1
             var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
             compositeBmp.SetAllPixels(View.skyColor);
 
-            device.Camera = new Camera()
+            Device device = new Device()
             {
-                Position = new Vector3f(0, 0, z),
-                Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
-                UpDirection = new Vector3f(0, 0, 1),
-                FovRad = (float)config.FOV.Radians,
+                Camera = new Camera()
+                {
+                    Position = new Vector3f(0, 0, z),
+                    Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
+                    UpDirection = new Vector3f(0, 0, 1),
+                    FovRad = (float)config.FOV.Radians,
+                },
+                AmbientLight = 0.5f,
+                DirectLight = 1.0f,
+                Light = new Vector3f(0, 0, 20),
             };
 
             var chunks = View.GetRelevantChunkKeys(config, log);
