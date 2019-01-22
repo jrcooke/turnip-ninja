@@ -10,5 +10,7 @@ namespace SoftEngine
         public Vector3f Position;
         public Vector3f Target;
         public Vector3f UpDirection;
+
+        public float FovRad;
     }
 }

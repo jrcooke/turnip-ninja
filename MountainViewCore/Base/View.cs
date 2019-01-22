@@ -14,7 +14,7 @@ namespace MountainViewCore.Base
     public static class View
     {
         // Haze adds bluish overlay to colors
-        private static MyColor skyColor = new MyColor(195, 240, 247);
+        public static MyColor skyColor = new MyColor(195, 240, 247);
 
         public static async Task<float> GetHeightAtPoint(Config config, long chunkKey, TraceListener log)
         {

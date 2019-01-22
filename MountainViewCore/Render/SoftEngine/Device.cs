@@ -17,8 +17,8 @@ namespace SoftEngine
 
         public Camera Camera { get; set; }
         public Vector3f Light { get; set; }
-        public double DirectLight { get; set; }
-        public double AmbientLight { get; set; }
+        public float DirectLight { get; set; }
+        public float AmbientLight { get; set; }
         public Collection<Mesh> Meshes { get; set; } = new Collection<Mesh>();
 
         public Device()
@@ -80,12 +80,12 @@ namespace SoftEngine
 
         // Compute the cosine of the angle between the light vector and the normal vector
         // Returns a value between 0 and 1
-        float ComputeNDotL(ref Vector3f vertex, ref Vector3f normal, ref Vector3f buffv)
+        private float ComputeNDotL(ref Vector3f vertex, ref Vector3f normal, ref Vector3f buffv)
         {
             var lightPos = Light;
             Vector3f.SubAndNorm(ref lightPos, ref vertex, ref buffv);
             var dot = Math.Max(0, Vector3f.Dot(ref normal, ref buffv));
-            return (float)Math.Max(0, Math.Min(1, dot * DirectLight + AmbientLight));
+            return Clamp(dot * DirectLight + AmbientLight);
         }
 
         // drawing line between 2 points from left to right
@@ -249,7 +249,7 @@ namespace SoftEngine
             // To understand this part, please read the prerequisites resources
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
             var projectionMatrix = Matrix.PerspectiveFovLH(
-                0.78f,
+                Camera.FovRad,
                 (float)state.renderWidth / state.renderHeight,
                 0.01f,
                 1.0f);
@@ -326,6 +326,5 @@ namespace SoftEngine
                 }
             }
         }
-
     }
 }

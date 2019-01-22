@@ -67,7 +67,7 @@ namespace MountainView.Base
             }
         }
 
-        internal void SetAllPixels(MyColor color)
+        public void SetAllPixels(MyColor color)
         {
             unsafe
             {

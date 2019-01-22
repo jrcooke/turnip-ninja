@@ -27,7 +27,7 @@ namespace MountainView.Base
             R = (byte)(255 * scale);
             G = (byte)(255 * scale);
             B = (byte)(255 * scale);
-            A = (byte)(255 * scale);
+            A = 255;
         }
 
         public void ScaleSelf(float scale)
@@ -35,7 +35,6 @@ namespace MountainView.Base
             R = (byte)(R * scale);
             G = (byte)(G * scale);
             B = (byte)(B * scale);
-            A = (byte)(A * scale);
         }
 
         public override string ToString()

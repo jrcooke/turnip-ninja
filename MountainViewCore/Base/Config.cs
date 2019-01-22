@@ -7,7 +7,13 @@
 
         public int Width { get; set; }
         public int Height { get; set; }
-
+        public Angle FOV
+        {
+            get
+            {
+                return Angle.Subtract(MaxAngle, MinAngle);
+            }
+        }
         public Angle Lat { get; set; }
         public Angle Lon { get; set; }
         public Angle MinAngle { get; set; }
