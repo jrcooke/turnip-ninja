@@ -317,7 +317,7 @@ namespace SoftEngine
                 depthBuffer = new float[renderWidth * renderHeight];
 
                 // Clearing Back Buffer
-                bmp.SetAllPixels(MyColor.White);
+                bmp.SetAllPixels(new MyColor(0, 0, 0, 0));
 
                 // Clearing Depth Buffer
                 for (var index = 0; index < depthBuffer.Length; index++)

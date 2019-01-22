@@ -94,8 +94,12 @@ namespace WpfApp1
                 UpDirection = new Vector3f(0, 0, 1),
             };
 
-            var chunks = View.GetRelevantChunkKeys(config, log).Reverse();
-            FriendlyMesh.NormalizeSettings norm = null;
+            var chunks = View.GetRelevantChunkKeys(config, log);
+
+            StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
+            var mainMesh = await Meshes.Current.GetData(mainChunk, log);
+            var norm = mainMesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, mainChunk.ZoomLevel, 10);
+
             int counter = 0;
             foreach (var chunkKey in chunks)
             {
@@ -109,39 +113,27 @@ namespace WpfApp1
                 {
                     norm = mesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk.ZoomLevel, 10);
                 }
-                else
-                {
-                    mesh.Match(norm);
-                }
 
+                mesh.Match(norm);
                 mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
                 var renderMesh = Mesh.GetMesh(mesh.ImageData, mesh);
+                foreach (var oldMesh in device.Meshes)
+                {
+                    oldMesh.Dispose();
+                }
+
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
 
                 using (var bmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height))
                 {
                     device.RenderInto(bmp);
-                    using (var ms2 = new MemoryStream())
-                    {
-                        bmp.WriteFile(OutputType.JPEG, ms2);
-                        ms2.Position = 0;
-                        Dispatcher.Invoke(() =>
-                        {
-                            BitmapImage image = new BitmapImage();
-                            image.BeginInit();
-                            image.CacheOption = BitmapCacheOption.OnLoad;
-                            image.StreamSource = ms2;
-                            image.EndInit();
-                            image1.Source = image;
-                        });
-                    }
+                    NewMethod(bmp);
 
                     using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
                     {
                         bmp.WriteFile(OutputType.JPEG, fs);
                     }
-
                 }
 
                 counter++;
@@ -152,6 +144,24 @@ namespace WpfApp1
             Console.WriteLine(start);
             Console.WriteLine(end);
             Console.WriteLine(end - start);
+        }
+
+        private void NewMethod(DirectBitmap bmp)
+        {
+            using (var ms = new MemoryStream())
+            {
+                bmp.WriteFile(OutputType.PNG, ms);
+                ms.Position = 0;
+                Dispatcher.Invoke(() =>
+                {
+                    BitmapImage image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.StreamSource = ms;
+                    image.EndInit();
+                    image1.Source = image;
+                });
+            }
         }
 
         //private void ButtClick2(object sender, RoutedEventArgs e)

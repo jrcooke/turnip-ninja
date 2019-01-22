@@ -6,20 +6,22 @@
         xmlns:local="clr-namespace:WpfApp1"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
+    <Grid Background="Green">
         <!--<Grid.RowDefinitions>
             <RowDefinition Height="300"/>
             <RowDefinition/>
         </Grid.RowDefinitions>-->
-        <Grid.ColumnDefinitions>
+        <!--<Grid.ColumnDefinitions>
             <ColumnDefinition/>
             <ColumnDefinition/>
             <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
+        </Grid.ColumnDefinitions>-->
 
         <!--<ListBox Background="Transparent" >
             <Button Name="getCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>
-            --><!--<Button Name="zoomOutgetCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>--><!--
+            -->
+        <!--<Button Name="zoomOutgetCurrLocButt" IsEnabled="False" Content="Get current location"  Click="ButtClick2"/>-->
+        <!--
         </ListBox>
         <Image Name="mainImage" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1" />
         <Image Name="mainImage2" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="2" />-->
@@ -28,18 +30,20 @@
                    TextWrapping="Wrap"
                    Text="{Binding Path=Text}"/>
         </ScrollViewer>-->
-        <StackPanel>
-            <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />-->
-            <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.75" />
+        <!--<StackPanel>
+            -->
+        <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0.25"  Maximum="0.5" Value="0.28" />-->
+        <!--<Slider Name="s1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.75" />
             <Slider Name="s2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
             <Slider Name="s3" ValueChanged="S_ValueChanged" Maximum="5" Value="5" />-->
-            <!--<Slider Name="ls1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
+        <!--<Slider Name="ls1" ValueChanged="S_ValueChanged" Minimum="0"  Maximum="1" Value="0.5" />
             <Slider Name="ls2" ValueChanged="S_ValueChanged" Minimum="-0.5"  Maximum="0.5" Value="0" />
             <Slider Name="ls3" ValueChanged="S_ValueChanged" Maximum="100" Value="10" />-->
+        <!--
             <Image Name="mainImage" HorizontalAlignment="Left" VerticalAlignment="Top" />
             <Image Name="mainImage2" HorizontalAlignment="Left" VerticalAlignment="Top" />
-        </StackPanel>
+        </StackPanel>-->
         <!--<local:UserControl2 x:Name="uc" Grid.Column="1" />-->
-        <Image Grid.Column="1" Grid.ColumnSpan="2" Name="image1" Stretch="Fill"   />
+        <Image Name="image1" Stretch="Fill" />
     </Grid>
 </Window>

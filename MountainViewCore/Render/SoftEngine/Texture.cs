@@ -7,7 +7,7 @@ using System.IO;
 
 namespace SoftEngine
 {
-    public class Texture
+    public class Texture : IDisposable
     {
         public readonly DirectBitmap bmp;
         public readonly int width;
@@ -34,6 +34,30 @@ namespace SoftEngine
                 width = bmp.Width;
                 height = bmp.Height;
             }
+        }
+
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (bmp != null)
+                    {
+                        bmp.Dispose();
+                    }
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            Dispose(true);
         }
     }
 }

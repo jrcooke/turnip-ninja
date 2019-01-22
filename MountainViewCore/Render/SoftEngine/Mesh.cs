@@ -1,16 +1,16 @@
 ﻿// Much of this code is based on what is in
 // https://www.davrous.com/2013/07/18/tutorial-part-6-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-texture-mapping-back-face-culling-webgl/
 
-using MountainView.Base;
 using MountainView.Mesh;
 using MountainView.Render;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace SoftEngine
 {
-    public class Mesh
+    public class Mesh : IDisposable
     {
         public Vertex[] Vertices { get; set; }
         public Face[] Faces { get; set; }
@@ -296,6 +296,32 @@ namespace SoftEngine
             };
 
             return mesh;
+        }
+
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (Texture != null)
+                    {
+                        Texture.Dispose();
+                    }
+                }
+
+                Vertices = null;
+                Faces = null;
+                disposedValue = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            Dispose(true);
         }
     }
 }

@@ -288,9 +288,6 @@ namespace MountainView.Mesh
             var deltaV = scale / Math.Sqrt(cornerDistsSq.Max());
 
             var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV, elevation);
-
-            Match(norm);
-
             return norm;
         }
 
