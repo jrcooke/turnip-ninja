@@ -72,6 +72,10 @@ namespace WpfApp1
             config.Width = 600;
             config.Height = 300;
 
+            config.Lat = Angle.FromDecimalDegrees(47.683923371494558);
+            config.Lon = Angle.FromDecimalDegrees(-122.29201376263447);
+
+
             Task.Run(async () => await Doit(config, log));
 
             //            S_ValueChanged(null, null);
@@ -86,6 +90,9 @@ namespace WpfApp1
             var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
             var z = 0.05f;
             int subpixel = 3;
+
+            var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
 
             device.Camera = new SoftEngine.Camera()
             {
@@ -125,15 +132,15 @@ namespace WpfApp1
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
 
-                using (var bmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height))
-                {
-                    device.RenderInto(bmp);
-                    NewMethod(bmp);
+                device.RenderInto(chunkBmp);
 
-                    using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
-                    {
-                        bmp.WriteFile(OutputType.JPEG, fs);
-                    }
+                compositeBmp.DrawOn(chunkBmp);
+
+                NewMethod(compositeBmp);
+
+                using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
+                {
+                    chunkBmp.WriteFile(OutputType.JPEG, fs);
                 }
 
                 counter++;

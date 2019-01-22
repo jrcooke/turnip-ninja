@@ -1,6 +1,5 @@
 ﻿using FreeImageAPI;
 using System;
-using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -12,6 +11,7 @@ namespace MountainView.Base
         public int Width { get; private set; }
         public int Height { get; private set; }
         public byte[] PixelBuffer { get; private set; }
+
         private bool disposed;
         private GCHandle bitsHandle;
         private IntPtr arrayPtr;
@@ -108,13 +108,9 @@ namespace MountainView.Base
                             FREE_IMAGE_SAVE_FLAGS.JPEG_BASELINE);
                         break;
                     case OutputType.PNG:
-                        // JPEG_QUALITYGOOD is 75 JPEG.
-                        // JPEG_BASELINE strips metadata (EXIF, etc.)
                         bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_PNG);
                         break;
                     case OutputType.Bitmap:
-                        // JPEG_QUALITYGOOD is 75 JPEG.
-                        // JPEG_BASELINE strips metadata (EXIF, etc.)
                         bitmap.Save(stream, FREE_IMAGE_FORMAT.FIF_BMP);
                         break;
                     default:
@@ -128,6 +124,43 @@ namespace MountainView.Base
             if (disposed) return;
             disposed = true;
             bitsHandle.Free();
+        }
+
+        public void DrawOn(DirectBitmap chunkBmp)
+        {
+            if (Width != chunkBmp.Width || Height != chunkBmp.Height)
+            {
+                throw new InvalidOperationException("Bitmaps must be same size");
+            }
+
+            unsafe
+            {
+                byte* dst = (byte*)arrayPtr.ToPointer();
+                byte* toAdd = (byte*)chunkBmp.arrayPtr.ToPointer();
+                for (int i = 0; i <= Width * Height; i++)
+                {
+                    byte B0 = *toAdd++;
+                    byte G0 = *toAdd++;
+                    byte R0 = *toAdd++;
+                    double A0 = (*toAdd++) / 255.0;
+
+                    byte B1 = *dst++;
+                    byte G1 = *dst++;
+                    byte R1 = *dst++;
+                    double A1 = (*dst++) / 255.0;
+
+                    double A01 = (1 - A0) * A1 + A0;
+                    double R01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * R1 + A0 * R0) / A01;
+                    double G01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * G1 + A0 * G0) / A01;
+                    double B01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * B1 + A0 * B0) / A01;
+
+                    dst -= 4;
+                    *dst++ = (byte)B01;
+                    *dst++ = (byte)G01;
+                    *dst++ = (byte)R01;
+                    *dst++ = (byte)(A01 * 255);
+                }
+            }
         }
     }
 }

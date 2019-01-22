@@ -57,10 +57,6 @@ namespace MountainView.Base
                     CloudBlockBlob blockBlob = (await GetContainerAsync(containerName, log)).GetBlockBlobReference(fileName);
                     await blockBlob.DownloadToFileAsync(localFileName, FileMode.CreateNew);
                 }
-                catch (StorageException)
-                {
-                    throw;
-                }
                 catch (Exception ex)
                 {
                     log?.WriteLine("Missing blob: " + fileName);
