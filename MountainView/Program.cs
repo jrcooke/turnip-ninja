@@ -11,7 +11,9 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using SoftEngine;
 using static MountainViewCore.Base.View;
+using MountainView.Render;
 
 namespace MountainView
 {
@@ -62,108 +64,188 @@ namespace MountainView
                 }
                 else if (isClient)
                 {
-                    //Config c = Config.Rainer();
-                    //Config config = Config.JuanetaAll();
-                    Config config = Config.Juaneta();
+                    ////Config c = Config.Rainer();
+                    ////Config config = Config.JuanetaAll();
+                    //Config config = Config.Juaneta();
 
-                    var chunks = View.GetRelevantChunkKeys(config, log);
+                    //var chunks = View.GetRelevantChunkKeys(config, log);
 
-                    int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
-                    ColorHeight[][] view = new ColorHeight[config.NumTheta][];
-                    for (int i = 0; i < view.Length; i++)
-                    {
-                        view[i] = new ColorHeight[numParts];
-                    }
+                    //int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
+                    //ColorHeight[][] view = new ColorHeight[config.NumTheta][];
+                    //for (int i = 0; i < view.Length; i++)
+                    //{
+                    //    view[i] = new ColorHeight[numParts];
+                    //}
 
-                    float eyeHeight = 5;
-                    float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last(), log)) + eyeHeight;
+                    //float eyeHeight = 5;
+                    //float heightOffset = (await View.GetHeightAtPoint(config, chunks.Last(), log)) + eyeHeight;
 
-                    int counter = 0;
-                    foreach (var chunk in chunks)
-                    {
-                        var view2 = await View.GetPolarData(config, chunk, heightOffset, log);
-                        ColorHeight[][] view3 = new ColorHeight[config.NumTheta][];
-                        for (int i = 0; i < view3.Length; i++)
-                        {
-                            view3[i] = new ColorHeight[numParts];
-                        }
+                    //int counter = 0;
+                    //foreach (var chunk in chunks)
+                    //{
+                    //    var view2 = await View.GetPolarData(config, chunk, heightOffset, log);
+                    //    ColorHeight[][] view3 = new ColorHeight[config.NumTheta][];
+                    //    for (int i = 0; i < view3.Length; i++)
+                    //    {
+                    //        view3[i] = new ColorHeight[numParts];
+                    //    }
 
-                        if (view2 != null)
-                        {
-                            foreach (var elem in view2)
-                            {
-                                view3[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
-                            }
-                        }
+                    //    if (view2 != null)
+                    //    {
+                    //        foreach (var elem in view2)
+                    //        {
+                    //            view3[elem.iTheta][elem.iViewElev] = elem.ToColorHeight();
+                    //        }
+                    //    }
 
-                        var www = await View.ProcessImage(view3, log);
-                        Utils.WriteImageFile(www, Path.Combine(outputPath, counter + ".jpg"), a => a, OutputType.JPEG);
+                    //    var www = await View.ProcessImage(view3, log);
+                    //    Utils.WriteImageFile(www, Path.Combine(outputPath, counter + ".jpg"), a => a, OutputType.JPEG);
 
-                        counter++;
-                        Console.WriteLine(counter);
-                    }
+                    //    counter++;
+                    //    log?.WriteLine(counter);
+                    //}
 
-                    //var xxx = View.ProcessImage(view);
-                    //Utils.WriteImageFile(xxx, Path.Combine(outputPath, imageFile), a => a, OutputType.JPEG);
+                    ////var xxx = View.ProcessImage(view);
+                    ////Utils.WriteImageFile(xxx, Path.Combine(outputPath, imageFile), a => a, OutputType.JPEG);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                log?.WriteLine(ex.ToString());
             }
 
             DateTime end = DateTime.Now;
-            Console.WriteLine(start);
-            Console.WriteLine(end);
-            Console.WriteLine(end - start);
+            log?.WriteLine(start);
+            log?.WriteLine(end);
+            log?.WriteLine(end - start);
         }
 
 
-        public static async Task<FriendlyMesh> GetMesh(TraceListener log, double latD, double lonD, int zoomLevel = 5)
+        public static async Task Doit(Config config, TraceListener log, Action<Stream> drawToScreen)
         {
-            // 5 is most zoomed in.
+            DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            var lat = Angle.FromDecimalDegrees(latD);
-            var lon = Angle.FromDecimalDegrees(lonD);
-            log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+            var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
+            var z = 0.05f;
+            int subpixel = 3;
 
-            var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
-            log?.WriteLine(template);
+            var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            compositeBmp.SetAllPixels(View.skyColor);
 
-            var m = await Meshes.Current.GetData(template, log);
-            if (m != null)
+            Device device = new Device()
             {
-                m.ImageData = await JpegImages.Current.GetData(template, log);
+                Camera = new Camera()
+                {
+                    Position = new Vector3f(0, 0, z),
+                    Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
+                    UpDirection = new Vector3f(0, 0, 1),
+                    FovRad = (float)config.FOV.Radians,
+                },
+                AmbientLight = 0.5f,
+                DirectLight = 1.0f,
+                Light = new Vector3f(0, 0, 20),
+            };
+
+            var chunks = View.GetRelevantChunkKeys(config, log);
+
+            StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
+            var mainMesh = await Meshes.Current.GetData(mainChunk, log);
+            var norm = mainMesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, mainChunk.ZoomLevel, 10, log);
+
+            int counter = 0;
+            foreach (var chunkKey in chunks)
+            {
+                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
+                if (chunk == null) continue;
+
+                var mesh = await Meshes.Current.GetData(chunk, log);
+                if (mesh == null) continue;
+
+                if (norm == null)
+                {
+                    norm = mesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk.ZoomLevel, 10, log);
+                }
+
+                mesh.Match(norm);
+                mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
+                var renderMesh = SoftEngine.Mesh.GetMesh(mesh.ImageData, mesh);
+                foreach (var oldMesh in device.Meshes)
+                {
+                    oldMesh.Dispose();
+                }
+
+                device.Meshes.Clear();
+                device.Meshes.Add(renderMesh);
+
+                device.RenderInto(chunkBmp);
+
+                compositeBmp.DrawOn(chunkBmp);
+
+                drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG));
+
+                using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
+                {
+                    chunkBmp.WriteFile(OutputType.JPEG, fs);
+                }
+
+                counter++;
+                log?.WriteLine(counter);
             }
 
-            return m;
+            DateTime end = DateTime.Now;
+            log?.WriteLine(start);
+            log?.WriteLine(end);
+            log?.WriteLine(end - start);
         }
 
-        public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)
-        {
-            var x = await BlobHelper.GetFiles("mapv8", "", log);
-            var top = new Regex(@"\d\d\dDn\d\d\dDw03[.]v8.*");
-            var t = x.Where(p => top.IsMatch(p)).ToArray();
-            foreach (var f in t)
-            {
-                var parts = f.Split('D', 'n');
-                var lat = Angle.FromDecimalDegrees(+int.Parse(parts[0]) + 0.5);
-                var lon = Angle.FromDecimalDegrees(-int.Parse(parts[2]) + 0.5);
-                var scm = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
 
-                if (f.EndsWith(".idata"))
-                {
-                    var xxx = await Images.Current.GetData(scm, log);
-                    Utils.WriteImageFile(xxx, Path.Combine(outputFolder, f + ".jpg"), a => a, OutputType.JPEG);
-                }
-                else
-                {
-                    var yyy = await Heights.Current.GetData(scm, log);
-                    Utils.WriteImageFile(yyy, Path.Combine(outputFolder, f + ".jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
-                }
-            }
-        }
+        //public static async Task<FriendlyMesh> GetMesh(TraceListener log, double latD, double lonD, int zoomLevel = 5)
+        //{
+        //    // 5 is most zoomed in.
+        //    BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+        //    var lat = Angle.FromDecimalDegrees(latD);
+        //    var lon = Angle.FromDecimalDegrees(lonD);
+        //    log?.WriteLine(lat.ToLatString() + "," + lon.ToLonString());
+
+        //    var template = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoomLevel);
+        //    log?.WriteLine(template);
+
+        //    var m = await Meshes.Current.GetData(template, log);
+        //    if (m != null)
+        //    {
+        //        m.ImageData = await JpegImages.Current.GetData(template, log);
+        //    }
+
+        //    return m;
+        //}
+
+        //public static async Task ImagesForTopChunks(string outputFolder, TraceListener log)
+        //{
+        //    var x = await BlobHelper.GetFiles("mapv8", "", log);
+        //    var top = new Regex(@"\d\d\dDn\d\d\dDw03[.]v8.*");
+        //    var t = x.Where(p => top.IsMatch(p)).ToArray();
+        //    foreach (var f in t)
+        //    {
+        //        var parts = f.Split('D', 'n');
+        //        var lat = Angle.FromDecimalDegrees(+int.Parse(parts[0]) + 0.5);
+        //        var lon = Angle.FromDecimalDegrees(-int.Parse(parts[2]) + 0.5);
+        //        var scm = StandardChunkMetadata.GetRangeContaingPoint(lat, lon, 3);
+
+        //        if (f.EndsWith(".idata"))
+        //        {
+        //            var xxx = await Images.Current.GetData(scm, log);
+        //            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, f + ".jpg"), a => a, OutputType.JPEG);
+        //        }
+        //        else
+        //        {
+        //            var yyy = await Heights.Current.GetData(scm, log);
+        //            Utils.WriteImageFile(yyy, Path.Combine(outputFolder, f + ".jpg"), a => Utils.GetColorForHeight(a), OutputType.JPEG);
+        //        }
+        //    }
+        //}
 
         public static async Task ProcessRawData(Angle lat, Angle lon, TraceListener log)
         {
@@ -178,14 +260,14 @@ namespace MountainView
             if (template.ZoomLevel <= Heights.Current.SourceDataZoom)
             {
                 var ok = await Heights.Current.ExistsComputedChunk(template, log);
-                Console.Write(ok ? "." : ("Heights:" + Heights.Current.GetShortFilename(template) + ":" + "missing"));
+                log?.Write(ok ? "." : ("Heights:" + Heights.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
 
             if (template.ZoomLevel <= Images.Current.SourceDataZoom)
             {
                 var ok = await Images.Current.ExistsComputedChunk(template, log);
-                Console.Write(ok ? "." : ("Images:" + Images.Current.GetShortFilename(template) + ":" + "missing"));
+                log?.Write(ok ? "." : ("Images:" + Images.Current.GetShortFilename(template) + ":" + "missing"));
                 doMore = true;
             }
 
@@ -197,21 +279,21 @@ namespace MountainView
             }
         }
 
-        private static async Task ProcessOutput(string outputFolder, string name, Config config, View.ColorHeight[][] view, TraceListener log)
-        {
-            if (!Directory.Exists(outputFolder))
-            {
-                Directory.CreateDirectory(outputFolder);
-            }
+        //private static async Task ProcessOutput(string outputFolder, string name, Config config, View.ColorHeight[][] view, TraceListener log)
+        //{
+        //    if (!Directory.Exists(outputFolder))
+        //    {
+        //        Directory.CreateDirectory(outputFolder);
+        //    }
 
-            var imageFile = name + ".jpg";
-            var xxx = await View.ProcessImage(view, log);
-            Utils.WriteImageFile(xxx, Path.Combine(outputFolder, imageFile), a => a, OutputType.JPEG);
+        //    var imageFile = name + ".jpg";
+        //    var xxx = await View.ProcessImage(view, log);
+        //    Utils.WriteImageFile(xxx, Path.Combine(outputFolder, imageFile), a => a, OutputType.JPEG);
 
-            var maptxt = View.ProcessImageMap(view, imageFile);
-            var htmltxt = "<HTML><HEAD><TITLE>title of page</TITLE></HEAD><BODY>" + maptxt + "</BODY></HTML>";
-            File.WriteAllText(Path.Combine(outputFolder, name + ".html"), htmltxt);
-        }
+        //    var maptxt = View.ProcessImageMap(view, imageFile);
+        //    var htmltxt = "<HTML><HEAD><TITLE>title of page</TITLE></HEAD><BODY>" + maptxt + "</BODY></HTML>";
+        //    File.WriteAllText(Path.Combine(outputFolder, name + ".html"), htmltxt);
+        //}
     }
 }
 

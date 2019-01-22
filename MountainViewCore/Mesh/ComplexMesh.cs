@@ -7,13 +7,15 @@ namespace MountainView.Mesh
 {
     internal class ComplexMesh
     {
+        private readonly TraceListener log;
         public Vector3d[] Vertices { get; private set; }
         public int[] TriangleIndices { get; private set; }
         public int[] EdgeIndices { get; private set; }
         public Vector3d[] VertexNormals { get; private set; }
 
-        public ComplexMesh(Vector3d[][] grid, double threshold = 0.0001)
+        public ComplexMesh(Vector3d[][] grid, TraceListener log, double threshold = 0.0001)
         {
+            this.log = log;
             var reducedPositions = new List<Vector3d>();
             var reducedTriangleIndices = new List<int>();
             var reducedExternalIndices = new List<int>();
@@ -56,7 +58,7 @@ namespace MountainView.Mesh
                 int iCount = iMax - iMin;
                 foreach (int chunkJ in chunkJs)
                 {
-                    Debug.WriteLine(DateTime.Now + "\tWorking on chunk (" + (chunkI - chunkIs.Min()) + "," + (chunkJ - chunkJs.Min()) + ") " +
+                    log?.WriteLine(DateTime.Now + "\tWorking on chunk (" + (chunkI - chunkIs.Min()) + "," + (chunkJ - chunkJs.Min()) + ") " +
                         "(" + (((chunkI - chunkIs.Min()) * chunkJs.Count) + (chunkJ - chunkJs.Min())) + "/" + (chunkIs.Count * chunkJs.Count) + ")");
                     int jMin = chunkJ * chunkMax;
                     int jMax = (chunkJ < numChunks - 1 ? chunkMax * (chunkJ + 1) + 1 : max);
@@ -109,7 +111,7 @@ namespace MountainView.Mesh
                         }
                     }
 
-                    var md = new SimplifyMesh(positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray(), verbose);
+                    var md = new SimplifyMesh(log, positions.ToArray(), triangleIncides.ToArray(), edgeIndices.ToArray(), verbose);
                     positions = null;
                     triangleIncides = null;
 
@@ -127,6 +129,9 @@ namespace MountainView.Mesh
                     md = null;
 
                     chunkInfos[chunkI - chunkIs.Min()][chunkJ - chunkJs.Min()] = chunkInfo;
+
+                    // Clear out unused objects
+                    GC.Collect();
                 }
             }
 
@@ -140,7 +145,7 @@ namespace MountainView.Mesh
 
             GlueChunks(reducedPositionsArray, reducedTriangleIndicesArray, chunkInfos, fudgeSq);
 
-            var mdFinal = new SimplifyMesh(reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
+            var mdFinal = new SimplifyMesh(log, reducedPositionsArray, reducedTriangleIndicesArray, reducedExternalIndices.ToArray(), verbose);
             reducedPositionsArray = null;
             reducedTriangleIndicesArray = null;
 
@@ -167,7 +172,7 @@ namespace MountainView.Mesh
             }
         }
 
-        private static void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[][] chunkInfos, double fudgeSq)
+        private void GlueChunks(Vector3d[] reducedPositions, int[] reducedTriangleIndices, ChunkInfo[][] chunkInfos, double fudgeSq)
         {
             Dictionary<int, int> equiv = new Dictionary<int, int>();
             for (int i1 = 0; i1 < chunkInfos.Length; i1++)
@@ -190,7 +195,7 @@ namespace MountainView.Mesh
             }
         }
 
-        private static void AlignEdges(
+        private void AlignEdges(
             Vector3d[] reducedPositions,
             ChunkInfo chunkInfoI,
             ChunkInfo chunkInfoJ,
@@ -198,7 +203,7 @@ namespace MountainView.Mesh
             Dictionary<int, int> equiv,
             bool singleMatch = false)
         {
-            Debug.WriteLine("Gluing chunks (" + chunkInfoI.I + "," + chunkInfoI.J + ") and (" + chunkInfoJ.I + "," + chunkInfoJ.J + ")");
+            log?.WriteLine("Gluing chunks (" + chunkInfoI.I + "," + chunkInfoI.J + ") and (" + chunkInfoJ.I + "," + chunkInfoJ.J + ")");
             foreach (int i2 in chunkInfoI.EdgeIndices)
             {
                 foreach (int j2 in chunkInfoJ.EdgeIndices)

@@ -16,21 +16,6 @@ namespace MountainViewCore.Base
         // Haze adds bluish overlay to colors
         public static MyColor skyColor = new MyColor(195, 240, 247);
 
-        public static async Task<float> GetHeightAtPoint(Config config, long chunkKey, TraceListener log)
-        {
-            StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-            using (var interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))
-            {
-                var result = await interpChunkH.TryGetDataAtPoint(config.Lat.DecimalDegree, config.Lon.DecimalDegree, log);
-                if (!result.Success)
-                {
-                    throw new InvalidOperationException();
-                }
-
-                return result.Data;
-            }
-        }
-
         public static long[] GetRelevantChunkKeys(Config config, TraceListener log)
         {
             double cosLat = Math.Cos(config.Lat.Radians);
@@ -39,7 +24,7 @@ namespace MountainViewCore.Base
             HashSet<long> chunkKeys = new HashSet<long>();
             var distToFarthestPointInChunk = new Dictionary<long, int>();
             var chunkZoom = new Dictionary<long, int>();
-            for (int iTheta = 0; iTheta < config.NumTheta; iTheta++)
+            for (int iTheta = 0; iTheta < config.Width; iTheta++)
             {
                 // Use this angle to compute a heading.
                 Angle theta = Angle.Multiply(config.AngularResolution, iTheta + config.IThetaMin);
@@ -200,21 +185,6 @@ namespace MountainViewCore.Base
                             }
                         }
                     }
-                }
-            }
-
-            return ret;
-        }
-
-        public static MyColor[][] ProcessImageBackdrop(int width, int height)
-        {
-            var ret = new MyColor[width][];
-            for (int i = 0; i < width; i++)
-            {
-                ret[i] = new MyColor[height];
-                for (int j = 0; j < height; j++)
-                {
-                    ret[i][j] = skyColor;
                 }
             }
 

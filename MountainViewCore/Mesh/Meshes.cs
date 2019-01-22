@@ -67,7 +67,7 @@ namespace MountainView.Mesh
                 template.LatSteps, template.LonSteps,
                 template.LatLo, template.LonLo,
                 template.LatHi, template.LonHi,
-                pixels2.Data);
+                pixels2.Data, log);
 
             await WriteChunk(ret, fileName, log);
             log?.WriteLine("Finished generation of " + description + " cached chunk (" + template.ToString() + ") file: " + fileName);

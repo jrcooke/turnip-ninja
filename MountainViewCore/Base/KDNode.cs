@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MountainView.Base
@@ -97,7 +98,7 @@ namespace MountainView.Base
                 (rChild == null ? "".PadLeft(2 * (1 + depth)) + "null" : rChild.ToString());
         }
 
-        public static void Test()
+        public static void Test(TraceListener log)
         {
             KDNode<int> root = KDNode<int>.Process(new KDNode<int>.Point[]
             {
@@ -109,7 +110,7 @@ namespace MountainView.Base
                 KDNode<int>.Point.WithKey(5, -2, -0),
             });
 
-            Console.WriteLine(root);
+            log?.WriteLine(root);
             double x = -2.0;
             double y = 0.1;
             for (y = 2.0; y > -2; y -= 0.25)
@@ -117,10 +118,10 @@ namespace MountainView.Base
                 for (x = -3.0; x < 3; x += 0.25)
                 {
                     var ret = root.GetNearest(x, y);
-                    Console.Write(ret.Key);
+                    log?.Write(ret.Key);
                 }
 
-                Console.WriteLine();
+                log?.WriteLine("");
             }
         }
 

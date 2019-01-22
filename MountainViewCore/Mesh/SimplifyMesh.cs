@@ -49,6 +49,7 @@ https://github.com/Whinarn/MeshDecimator
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MountainView.Mesh
@@ -61,6 +62,7 @@ namespace MountainView.Mesh
         private const int maxIterationCount = 100;
 
         private readonly bool verbose;
+        private readonly TraceListener log;
         private ResizableArray<Triangle> triangles;
         private ResizableArray<Vertex> vertices;
         private ResizableArray<Ref> refs;
@@ -74,13 +76,14 @@ namespace MountainView.Mesh
         /// <summary>
         /// Initializes the algorithm with the original mesh.
         /// </summary>
-        public SimplifyMesh(IEnumerable<Vector3d> verticesIn, IEnumerable<int> indices, IEnumerable<int> edgeIndices, bool verbose = false)
+        public SimplifyMesh(TraceListener log, IEnumerable<Vector3d> verticesIn, IEnumerable<int> indices, IEnumerable<int> edgeIndices, bool verbose = false)
         {
+            this.log = log;
             this.verbose = verbose;
-            refs = new ResizableArray<Ref>("refs", 0, verbose);
-            deleted0 = new ResizableArray<bool>("deleted0", 50, verbose);
-            deleted1 = new ResizableArray<bool>("deleted1", 50, verbose);
-            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Count(), verbose);
+            refs = new ResizableArray<Ref>("refs", 0, log, verbose);
+            deleted0 = new ResizableArray<bool>("deleted0", 50, log, verbose);
+            deleted1 = new ResizableArray<bool>("deleted1", 50, log, verbose);
+            vertices = new ResizableArray<Vertex>("vertices", verticesIn.Count(), log, verbose);
 
             int offset = 0;
             foreach (var vertexIn in verticesIn)
@@ -97,7 +100,7 @@ namespace MountainView.Mesh
             }
 
             int tCount = indices.Count() / 3;
-            triangles = new ResizableArray<Triangle>("triangles", tCount, verbose);
+            triangles = new ResizableArray<Triangle>("triangles", tCount, log, verbose);
             int[] tri = new int[3];
             int triOffset = 0;
             offset = 0;
@@ -195,7 +198,7 @@ namespace MountainView.Mesh
                 // target number of triangles reached ? Then break
                 if (verbose && (iteration % 5) == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("iteration {0} - triangles {1} threshold {2}", iteration, initialCount - deletedTriangles, threshold);
+                    log?.WriteLine(string.Format("iteration {0} - triangles {1} threshold {2}", iteration, initialCount - deletedTriangles, threshold));
                 }
 
                 // Remove vertices & mark deleted triangles
@@ -212,7 +215,7 @@ namespace MountainView.Mesh
         {
             if (verbose)
             {
-                System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
+                log?.WriteLine(DateTime.Now + "\tStarting SimplifyMeshByThreshold");
             }
 
             int initialCount = triangles.Length;
@@ -248,7 +251,7 @@ namespace MountainView.Mesh
         {
             if (verbose)
             {
-                System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
+                log?.WriteLine(DateTime.Now + "\tIteration: " + iteration + ", initialCount: " + initialCount + ", triangleCount:" + triangleCount + ", threshold:" + threshold);
             }
         }
 
@@ -730,6 +733,7 @@ namespace MountainView.Mesh
             private readonly string name;
             public T[] Data;
             private readonly bool verbose;
+            private readonly TraceListener log;
 
             /// <summary>
             /// Gets the length of this array.
@@ -740,12 +744,13 @@ namespace MountainView.Mesh
             /// Creates a new resizable array.
             /// </summary>
             /// <param name="length">The initial array length.</param>
-            public ResizableArray(string name, int length, bool verbose = false)
+            public ResizableArray(string name, int length, TraceListener log, bool verbose = false)
             {
                 this.name = name;
                 Data = new T[length];
                 Length = length;
                 this.verbose = verbose;
+                this.log = log;
             }
 
             /// <summary>
@@ -779,7 +784,7 @@ namespace MountainView.Mesh
                     int length = (int)((Length + 1) * 2);
                     if (verbose)
                     {
-                        System.Diagnostics.Debug.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
+                        log?.WriteLine(DateTime.Now + "\tImplicitly resizing array '" + name + "' from " + Data.Length + " to " + length);
                     }
 
                     Array.Resize(ref Data, length);

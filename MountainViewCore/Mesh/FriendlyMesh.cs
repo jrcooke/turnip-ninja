@@ -38,7 +38,8 @@ namespace MountainView.Mesh
         public FriendlyMesh(int latSteps, int lonSteps,
             Angle latLo, Angle lonLo,
             Angle latHi, Angle lonHi,
-            float[][] heights)
+            float[][] heights,
+            TraceListener log)
             : base(latSteps, lonSteps, latLo, lonLo, latHi, lonHi)
         {
             GeoPolar3d buffGeoPolar = new GeoPolar3d();
@@ -52,7 +53,7 @@ namespace MountainView.Mesh
             };
 
             var norm = CenterAndScale(positions);
-            ComplexMesh m = new ComplexMesh(positions);
+            ComplexMesh m = new ComplexMesh(positions, log);
             positions = null;
             Vertices = m.Vertices;
             TriangleIndices = m.TriangleIndices;
@@ -76,7 +77,7 @@ namespace MountainView.Mesh
 
         //------------------------------------------------
 
-        public void SimplifyMesh(double threshold, bool verbose)
+        public void SimplifyMesh(double threshold, TraceListener log, bool verbose)
         {
             var edgePoints = EdgeIndices.Select(p => Vertices[p]).ToArray();
             double fudgeSq = double.MaxValue;
@@ -90,7 +91,7 @@ namespace MountainView.Mesh
             }
 
             fudgeSq /= 100.0;
-            var mdFinal = new SimplifyMesh(Vertices, TriangleIndices, EdgeIndices, verbose);
+            var mdFinal = new SimplifyMesh(log, Vertices, TriangleIndices, EdgeIndices, verbose);
             mdFinal.SimplifyMeshByThreshold(threshold);
             Vertices = mdFinal.GetVertices();
             TriangleIndices = mdFinal.GetIndices();
@@ -244,7 +245,7 @@ namespace MountainView.Mesh
             }
         }
 
-        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale, double elevation)
+        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale, double elevation, TraceListener log)
         {
             double cosLat = Math.Cos(lat / RadToDeg);
             double sinLat = Math.Sin(lat / RadToDeg);
@@ -270,7 +271,7 @@ namespace MountainView.Mesh
                     GeoPolar3d polar = new GeoPolar3d(lat, lon, pointH.Value);
                     ForwardTo(ref polar, ref avgV);
                     // Interpolate the height at the origin.
-                    Debug.WriteLine(avgV);
+                    log?.WriteLine(avgV);
                 }
             }
 

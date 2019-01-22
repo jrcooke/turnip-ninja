@@ -94,6 +94,14 @@ namespace MountainView.Base
             }
         }
 
+        public Stream GetStream(OutputType outputType)
+        {
+            var ms = new MemoryStream();
+            WriteFile(outputType, ms);
+            ms.Position = 0;
+            return ms;
+        }
+
         public void WriteFile(OutputType outputType, Stream stream)
         {
             using (var bitmap = new FreeImageBitmap(Width, Height, Width * 4, PixelFormat.Format32bppArgb, bitsHandle.AddrOfPinnedObject()))
