@@ -45,10 +45,10 @@ namespace WpfApp1
             Config config = new Config()
             {
                 Height = 300,
-                Width = 600,
+                Width = 1200,
                 Lat = Angle.FromDecimalDegrees(47.637546),
                 Lon = Angle.FromDecimalDegrees(-122.132786),
-                MinAngle = Angle.FromDecimalDegrees(25),
+                MinAngle = Angle.FromDecimalDegrees(0),
                 MaxAngle = Angle.FromDecimalDegrees(35),
                 MaxZoom = 5,
                 MinZoom = 3,

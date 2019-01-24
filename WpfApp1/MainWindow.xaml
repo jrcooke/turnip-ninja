@@ -44,6 +44,6 @@
             <Image Name="mainImage2" HorizontalAlignment="Left" VerticalAlignment="Top" />
         </StackPanel>-->
         <!--<local:UserControl2 x:Name="uc" Grid.Column="1" />-->
-        <Image Name="image1" Stretch="Fill" />
+        <Image Name="image1" Stretch="Uniform" />
     </Grid>
 </Window>

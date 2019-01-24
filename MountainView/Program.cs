@@ -127,7 +127,7 @@ namespace MountainView
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
             var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
-            var z = 0.05f;
+            var z = 0.01f;// 0.05f;
             int subpixel = 3;
 
             var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
