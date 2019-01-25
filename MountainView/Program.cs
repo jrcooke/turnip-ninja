@@ -5,14 +5,11 @@ using MountainView.Imaging;
 using MountainView.Mesh;
 using MountainViewCore.Base;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using SoftEngine;
-using static MountainViewCore.Base.View;
 using MountainView.Render;
 
 namespace MountainView
@@ -120,11 +117,38 @@ namespace MountainView
             log?.WriteLine(end - start);
         }
 
-
         public static async Task Doit(Config config, TraceListener log, Action<Stream> drawToScreen)
         {
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
+
+            var x = await BlobHelper.GetFileNames("mapv8", null, log);
+
+            var y = x
+                .Select(p => p.Split('.'))
+                .Select(p => new { Base = StandardChunkMetadata.ParseBase(p[0]), V = p[1], Ext = p[2] })
+                .GroupBy(p => new { p.Ext, p.V, p.Base.ZoomLevel })
+                .Select(p => new { p.Key.Ext, p.Key.V, p.Key.ZoomLevel, Data = p.Select(q => q.Base).ToArray() })
+                .OrderBy(p => p.ZoomLevel)
+                .ThenBy(p => p.Ext)
+                .ThenBy(p => p.V)
+                .ToArray();
+
+            foreach (var dfgdfg in y)
+            {
+                log?.WriteLine(dfgdfg.Ext + "\t" + dfgdfg.ZoomLevel + "\t" + dfgdfg.V);
+                var lats = dfgdfg.Data.Select(p => p.LatLo.ToString()).Distinct().ToArray();
+                var lons = dfgdfg.Data.Select(p => p.LonLo.ToString()).Distinct().ToArray();
+
+                for(int i = 0; i < lats.Length; i++)
+                {
+                    for (int j = 0; j < lons.Length; j++)
+                    {
+                        log?.Write(dfgdfg.Data.Any(p => p.LatLo.ToString() == lats[i] && p.LonLo.ToString() == lons[j]) ? "X" : " ");
+                    }
+                    log?.WriteLine("");
+                }
+            }
 
             var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
             var z = 0.01f;// 0.05f;
@@ -199,9 +223,7 @@ namespace MountainView
 
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
-
                 device.RenderInto(chunkBmp);
-
                 compositeBmp.DrawOn(chunkBmp);
 
                 drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG));
@@ -220,7 +242,6 @@ namespace MountainView
             log?.WriteLine(end);
             log?.WriteLine(end - start);
         }
-
 
         //public static async Task<FriendlyMesh> GetMesh(TraceListener log, double latD, double lonD, int zoomLevel = 5)
         //{

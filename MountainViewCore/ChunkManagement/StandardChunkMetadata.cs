@@ -161,6 +161,19 @@ namespace MountainView.ChunkManagement
             return ZoomLevel + "Z_" + LatLo.ToLatString() + "," + LonLo.ToLonString() + "_" + LatHi.ToLatString() + "," + LonHi.ToLonString();
         }
 
+        public static StandardChunkMetadata ParseBase(string x)
+        {
+            var parts = x.Split('.');
+            var split1 = Math.Max(x.IndexOf('n'), x.IndexOf('s'));
+            var split2 = Math.Max(x.IndexOf('w'), x.IndexOf('e'));
+
+            var lat = Angle.Parse(x.Substring(0, split1 + 1));
+            var lon = Angle.Parse(x.Substring(split1 + 1, split2 - split1));
+            var zoom = int.Parse(parts[0].Substring(split2 + 1));
+
+            return StandardChunkMetadata.GetRangeContaingPoint(lat, lon, zoom);
+        }
+
         public static Tuple<StandardChunkMetadata, bool> Parse(string x)
         {
             var parts = x.Split('.');
