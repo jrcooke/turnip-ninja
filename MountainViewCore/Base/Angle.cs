@@ -159,21 +159,21 @@ namespace MountainView.Base
 
             var parts = v.Split(new char[] { 'D', 'M', 'S', 'T', 'F' }, StringSplitOptions.RemoveEmptyEntries);
             return Angle.FromFourths((isNegative ? -1 : 1) * (
-                NewMethod(parts, 4) + 60L * (
-                NewMethod(parts, 3) + 60L * (
-                NewMethod(parts, 2) + 60L * (
-                NewMethod(parts, 1) + 60L * (
-                NewMethod(parts, 0)))))));
+                ParsePart(parts, 4) + 60L * (
+                ParsePart(parts, 3) + 60L * (
+                ParsePart(parts, 2) + 60L * (
+                ParsePart(parts, 1) + 60L * (
+                ParsePart(parts, 0)))))));
         }
 
-        private static int NewMethod(string[] parts, int i)
+        private static int ParsePart(string[] parts, int i)
         {
             return parts.Length > i ? int.Parse(parts[i]) : 0;
         }
 
-        internal Angle Truncate()
-        {
-            return Angle.FromThirds((this.Fourths / 60 / 60 / 60) * 60 * 60);
-        }
+        //internal Angle Truncate()
+        //{
+        //    return Angle.FromThirds((this.Fourths / 60 / 60 / 60) * 60 * 60);
+        //}
     }
 }

@@ -16,7 +16,7 @@ namespace MountainView.Imaging
         private static readonly string cachedFileTemplate = "{0}.v8.{1}";
         private static readonly string cachedFileContainer = "mapv8";
 
-        private readonly string fileExt = "jpegdata";
+        private readonly string fileExt = "jpeg";
         private readonly string description = "JpegImages";
         public int SourceDataZoom { get; private set; } = 5;
         private readonly ConcurrentDictionary<long, string> filenameCache = new ConcurrentDictionary<long, string>();

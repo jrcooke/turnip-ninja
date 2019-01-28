@@ -96,6 +96,28 @@ namespace MountainView.Base
                 .ToArray();
         }
 
+        public static async Task Rename(string containerName, string oldName, string newName, TraceListener log)
+        {
+            var container = await GetContainerAsync(containerName, log);
+            var oldBlob = container.GetBlobReference(oldName);
+            var newBlob = container.GetBlobReference(newName);
+
+            if (await newBlob.ExistsAsync())
+            {
+                await newBlob.DeleteIfExistsAsync();
+            }
+
+            await newBlob.StartCopyAsync(oldBlob.Uri);
+            await oldBlob.DeleteIfExistsAsync();
+        }
+
+        public static async Task Delete(string containerName, string name, TraceListener log)
+        {
+            var container = await GetContainerAsync(containerName, log);
+            var blob = container.GetBlobReference(name);
+            await blob.DeleteIfExistsAsync();
+        }
+
         public class DeletableFileStream : IDisposable
         {
             private readonly string localFileName;

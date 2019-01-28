@@ -137,14 +137,14 @@ namespace SoftEngine
             }
         }
 
-        public static Mesh GetMesh(byte[] bm, FriendlyMesh mesh)
+        public static Mesh GetMesh(FriendlyMesh mesh)
         {
             var ret = new Mesh(
                 mesh.Vertices.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
                 mesh.VertexNormals.Select(p => new Vector3f((float)p.X, (float)p.Y, (float)p.Z)).ToArray(),
                 mesh.TriangleIndices)
             {
-                Texture = new Texture(bm)
+                Texture = new Texture(mesh.ImageData)
             };
 
             for (int i = 0; i < mesh.VertexToImage.Length; i++)

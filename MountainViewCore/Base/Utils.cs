@@ -69,6 +69,15 @@ namespace MountainView.Base
             }
         }
 
+        public static void WeightedColorAverage(ref int prevAveraged, ref MyColor average, ref MyColor toAdd)
+        {
+            average.R = (byte)((average.R * prevAveraged + toAdd.R) / (prevAveraged + 1));
+            average.G = (byte)((average.G * prevAveraged + toAdd.G) / (prevAveraged + 1));
+            average.B = (byte)((average.B * prevAveraged + toAdd.B) / (prevAveraged + 1));
+            average.A = 255;
+            prevAveraged += 1;
+        }
+
         public static float WeightedFloatAverage(int prevAveraged, float prevAverage, float toAdd)
         {
             return prevAveraged == 0 ? toAdd : (prevAverage * prevAveraged + toAdd) / (prevAveraged + 1);

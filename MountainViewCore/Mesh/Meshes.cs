@@ -12,7 +12,7 @@ namespace MountainView.Mesh
 {
     public class Meshes
     {
-        private static readonly string cachedFileTemplate = "{0}.v10.{1}";
+        private static readonly string cachedFileTemplate = "{0}.v8.{1}";
         private static readonly string cachedFileContainer = "mapv8";
 
         private readonly string fileExt = "mdata";

@@ -1,5 +1,6 @@
 ﻿using FreeImageAPI;
 using System;
+using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -54,6 +55,10 @@ namespace MountainView.Base
             }
         }
 
+        public DirectBitmap(byte[] tmpImg) : this(new MemoryStream(tmpImg))
+        {
+        }
+
         public void SetPixel(int i, int j, MyColor color)
         {
             unsafe
@@ -82,15 +87,16 @@ namespace MountainView.Base
             }
         }
 
-        internal void GetPixel(int x, int y, ref MyColor color)
+        internal void GetPixel(int i, int j, ref MyColor color)
         {
             unsafe
             {
-                int pos = (x + y * Width) * 4;
-                color.B = PixelBuffer[pos++];
-                color.G = PixelBuffer[pos++];
-                color.R = PixelBuffer[pos++];
-                color.A = PixelBuffer[pos++];
+                byte* dst = (byte*)arrayPtr.ToPointer();
+                dst += 4 * (j * Width + i);
+                color.B = *dst++;
+                color.G = *dst++;
+                color.R = *dst++;
+                color.A = *dst++;
             }
         }
 
@@ -167,6 +173,43 @@ namespace MountainView.Base
                     *dst++ = (byte)G01;
                     *dst++ = (byte)R01;
                     *dst++ = (byte)(A01 * 255);
+                }
+            }
+        }
+
+        public void DrawAt(DirectBitmap chunkBmp, int tileX, int tileY, int numX, int numY)
+        {
+            MyColor[][] tmpC = new MyColor[Height / numY][];
+            int[][] tmpN = new int[tmpC.Length][];
+            for (int j = 0; j < Height / numY; j++)
+            {
+                tmpC[j] = new MyColor[Width / numX];
+                tmpN[j] = new int[tmpC[j].Length];
+            }
+
+            MyColor tmp2 = new MyColor();
+            for (int j = 0; j < chunkBmp.Height; j++)
+            {
+                int jP = j * tmpC.Length / chunkBmp.Height;
+                for (int i = 0; i < chunkBmp.Width; i++)
+                {
+                    int iP = i * tmpC[jP].Length / chunkBmp.Width;
+                    chunkBmp.GetPixel(i, j, ref tmp2);
+                    Utils.WeightedColorAverage(ref tmpN[jP][iP], ref tmpC[jP][iP], ref tmp2);
+                }
+            }
+
+            int v0 = (numX - 1 - tileX) * Width / numX;
+            int v1 = tileY * Height / numY;
+
+            for (int j = 0; j < Height / numY; j++)
+            {
+                for (int i = 0; i < Width / numX; i++)
+                {
+                    int iP = i;
+                    int jP = (Height / numY - 1 - j);
+
+                    this.SetPixel(iP + v0, jP + v1, tmpC[j][i]);
                 }
             }
         }
