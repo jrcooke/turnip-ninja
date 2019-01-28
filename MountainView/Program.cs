@@ -137,14 +137,14 @@ namespace MountainView
             foreach (var dfgdfg in y)
             {
                 log?.WriteLine(dfgdfg.Ext + "\t" + dfgdfg.ZoomLevel + "\t" + dfgdfg.V);
-                var lats = dfgdfg.Data.Select(p => p.LatLo.ToString()).Distinct().ToArray();
-                var lons = dfgdfg.Data.Select(p => p.LonLo.ToString()).Distinct().ToArray();
+                var lats = dfgdfg.Data.Select(p => p.LatLo.Abs).Distinct().ToArray();
+                var lons = dfgdfg.Data.Select(p => p.LonLo.Abs).Distinct().ToArray();
 
                 for(int i = 0; i < lats.Length; i++)
                 {
                     for (int j = 0; j < lons.Length; j++)
                     {
-                        log?.Write(dfgdfg.Data.Any(p => p.LatLo.ToString() == lats[i] && p.LonLo.ToString() == lons[j]) ? "X" : " ");
+                        log?.Write(dfgdfg.Data.Any(p => p.LatLo.Abs == lats[i] && p.LonLo.Abs == lons[j]) ? "X" : " ");
                     }
                     log?.WriteLine("");
                 }
