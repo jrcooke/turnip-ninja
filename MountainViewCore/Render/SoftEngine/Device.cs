@@ -6,7 +6,6 @@ using MountainView.Render;
 using SharpDX;
 using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 
 namespace SoftEngine
@@ -71,7 +70,7 @@ namespace SoftEngine
         // drawing line between 2 points from left to right
         // papb -> pcpd
         // pa, pb, pc, pd must then be sorted before
-        void ProcessScanLine(RenderState state, int currentY, ref VertexProj va, ref VertexProj vb, ref VertexProj vc, ref VertexProj vd, Texture texture)
+        private void ProcessScanLine(RenderState state, int currentY, ref VertexProj va, ref VertexProj vb, ref VertexProj vc, ref VertexProj vd, Texture texture)
         {
             Vector3fProj pa = va.Coordinates;
             Vector3fProj pb = vb.Coordinates;
@@ -92,6 +91,14 @@ namespace SoftEngine
             float z1 = Interpolate(pa.Z, pb.Z, gradient1);
             float z2 = Interpolate(pc.Z, pd.Z, gradient2);
 
+            var sqDistA = Camera.Position.SqDistBetween(ref va.WorldCoordinates);
+            var sqDistB = Camera.Position.SqDistBetween(ref vb.WorldCoordinates);
+            var sqDistC = Camera.Position.SqDistBetween(ref vc.WorldCoordinates);
+            var sqDistD = Camera.Position.SqDistBetween(ref vd.WorldCoordinates);
+
+            var sSqD = Interpolate(sqDistA, sqDistB, gradient1);
+            var eSqD = Interpolate(sqDistC, sqDistD, gradient2);
+
             // Interpolating normals on Y
             var snl = Interpolate(va.NdotL, vb.NdotL, gradient1);
             var enl = Interpolate(vc.NdotL, vd.NdotL, gradient2);
@@ -110,7 +117,7 @@ namespace SoftEngine
                 ev = Interpolate(vc.TextureCoordinates.Y, vd.TextureCoordinates.Y, gradient2);
             }
 
-            // drawing a line from left (sx) to right (ex), but only for what is visable on scree.
+            // drawing a line from left (sx) to right (ex), but only for what is visible on screen.
             for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.Width); x++)
             {
                 float gradient = Clamp((x - sx) / (float)(ex - sx));
@@ -120,6 +127,8 @@ namespace SoftEngine
                 var ndotl = Interpolate(snl, enl, gradient);
                 var u = Clamp(Interpolate(su, eu, gradient));
                 var v = Clamp(Interpolate(sv, ev, gradient));
+
+                var sqD = Interpolate(sSqD, eSqD, gradient);
 
                 // changing the native color value using the cosine of the angle
                 // between the light vector and the normal vector
@@ -135,7 +144,7 @@ namespace SoftEngine
                     textureColor.WhiteScale(ndotl);
                 }
 
-                state.PutPixel(x, currentY, z, textureColor, u, v);
+                state.PutPixel(x, currentY, z, textureColor, u, v, sqD);
             }
         }
 
@@ -222,7 +231,7 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public void RenderInto(DirectBitmap bmp)
+        public RenderState RenderInto(DirectBitmap bmp)
         {
             RenderState state = new RenderState(bmp);
 
@@ -257,7 +266,7 @@ namespace SoftEngine
                         continue;
                     }
 
-                    // This appears to be over agressive, blocking triangles from being render that shoudl be
+                    // This appears to be over aggressive, blocking triangles from being render that shoudl be
                     //// Face-back culling
                     //var transformedNormalZ =
                     //    face.Normal.X * viewMatrix.M13 +
@@ -274,6 +283,8 @@ namespace SoftEngine
                     }
                 }
             }
+
+            return state;
         }
 
         private bool IsBehind(ref Vector3f vertex, ref Vector3f cameraPos, ref Vector3f lookDir, ref Vector3f buffv)
@@ -282,13 +293,14 @@ namespace SoftEngine
             return Vector3f.Dot(ref lookDir, ref buffv) < 0.00001;
         }
 
-        private class RenderState
+        public class RenderState
         {
-            private DirectBitmap Bmp;
-            private float[] DepthBuffer;
-            private Vector2f[] UVs;
-            public int Width;
-            public int Height;
+            private readonly DirectBitmap Bmp;
+            private readonly float[] DepthBuffer;
+            private readonly Vector2f[] UVs;
+            private readonly float?[] DistSq;
+            public readonly int Width;
+            public readonly int Height;
 
             public RenderState(DirectBitmap bmp)
             {
@@ -297,6 +309,7 @@ namespace SoftEngine
                 Height = bmp.Height;
                 DepthBuffer = new float[Width * Height];
                 UVs = new Vector2f[Width * Height];
+                DistSq = new float?[Width * Height];
 
                 // Clearing Back Buffer
                 bmp.SetAllPixels(new MyColor(0, 0, 0, 0));
@@ -309,21 +322,34 @@ namespace SoftEngine
             }
 
             // Called to put a pixel on screen at a specific X,Y coordinates
-            public void PutPixel(int x, int y, float z, MyColor color, float u, float v)
+            public void PutPixel(int x, int y, float z, MyColor color,
+                float u, float v,
+                float distSq)
             {
                 // Clipping what's visible on screen
                 if (x >= 0 && x < Width && y >= 0 && y < Height)
                 {
                     var index = ((Width - 1 - x) + y * Width);
-                    var index4 = index * 4;
-
                     if (DepthBuffer[index] > z)
                     {
                         DepthBuffer[index] = z;
-                        Bmp.SetPixel(Width - 1 -x, Height - 1 -y, color);
+                        Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
                         UVs[index] = new Vector2f(u, v);
+                        DistSq[index] = distSq;
                     }
                 }
+            }
+
+            public Vector2f GetUV(int x, int y)
+            {
+                var index = ((Width - 1 - x) + y * Width);
+                return UVs[index];
+            }
+
+            public float? GetDistSq(int x, int y)
+            {
+                var index = ((Width - 1 - x) + y * Width);
+                return DistSq[index];
             }
         }
     }

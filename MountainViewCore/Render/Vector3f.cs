@@ -45,6 +45,14 @@ namespace MountainView.Render
             result.Normalize();
         }
 
+        public float SqDistBetween(ref Vector3f b)
+        {
+            var dX = X - b.X;
+            var dY = Y - b.Y;
+            var dZ = Z - b.Z;
+            return dX * dX + dY * dY + dZ * dZ;
+        }
+
         public static void AvgAndNorm(ref Vector3f v1, ref Vector3f v2, ref Vector3f v3, ref Vector3f ret)
         {
             ret.X = (v1.X + v2.X + v3.X);

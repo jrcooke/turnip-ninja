@@ -132,6 +132,21 @@ namespace MountainView
             var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
             compositeBmp.SetAllPixels(View.skyColor);
 
+            Vector2f[][] uvs = new Vector2f[compositeBmp.Width][];
+            double?[][] zs = new double?[compositeBmp.Width][];
+            for (int i = 0; i < compositeBmp.Width; i++)
+            {
+                uvs[i] = new Vector2f[compositeBmp.Height];
+                zs[i] = new double?[compositeBmp.Height];
+            }
+            //Vector2f[][] uvs = new Vector2f[compositeBmp.Height][];
+            //float?[][] zs = new float?[compositeBmp.Height][];
+            //for (int i = 0; i < compositeBmp.Height; i++)
+            //{
+            //    uvs[i] = new Vector2f[compositeBmp.Width];
+            //    zs[i] = new float?[compositeBmp.Width];
+            //}
+
             Device device = new Device()
             {
                 Camera = new Camera()
@@ -197,9 +212,27 @@ namespace MountainView
 
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
-                device.RenderInto(chunkBmp);
+                var renderState = device.RenderInto(chunkBmp);
                 compositeBmp.DrawOn(chunkBmp);
 
+                for (int i = 0; i < uvs.Length; i++)
+                {
+                    for (int j = 0; j < uvs[i].Length; j++)
+                    {
+                        var r = renderState.GetUV(uvs.Length - 1 - i, uvs[i].Length - 1 -j);
+                        if (r != null)
+                        {
+                            uvs[i][j] = r;
+                            zs[i][j] = Math.Sqrt(renderState.GetDistSq(uvs.Length - 1 - i, uvs[i].Length - 1 - j).Value);
+                        }
+                    }
+                }
+
+                Utils.WriteImageFile(zs, "yyy"+counter+".jpg", a => Utils.GetColorForHeight((float)( a ?? 0.0f)), OutputType.JPEG);
+
+                var x = zs.Select(p => p.Where(q => q.HasValue).Average()).Where(p => p.HasValue).Distinct().ToArray();
+
+                log?.WriteLine(x.Min() + "\t" + x.Max() + "\t" + x.Count());
                 drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG));
 
                 using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
