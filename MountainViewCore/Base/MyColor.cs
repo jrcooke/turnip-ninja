@@ -42,4 +42,24 @@ namespace MountainView.Base
             return "(" + R + "," + G + "," + B + "," + A + ")";
         }
     }
+    public struct MyDColor
+    {
+        public double R;
+        public double G;
+        public double B;
+
+        public MyColor ToMyColor()
+        {
+            return new MyColor(
+                (byte)(R),
+                (byte)(G),
+                (byte)(B),
+                255);
+        }
+
+        public override string ToString()
+        {
+            return "(" + R + "," + G + "," + B + ")";
+        }
+    }
 }

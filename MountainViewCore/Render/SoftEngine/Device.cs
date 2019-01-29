@@ -25,32 +25,12 @@ namespace SoftEngine
         {
         }
 
-        // Called to put a pixel on screen at a specific X,Y coordinates
-        private void PutPixel(RenderState state, int x, int y, float z, MyColor color)
-        {
-            // Clipping what's visible on screen
-            if (x >= 0 && x < state.renderWidth && y >= 0 && y < state.renderHeight)
-            {
-                var index = ((state.renderWidth - 1 - x) + y * state.renderWidth);
-                var index4 = index * 4;
-
-                if (state.depthBuffer[index] > z)
-                {
-                    state.depthBuffer[index] = z;
-                    state.bmp.PixelBuffer[index4] = color.B;
-                    state.bmp.PixelBuffer[index4 + 1] = color.G;
-                    state.bmp.PixelBuffer[index4 + 2] = color.R;
-                    state.bmp.PixelBuffer[index4 + 3] = color.A;
-                }
-            }
-        }
-
         // Interpolating the value between 2 vertices
         // min is the starting point, max the ending point
         // and gradient the % between the 2 points
         private float Interpolate(float min, float max, float gradient)
         {
-            return min + (max - min) * (gradient > 1.0f ? 1.0f : gradient < 0.0f ? 0.0f : gradient);
+            return min + (max - min) * gradient;
         }
 
         // Project takes some 3D coordinates and transform them
@@ -66,8 +46,8 @@ namespace SoftEngine
             // The transformed coordinates will be based on coordinate system
             // starting on the center of the screen. But drawing on screen normally starts
             // from top left. We then need to transform them again to have x:0, y:0 on top left.
-            point2d.X = +point2d.X * state.renderWidth + state.renderWidth / 2.0f;
-            point2d.Y = -point2d.Y * state.renderHeight + state.renderHeight / 2.0f;
+            point2d.X = +point2d.X * state.Width + state.Width / 2.0f;
+            point2d.Y = -point2d.Y * state.Height + state.Height / 2.0f;
 
             return new VertexProj
             {
@@ -124,22 +104,22 @@ namespace SoftEngine
             // Interpolating texture coordinates on Y
             if (texture != null)
             {
-                su = Interpolate(va.TextureCoordinates.X, vb.TextureCoordinates.X, gradient1) * texture.width;
-                eu = Interpolate(vc.TextureCoordinates.X, vd.TextureCoordinates.X, gradient2) * texture.width;
-                sv = Interpolate(va.TextureCoordinates.Y, vb.TextureCoordinates.Y, gradient1) * texture.height;
-                ev = Interpolate(vc.TextureCoordinates.Y, vd.TextureCoordinates.Y, gradient2) * texture.height;
+                su = Interpolate(va.TextureCoordinates.X, vb.TextureCoordinates.X, gradient1);
+                eu = Interpolate(vc.TextureCoordinates.X, vd.TextureCoordinates.X, gradient2);
+                sv = Interpolate(va.TextureCoordinates.Y, vb.TextureCoordinates.Y, gradient1);
+                ev = Interpolate(vc.TextureCoordinates.Y, vd.TextureCoordinates.Y, gradient2);
             }
 
             // drawing a line from left (sx) to right (ex), but only for what is visable on scree.
-            for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.renderWidth); x++)
+            for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.Width); x++)
             {
                 float gradient = Clamp((x - sx) / (float)(ex - sx));
 
                 // Interpolating Z, normal and texture coordinates on X
                 var z = Interpolate(z1, z2, gradient);
                 var ndotl = Interpolate(snl, enl, gradient);
-                var u = Math.Max(0, Math.Min(texture.width - 1, (int)Interpolate(su, eu, gradient)));
-                var v = Math.Max(0, Math.Min(texture.height - 1, (int)Interpolate(sv, ev, gradient)));
+                var u = Clamp(Interpolate(su, eu, gradient));
+                var v = Clamp(Interpolate(sv, ev, gradient));
 
                 // changing the native color value using the cosine of the angle
                 // between the light vector and the normal vector
@@ -147,7 +127,7 @@ namespace SoftEngine
                 MyColor textureColor = new MyColor();
                 if (texture != null)
                 {
-                    texture.bmp.GetPixel(u, v, ref textureColor);
+                    texture.GetPixel(u, v, ref textureColor);
                     textureColor.ScaleSelf(ndotl);
                 }
                 else
@@ -155,7 +135,7 @@ namespace SoftEngine
                     textureColor.WhiteScale(ndotl);
                 }
 
-                PutPixel(state, x, currentY, z, textureColor);
+                state.PutPixel(x, currentY, z, textureColor, u, v);
             }
         }
 
@@ -214,7 +194,7 @@ namespace SoftEngine
                 useFirst = invSlopeP1P2 > invSlopeP1P3;
             }
 
-            for (var y = Math.Max(0, p1.Y); y <= Math.Min(state.renderHeight, p3.Y); y++)
+            for (var y = Math.Max(0, p1.Y); y <= Math.Min(state.Height, p3.Y); y++)
             {
                 if (useFirst)
                 {
@@ -250,7 +230,7 @@ namespace SoftEngine
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
             var projectionMatrix = Matrix.PerspectiveFovLH(
                 Camera.FovRad,
-                (float)state.renderWidth / state.renderHeight,
+                (float)state.Width / state.Height,
                 0.01f,
                 1.0f);
 
@@ -304,25 +284,45 @@ namespace SoftEngine
 
         private class RenderState
         {
-            public DirectBitmap bmp;
-            public float[] depthBuffer;
-            public int renderWidth;
-            public int renderHeight;
+            private DirectBitmap Bmp;
+            private float[] DepthBuffer;
+            private Vector2f[] UVs;
+            public int Width;
+            public int Height;
 
             public RenderState(DirectBitmap bmp)
             {
-                this.bmp = bmp;
-                renderWidth = bmp.Width;
-                renderHeight = bmp.Height;
-                depthBuffer = new float[renderWidth * renderHeight];
+                Bmp = bmp;
+                Width = bmp.Width;
+                Height = bmp.Height;
+                DepthBuffer = new float[Width * Height];
+                UVs = new Vector2f[Width * Height];
 
                 // Clearing Back Buffer
                 bmp.SetAllPixels(new MyColor(0, 0, 0, 0));
 
                 // Clearing Depth Buffer
-                for (var index = 0; index < depthBuffer.Length; index++)
+                for (var index = 0; index < DepthBuffer.Length; index++)
                 {
-                    depthBuffer[index] = float.MaxValue;
+                    DepthBuffer[index] = float.MaxValue;
+                }
+            }
+
+            // Called to put a pixel on screen at a specific X,Y coordinates
+            public void PutPixel(int x, int y, float z, MyColor color, float u, float v)
+            {
+                // Clipping what's visible on screen
+                if (x >= 0 && x < Width && y >= 0 && y < Height)
+                {
+                    var index = ((Width - 1 - x) + y * Width);
+                    var index4 = index * 4;
+
+                    if (DepthBuffer[index] > z)
+                    {
+                        DepthBuffer[index] = z;
+                        Bmp.SetPixel(Width - 1 -x, Height - 1 -y, color);
+                        UVs[index] = new Vector2f(u, v);
+                    }
                 }
             }
         }

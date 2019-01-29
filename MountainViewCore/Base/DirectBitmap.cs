@@ -37,13 +37,20 @@ namespace MountainView.Base
                 arrayPtr = bitsHandle.AddrOfPinnedObject();
 
                 var srcBits = srcBitmap.Bits;
+                int h = Height;
+                int w = Width;
                 unsafe
                 {
                     byte* dst = (byte*)arrayPtr.ToPointer();
-                    for (int y = 0; y < Height; y++)
+                    byte* src1 = (byte*)srcBits.ToPointer() + srcBitmap.Pitch * (h - 1);
+                    for (int y = 0; y < h; y++)
                     {
-                        byte* src1 = (byte*)srcBits.ToPointer() + srcBitmap.Pitch * (Height - y - 1);
-                        for (int x = 0; x < Width; x++)
+                        if (y > 0)
+                        {
+                            src1 -= 2 * srcBitmap.Pitch - 1;
+                        }
+
+                        for (int x = 0; x < w; x++)
                         {
                             *dst++ = *src1++;
                             *dst++ = *src1++;
@@ -156,46 +163,72 @@ namespace MountainView.Base
                     byte B0 = *toAdd++;
                     byte G0 = *toAdd++;
                     byte R0 = *toAdd++;
-                    double A0 = (*toAdd++) / 255.0;
+                    byte a0 = (*toAdd++);
 
-                    byte B1 = *dst++;
-                    byte G1 = *dst++;
-                    byte R1 = *dst++;
-                    double A1 = (*dst++) / 255.0;
+                    if (a0 == 0)
+                    {
+                        dst += 4;
+                    }
+                    else if (a0 == 255)
+                    {
+                        *dst++ = B0;
+                        *dst++ = G0;
+                        *dst++ = R0;
+                        *dst++ = a0;
+                    }
+                    else // Now have to be complicated
+                    {
+                        double A0 = a0 / 255.0;
 
-                    double A01 = (1 - A0) * A1 + A0;
-                    double R01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * R1 + A0 * R0) / A01;
-                    double G01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * G1 + A0 * G0) / A01;
-                    double B01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * B1 + A0 * B0) / A01;
+                        byte B1 = *dst++;
+                        byte G1 = *dst++;
+                        byte R1 = *dst++;
+                        double A1 = (*dst++) / 255.0;
 
-                    dst -= 4;
-                    *dst++ = (byte)B01;
-                    *dst++ = (byte)G01;
-                    *dst++ = (byte)R01;
-                    *dst++ = (byte)(A01 * 255);
+                        double A01 = (1 - A0) * A1 + A0;
+                        double R01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * R1 + A0 * R0) / A01;
+                        double G01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * G1 + A0 * G0) / A01;
+                        double B01 = A01 == 0.0 ? 0.0 : ((1 - A0) * A1 * B1 + A0 * B0) / A01;
+
+                        dst -= 4;
+                        *dst++ = (byte)B01;
+                        *dst++ = (byte)G01;
+                        *dst++ = (byte)R01;
+                        *dst++ = (byte)(A01 * 255);
+                    }
                 }
             }
         }
 
         public void DrawAt(DirectBitmap chunkBmp, int tileX, int tileY, int numX, int numY)
         {
-            MyColor[][] tmpC = new MyColor[Height / numY][];
+            MyDColor[][] tmpC = new MyDColor[Height / numY][];
             int[][] tmpN = new int[tmpC.Length][];
             for (int j = 0; j < Height / numY; j++)
             {
-                tmpC[j] = new MyColor[Width / numX];
+                tmpC[j] = new MyDColor[Width / numX];
                 tmpN[j] = new int[tmpC[j].Length];
             }
 
+
             MyColor tmp2 = new MyColor();
-            for (int j = 0; j < chunkBmp.Height; j++)
+            unsafe
             {
-                int jP = j * tmpC.Length / chunkBmp.Height;
-                for (int i = 0; i < chunkBmp.Width; i++)
+                byte* dst = (byte*)chunkBmp.arrayPtr.ToPointer();
+                for (int j = 0; j < chunkBmp.Height; j++)
                 {
-                    int iP = i * tmpC[jP].Length / chunkBmp.Width;
-                    chunkBmp.GetPixel(i, j, ref tmp2);
-                    Utils.WeightedColorAverage(ref tmpN[jP][iP], ref tmpC[jP][iP], ref tmp2);
+                    int jP = j * tmpC.Length / chunkBmp.Height;
+                    for (int i = 0; i < chunkBmp.Width; i++)
+                    {
+                        int iP = i * tmpC[jP].Length / chunkBmp.Width;
+
+                        tmp2.B = *dst++;
+                        tmp2.G = *dst++;
+                        tmp2.R = *dst++;
+                        tmp2.A = *dst++;
+
+                        Utils.WeightedColorAverage(ref tmpN[jP][iP], ref tmpC[jP][iP], ref tmp2);
+                    }
                 }
             }
 
@@ -209,7 +242,7 @@ namespace MountainView.Base
                     int iP = i;
                     int jP = (Height / numY - 1 - j);
 
-                    this.SetPixel(iP + v0, jP + v1, tmpC[j][i]);
+                    this.SetPixel(iP + v0, jP + v1, tmpC[j][i].ToMyColor());
                 }
             }
         }

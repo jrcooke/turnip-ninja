@@ -9,9 +9,9 @@ namespace SoftEngine
 {
     public class Texture : IDisposable
     {
-        public readonly DirectBitmap bmp;
-        public readonly int width;
-        public readonly int height;
+        private readonly DirectBitmap bmp;
+        private readonly int width;
+        private readonly int height;
 
         public Texture(byte[] bits)
         {
@@ -24,16 +24,6 @@ namespace SoftEngine
 
             width = bmp.Width;
             height = bmp.Height;
-        }
-
-        public Texture(string filename)
-        {
-            using (var stream = System.IO.File.OpenRead(filename))
-            {
-                bmp = new DirectBitmap(stream);
-                width = bmp.Width;
-                height = bmp.Height;
-            }
         }
 
         private bool disposedValue = false; // To detect redundant calls
@@ -58,6 +48,11 @@ namespace SoftEngine
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        internal void GetPixel(float u, float v, ref MyColor textureColor)
+        {
+            bmp.GetPixel((int)(u * (width - 1)), (int)(v * (height - 1)), ref textureColor);
         }
     }
 }

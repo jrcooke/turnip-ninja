@@ -122,64 +122,64 @@ namespace MountainView
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            var x = await BlobHelper.GetFileNames("mapv8", null, log);
+            //var x = await BlobHelper.GetFileNames("mapv8", null, log);
 
-            var y = x
-                .Select(p => new { Name = p, P = p.Split('.') })
-                .Select(p => new { p.Name, Base = StandardChunkMetadata.ParseBase(p.P[0]), V = p.P[1], Ext = p.P[2] })
-                .GroupBy(p => new { p.Ext, p.V, p.Base.ZoomLevel })
-                .Select(p => new { p.Key.Ext, p.Key.V, p.Key.ZoomLevel, Data = p.Select(q => new { q.Name, q.Base }).ToArray() })
-                .OrderBy(p => p.ZoomLevel)
-                .ThenBy(p => p.Ext)
-                .ThenBy(p => p.V)
-                .ToArray();
+            //var y = x
+            //    .Select(p => new { Name = p, P = p.Split('.') })
+            //    .Select(p => new { p.Name, Base = StandardChunkMetadata.ParseBase(p.P[0]), V = p.P[1], Ext = p.P[2] })
+            //    .GroupBy(p => new { p.Ext, p.V, p.Base.ZoomLevel })
+            //    .Select(p => new { p.Key.Ext, p.Key.V, p.Key.ZoomLevel, Data = p.Select(q => new { q.Name, q.Base }).ToArray() })
+            //    .OrderBy(p => p.ZoomLevel)
+            //    .ThenBy(p => p.Ext)
+            //    .ThenBy(p => p.V)
+            //    .ToArray();
 
-            var baseBmp = new DirectBitmap(1000, 1000);
-            baseBmp.SetAllPixels(new MyColor(255, 255, 255));
+            //var baseBmp = new DirectBitmap(1000, 1000);
+            //baseBmp.SetAllPixels(new MyColor(255, 255, 255));
 
-            foreach (var dfgdfg in y.Where(p => p.Ext == "jpeg" && p.ZoomLevel == 6))
-            {
-                if (dfgdfg.Ext == "jpeg")
-                {
-                    log?.WriteLine(dfgdfg.Ext + "\t" + dfgdfg.ZoomLevel + "\t" + dfgdfg.V);
-                    var lats = dfgdfg.Data.Select(p => p.Base.LatLo.Abs).Distinct().OrderBy(p => p).ToArray();
-                    var lons = dfgdfg.Data.Select(p => p.Base.LonLo.Abs).Distinct().OrderBy(p => p).ToArray();
+            //foreach (var dfgdfg in y.Where(p => p.Ext == "jpeg" && p.ZoomLevel == 6))
+            //{
+            //    if (dfgdfg.Ext == "jpeg")
+            //    {
+                    //log?.WriteLine(dfgdfg.Ext + "\t" + dfgdfg.ZoomLevel + "\t" + dfgdfg.V);
+                    //var lats = dfgdfg.Data.Select(p => p.Base.LatLo.Abs).Distinct().OrderBy(p => p).ToArray();
+                    //var lons = dfgdfg.Data.Select(p => p.Base.LonLo.Abs).Distinct().OrderBy(p => p).ToArray();
 
-                    for (int i = 0; i < lats.Length; i++)
-                    {
-                        for (int j = 0; j < lons.Length; j++)
-                        {
-                            var t = dfgdfg.Data.FirstOrDefault(p => p.Base.LatLo.Abs == lats[i] && p.Base.LonLo.Abs == lons[j])?.Base;
-                            log?.Write(t != null ? "X" : " ");
-                            if (t != null)
-                            {
-                                var tmpImg = await JpegImages.Current.GetData(t, log);
-                                var gggg = new DirectBitmap(tmpImg);
-                                //device.RenderInto(chunkBmp);
-                                baseBmp.DrawAt(gggg, j, i, lons.Length, lats.Length);
+                    //for (int i = 0; i < lats.Length; i++)
+                    //{
+                    //    for (int j = 0; j < lons.Length; j++)
+                    //    {
+                    //        var t = dfgdfg.Data.FirstOrDefault(p => p.Base.LatLo.Abs == lats[i] && p.Base.LonLo.Abs == lons[j])?.Base;
+                    //        log?.Write(t != null ? "X" : " ");
+                    //        if (t != null)
+                    //        {
+                    //            var tmpImg = await JpegImages.Current.GetData(t, log);
+                    //            var gggg = new DirectBitmap(tmpImg);
+                    //            //device.RenderInto(chunkBmp);
+                    //            baseBmp.DrawAt(gggg, j, i, lons.Length, lats.Length);
 
-                                drawToScreen?.Invoke(baseBmp.GetStream(OutputType.PNG));
+                    //            drawToScreen?.Invoke(baseBmp.GetStream(OutputType.PNG));
 
-                            }
-                        }
+                    //        }
+                    //    }
 
-                        log?.WriteLine("");
-                    }
+                    //    log?.WriteLine("");
+                    //}
 
-                }
-                else if (dfgdfg.Ext == "hdata")
-                {
-                }
-                else if (dfgdfg.Ext == "idata")
-                {
-                }
-                else if (dfgdfg.Ext == "mdata")
-                {
-                }
-                else
-                {
+                //}
+                //else if (dfgdfg.Ext == "hdata")
+                //{
+                //}
+                //else if (dfgdfg.Ext == "idata")
+                //{
+                //}
+                //else if (dfgdfg.Ext == "mdata")
+                //{
+                //}
+                //else
+                //{
 
-                }
+                //}
 
                 //log?.WriteLine(dfgdfg.Ext + "\t" + dfgdfg.ZoomLevel + "\t" + dfgdfg.V);
                 //var lats = dfgdfg.Data.Select(p => p.Base.LatLo.Abs).Distinct().ToArray();
@@ -193,9 +193,9 @@ namespace MountainView
                 //    }
                 //    log?.WriteLine("");
                 //}
-            }
+         //   }
 
-            return;
+           // return;
 
             var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
             var z = 0.01f;// 0.05f;
