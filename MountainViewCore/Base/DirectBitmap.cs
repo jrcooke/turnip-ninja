@@ -1,6 +1,5 @@
 ﻿using FreeImageAPI;
 using System;
-using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -36,13 +35,12 @@ namespace MountainView.Base
                 bitsHandle = GCHandle.Alloc(PixelBuffer, GCHandleType.Pinned);
                 arrayPtr = bitsHandle.AddrOfPinnedObject();
 
-                var srcBits = srcBitmap.Bits;
                 int h = Height;
                 int w = Width;
                 unsafe
                 {
                     byte* dst = (byte*)arrayPtr.ToPointer();
-                    byte* src1 = (byte*)srcBits.ToPointer() + srcBitmap.Pitch * (h - 1);
+                    byte* src1 = (byte*)srcBitmap.Bits.ToPointer() + srcBitmap.Pitch * (h - 1);
                     for (int y = 0; y < h; y++)
                     {
                         if (y > 0)
