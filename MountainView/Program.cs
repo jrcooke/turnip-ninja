@@ -132,11 +132,11 @@ namespace MountainView
             var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
             compositeBmp.SetAllPixels(View.skyColor);
 
-            Vector2f[][] uvs = new Vector2f[compositeBmp.Width][];
+            Vector2d?[][] latLons = new Vector2d?[compositeBmp.Width][];
             double?[][] zs = new double?[compositeBmp.Width][];
             for (int i = 0; i < compositeBmp.Width; i++)
             {
-                uvs[i] = new Vector2f[compositeBmp.Height];
+                latLons[i] = new Vector2d?[compositeBmp.Height];
                 zs[i] = new double?[compositeBmp.Height];
             }
             //Vector2f[][] uvs = new Vector2f[compositeBmp.Height][];
@@ -155,11 +155,17 @@ namespace MountainView
                     Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
                     UpDirection = new Vector3f(0, 0, 1),
                     FovRad = (float)config.FOV.Radians,
+                    //Position = new Vector3f(0, 0, 1000),
+                    //Target = new Vector3f(0, 0, 0),
+                    //UpDirection = new Vector3f(1, 0, 0),
+                    //FovRad = 0.5f,
                 },
                 AmbientLight = 0.5f,
                 DirectLight = 1.0f,
                 Light = new Vector3f(0, 0, 20),
             };
+
+            //            config.UseHaze = false;
 
             var chunks = View.GetRelevantChunkKeys(config, log);
 
@@ -207,23 +213,29 @@ namespace MountainView
 
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
-                var renderState = device.RenderInto(chunkBmp, (float)norm.BackToMeters);
+                var renderState = device.RenderInto(chunkBmp, (float)norm.BackToMeters, config.UseHaze);
                 compositeBmp.DrawOn(chunkBmp);
 
-                for (int i = 0; i < uvs.Length; i++)
+                for (int i = 0; i < latLons.Length; i++)
                 {
-                    for (int j = 0; j < uvs[i].Length; j++)
+                    for (int j = 0; j < latLons[i].Length; j++)
                     {
-                        var r = renderState.GetUV(uvs.Length - 1 - i, uvs[i].Length - 1 -j);
+                        var r = renderState.GetUV(latLons.Length - 1 - i, latLons[i].Length - 1 - j);
                         if (r != null)
                         {
-                            uvs[i][j] = r;
-                            zs[i][j] = norm.BackToMeters * Math.Sqrt(renderState.GetDistSq(uvs.Length - 1 - i, uvs[i].Length - 1 - j).Value);
+                            latLons[i][j] = new Vector2d()
+                            {
+                                X = chunk.LatLo.DecimalDegree + chunk.LatDelta.DecimalDegree * (1.0 - r.Y),
+                                Y = chunk.LonLo.DecimalDegree + chunk.LonDelta.DecimalDegree * r.X,
+                            };
+                            zs[i][j] = norm.BackToMeters * Math.Sqrt(renderState.GetDistSq(latLons.Length - 1 - i, latLons[i].Length - 1 - j).Value);
                         }
                     }
                 }
 
-                Utils.WriteImageFile(zs, "yyy"+counter+".jpg", a => Utils.GetColorForHeight((float)( a ?? 0.0f)), OutputType.JPEG);
+                Utils.WriteImageFile(zs, "yyy" + counter + ".jpg", a => Utils.GetColorForHeight((float)(a ?? 0.0f)), OutputType.JPEG);
+                Utils.WriteImageFile(latLons, "Lats" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.X ?? 0.0f)), OutputType.JPEG);
+                Utils.WriteImageFile(latLons, "Lons" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.Y ?? 0.0f)), OutputType.JPEG);
 
                 var x = zs.Select(p => p.Where(q => q.HasValue).Average()).Where(p => p.HasValue).Distinct().ToArray();
 

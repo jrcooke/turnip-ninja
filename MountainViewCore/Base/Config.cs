@@ -41,6 +41,7 @@
 
         public int MaxZoom { get; set; } = 6;
         public int MinZoom { get; set; } = 3;
+        public bool UseHaze { get; set; } = true;
 
         public static Config Juaneta()
         {

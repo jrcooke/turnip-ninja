@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MountainView.Mesh
+﻿namespace MountainView.Mesh
 {
     public struct GeoPolar3d
     {

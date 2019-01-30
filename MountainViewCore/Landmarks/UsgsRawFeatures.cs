@@ -96,7 +96,7 @@ namespace MountainViewCore.Landmarks
             var metadataLines = BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt", null).Result;
             string[] header = metadataLines.First().Split('|');
             string[] header2 = metadataLines.Skip(1).First().Split('|');
-            var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
+            var nameToIndex = header.Select((p, i) => new { p, i }).ToDictionary(p => p.p, p => p.i);
             var fileInfo = metadataLines
                 .Skip(1)
                 .Select(p => p.Split('|'))

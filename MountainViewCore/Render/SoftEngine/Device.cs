@@ -230,9 +230,9 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public RenderState RenderInto(DirectBitmap bmp, float backToMeters)
+        public RenderState RenderInto(DirectBitmap bmp, float backToMeters, bool useHaze)
         {
-            RenderState state = new RenderState(bmp, backToMeters);
+            RenderState state = new RenderState(bmp, backToMeters, useHaze);
 
             // To understand this part, please read the prerequisites resources
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
@@ -299,13 +299,15 @@ namespace SoftEngine
             private readonly Vector2f[] UVs;
             private readonly float?[] DistSq;
             private readonly float backToMeters;
+            private readonly bool useHaze;
             public readonly int Width;
             public readonly int Height;
 
-            public RenderState(DirectBitmap bmp, float backToMeters)
+            public RenderState(DirectBitmap bmp, float backToMeters, bool useHaze)
             {
                 Bmp = bmp;
                 this.backToMeters = backToMeters;
+                this.useHaze = useHaze;
                 Width = bmp.Width;
                 Height = bmp.Height;
                 DepthBuffer = new float[Width * Height];
@@ -335,10 +337,13 @@ namespace SoftEngine
                     {
                         DepthBuffer[index] = z;
 
-                        double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-8);
-                        color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
-                        color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
-                        color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
+                        if (useHaze)
+                        {
+                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-10);
+                            color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
+                            color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
+                            color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
+                        }
 
                         Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
                         UVs[index] = new Vector2f(u, v);

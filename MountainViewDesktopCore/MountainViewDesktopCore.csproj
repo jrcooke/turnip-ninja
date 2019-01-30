@@ -180,6 +180,9 @@
     <Compile Include="..\MountainViewCore\Mesh\FriendlyMesh.cs">
       <Link>Mesh\FriendlyMesh.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Mesh\GeoPolar2d.cs">
+      <Link>Mesh\GeoPolar2d.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Mesh\Meshes.cs">
       <Link>Mesh\Meshes.cs</Link>
     </Compile>
