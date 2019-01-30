@@ -223,7 +223,7 @@ namespace MountainViewCore.Base
             return "<img class='cornerimage' src='" + imageName + "'>";
         }
 
-        private static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : class
+        public static IEnumerable<Polygon<T>> GetPolygons<T>(T[][] values) where T : class
         {
             int minSize = 100;
             int width = values.Length;
@@ -240,7 +240,7 @@ namespace MountainViewCore.Base
             {
                 for (int j = 0; j < height; j++)
                 {
-                    if (cache[i][j] == null)
+                    if (cache[i][j] == null && values[i][j] != null)
                     {
                         // start a new flood fill
                         var cur = new Polygon<T>(values[i][j]);

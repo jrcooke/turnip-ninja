@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SoftEngine;
 using MountainView.Render;
+using MountainViewCore.Landmarks;
 
 namespace MountainView
 {
@@ -117,7 +118,7 @@ namespace MountainView
             log?.WriteLine(end - start);
         }
 
-        public static async Task Doit(Config config, TraceListener log, Action<Stream> drawToScreen)
+        public static async Task Doit(Config config, TraceListener log, Action<Stream, FeatureInfo[][]> drawToScreen)
         {
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
@@ -233,22 +234,22 @@ namespace MountainView
                     }
                 }
 
-                Utils.WriteImageFile(zs, "yyy" + counter + ".jpg", a => Utils.GetColorForHeight((float)(a ?? 0.0f)), OutputType.JPEG);
-                Utils.WriteImageFile(latLons, "Lats" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.X ?? 0.0f)), OutputType.JPEG);
-                Utils.WriteImageFile(latLons, "Lons" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.Y ?? 0.0f)), OutputType.JPEG);
+                //                Utils.WriteImageFile(zs, "yyy" + counter + ".jpg", a => Utils.GetColorForHeight((float)(a ?? 0.0f)), OutputType.JPEG);
+                //Utils.WriteImageFile(latLons, "Lats" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.X ?? 0.0f)), OutputType.JPEG);
+                //Utils.WriteImageFile(latLons, "Lons" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.Y ?? 0.0f)), OutputType.JPEG);
 
-                var x = zs.Select(p => p.Where(q => q.HasValue).Average()).Where(p => p.HasValue).Distinct().ToArray();
-
-                log?.WriteLine(x.Min() + "\t " + x.Max() + "\t " + x.Count());
-                drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG));
-
-                using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))
-                {
-                    chunkBmp.WriteFile(OutputType.JPEG, fs);
-                }
+                //var xxx = ProcessImageMap(latLons, "test");
 
                 counter++;
                 log?.WriteLine(counter);
+            }
+
+            FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value.X, p.Value.Y)).ToArray()).ToArray();
+            drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG), features);
+
+            using (var fs = File.OpenWrite(counter + ".jpg"))
+            {
+                chunkBmp.WriteFile(OutputType.JPEG, fs);
             }
 
             DateTime end = DateTime.Now;
@@ -256,6 +257,31 @@ namespace MountainView
             log?.WriteLine(end);
             log?.WriteLine(end - start);
         }
+
+        public static string ProcessImageMap(Vector2d?[][] view, string imageName)
+        {
+            var features = view.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value.X, p.Value.Y)).ToArray()).ToArray();
+            var polys = View.GetPolygons(features);
+            var polymap = polys
+                .Where(p => p.Value != null)
+                .Select(p => new
+                {
+                    id = p.Value.Id,
+                    alt = p.Value.Name,
+                    coords = string.Join(",", p.Border.Select(q => q.X + "," + (view[0].Length - 1 - q.Y))),
+                })
+                .Select(p => "<area href='" + p.alt + "' title='" + p.alt + "' alt='" + p.alt + "' shape='poly' coords='" + p.coords + "' >")
+                .ToArray();
+            var mapId = Guid.NewGuid().ToString();
+
+            var mapText = "<div>" +
+                "<map name='" + mapId + "'>" + string.Join("\r\n", polymap) + "</map>" +
+                "<img src='" + imageName + "' usemap='#" + mapId + "' >" +
+                "</div>";
+            return mapText;
+        }
+
+
 
         private static async Task NewMethod(TraceListener log, Action<Stream> drawToScreen)
         {

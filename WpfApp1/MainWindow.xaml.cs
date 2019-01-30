@@ -1,10 +1,13 @@
 ﻿using MountainView;
 using MountainView.Base;
+using MountainViewCore.Landmarks;
 using System.Device.Location;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace WpfApp1
@@ -16,6 +19,7 @@ namespace WpfApp1
     {
         // The coordinate watcher.
         private GeoCoordinateWatcher Watcher = null;
+        private FeatureInfo[][] features;
 
         public MainWindow()
         {
@@ -50,7 +54,7 @@ namespace WpfApp1
                 Lon = Angle.FromDecimalDegrees(-122.132786),
                 MinAngle = Angle.FromDecimalDegrees(7),
                 MaxAngle = Angle.FromDecimalDegrees(15),
-                MaxZoom = 5,
+                MaxZoom = 3,
                 MinZoom = 3,
                 R = 150000,
             };
@@ -59,8 +63,9 @@ namespace WpfApp1
         }
 
 
-        private void DrawToScreen(Stream ms)
+        private void DrawToScreen(Stream ms, FeatureInfo[][] features)
         {
+            this.features = features;
             Dispatcher.Invoke(() =>
             {
                 BitmapImage image = new BitmapImage();
@@ -87,6 +92,33 @@ namespace WpfApp1
         private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
         {
             //            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
+        }
+
+        private void Image1_MouseMove(object sender, MouseEventArgs e)
+        {
+            var tmpFeat = features;
+            if (tmpFeat != null)
+            {
+                var mousePos = e.GetPosition((IInputElement)sender);
+                int x = (int)(mousePos.X * tmpFeat.Length / ((Image)sender).ActualWidth);
+                int y = tmpFeat[0].Length - 1 - (int)(mousePos.Y * tmpFeat[0].Length / ((Image)sender).ActualHeight);
+
+                var feat = tmpFeat[x][y];
+                if (feat != null)
+                {
+                    Debug.WriteLine(mousePos.X + "  " + mousePos.Y + "  " + feat);
+                    tttb.Text = feat.MapName + " (" + feat.Name + ") [" + feat.FeatureClass + "]";
+                    tt.IsOpen = true;
+                }
+                else
+                {
+                    tt.IsOpen = false;
+                }
+
+                //   tt.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
+                tt.HorizontalOffset = mousePos.X + 10;
+                tt.VerticalOffset = mousePos.Y + 10;
+            }
         }
     }
 

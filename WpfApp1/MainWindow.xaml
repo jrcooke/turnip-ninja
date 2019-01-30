@@ -44,6 +44,13 @@
             <Image Name="mainImage2" HorizontalAlignment="Left" VerticalAlignment="Top" />
         </StackPanel>-->
         <!--<local:UserControl2 x:Name="uc" Grid.Column="1" />-->
-        <Image Name="image1" Stretch="Uniform" />
+
+        <Image Name="image1" Stretch="Uniform" Mouse.MouseMove="Image1_MouseMove" ToolTipService.ShowDuration="1000000" >
+            <Image.ToolTip>
+                <ToolTip Name="tt" Placement="Relative">
+                    <TextBlock Name="tttb"/>
+                </ToolTip>
+            </Image.ToolTip>
+        </Image>
     </Grid>
 </Window>

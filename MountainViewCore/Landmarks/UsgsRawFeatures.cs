@@ -12,6 +12,7 @@ namespace MountainViewCore.Landmarks
         public string Name { get; set; }
         public Angle Lat { get; set; }
         public Angle Lon { get; set; }
+        public string MapName { get; set; }
 
         public override string ToString()
         {
@@ -87,9 +88,31 @@ namespace MountainViewCore.Landmarks
         Well,           // Man-made shaft or hole in the Earth's surface used to obtain fluid or gaseous materials.
         Woods,          // Small area covered with a dense growth of trees; does not include an area of trees under the administration of a political agency(see "forest").
     }
+
     public static class UsgsRawFeatures
     {
         private const string cachedFileContainer = "sources";
+        private static readonly FeatureClass[] dullFeatures = new FeatureClass[]
+        {
+            FeatureClass.Airport,
+            FeatureClass.Bridge,
+            FeatureClass.Building,
+            FeatureClass.Cemetery,
+            FeatureClass.Census,
+            FeatureClass.Church,
+            FeatureClass.Civil,
+            FeatureClass.Hospital,
+            FeatureClass.Locale,
+            FeatureClass.Military,
+            FeatureClass.Mine,
+            FeatureClass.Oilfield,
+            FeatureClass.PopulatedPlace,
+            FeatureClass.PostOffice,
+            FeatureClass.School,
+            FeatureClass.Spring,
+            FeatureClass.Tower,
+            FeatureClass.Well,
+        };
 
         private static Lazy<KDNode<FeatureInfo>> featureInfos = new Lazy<KDNode<FeatureInfo>>(() =>
         {
@@ -107,11 +130,12 @@ namespace MountainViewCore.Landmarks
                     Name = p[nameToIndex["FEATURE_NAME"]],
                     Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
                     Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
+                    MapName = p[nameToIndex["MAP_NAME"]],
                 })
                 .ToArray();
 
             return KDNode<FeatureInfo>.Process(fileInfo
-                //.Where(p => p.FeatureClass == FeatureClass.Summit)
+                .Where(p => !dullFeatures.Contains(p.FeatureClass))
                 .Select(p => KDNode<FeatureInfo>.Point.WithKey(p, p.Lat.DecimalDegree, p.Lon.DecimalDegree)));
         });
 

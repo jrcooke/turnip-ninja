@@ -58,7 +58,7 @@ namespace MountainViewCore.Base
                 Point testPoint = new Point(curPoint.X + deltaX[theta], curPoint.Y + deltaY[theta]);
                 if (testPoint.X >= 0 && testPoint.X < width &&
                     testPoint.Y >= 0 && testPoint.Y < height &&
-                    cache[testPoint.X][testPoint.Y].Value == Value)
+                    cache[testPoint.X][testPoint.Y]?.Value == Value)
                 {
                     if (!startPoint.HasValue)
                     {
