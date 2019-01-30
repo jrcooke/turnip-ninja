@@ -245,7 +245,7 @@ namespace MountainView.Mesh
             }
         }
 
-        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale, double elevation, TraceListener log)
+        public NormalizeSettings GetCenterAndScale(double lat, double lon, double scale, double latDelta, double elevation, TraceListener log)
         {
             double cosLat = Math.Cos(lat / RadToDeg);
             double sinLat = Math.Sin(lat / RadToDeg);
@@ -277,18 +277,11 @@ namespace MountainView.Mesh
 
             RotatePointToNormal(cosLat, sinLat, cosLon, sinLon, ref avgV);
 
-            // Find the max dist between adjacent corners. This will the the characteristic length.
-            var cornerDistsSq = new double[]
-            {
-                Corners[0].DeltaSq(ref Corners[1]),
-                Corners[0].DeltaSq(ref Corners[2]),
-                Corners[3].DeltaSq(ref Corners[1]),
-                Corners[3].DeltaSq(ref Corners[2]),
-            };
+            // The characteristic length is the "height", Delta lat
+            var deltaV = scale / (latDelta * Utils.LengthOfLatDegree);
+            var backToMeters = 1 / deltaV;
 
-            var deltaV = scale / Math.Sqrt(cornerDistsSq.Max());
-
-            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV, elevation);
+            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV, elevation, backToMeters);
             return norm;
         }
 
@@ -424,17 +417,19 @@ namespace MountainView.Mesh
             public double CosLat { get; private set; }
             public double SinLat { get; private set; }
             public double Height { get; set; }
+            public double BackToMeters { get; private set; }
 
             public NormalizeSettings(
                 double cosLat, double sinLat,
                 double cosLon, double sinLon,
-                double deltaV, Vector3d avgV, double height) : base(deltaV, avgV)
+                double deltaV, Vector3d avgV, double height, double backToMeters) : base(deltaV, avgV)
             {
                 CosLon = cosLon;
                 SinLon = sinLon;
                 CosLat = cosLat;
                 SinLat = sinLat;
                 Height = height * deltaV;
+                BackToMeters = backToMeters;
             }
         }
     }

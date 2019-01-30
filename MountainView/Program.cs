@@ -165,7 +165,7 @@ namespace MountainView
 
             StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
             var mainMesh = await Meshes.Current.GetData(mainChunk, log);
-            var norm = mainMesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, mainChunk.ZoomLevel, 10, log);
+            var norm = mainMesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, mainChunk.ZoomLevel, mainChunk.LatDelta.DecimalDegree, 10, log);
 
             int counter = 0;
             foreach (var chunkKey in chunks)
@@ -175,11 +175,6 @@ namespace MountainView
 
                 var mesh = await Meshes.Current.GetData(chunk, log);
                 if (mesh == null) continue;
-
-                if (norm == null)
-                {
-                    norm = mesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, chunk.ZoomLevel, 10, log);
-                }
 
                 mesh.Match(norm);
 
@@ -212,7 +207,7 @@ namespace MountainView
 
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
-                var renderState = device.RenderInto(chunkBmp);
+                var renderState = device.RenderInto(chunkBmp, (float)norm.BackToMeters);
                 compositeBmp.DrawOn(chunkBmp);
 
                 for (int i = 0; i < uvs.Length; i++)
@@ -223,7 +218,7 @@ namespace MountainView
                         if (r != null)
                         {
                             uvs[i][j] = r;
-                            zs[i][j] = Math.Sqrt(renderState.GetDistSq(uvs.Length - 1 - i, uvs[i].Length - 1 - j).Value);
+                            zs[i][j] = norm.BackToMeters * Math.Sqrt(renderState.GetDistSq(uvs.Length - 1 - i, uvs[i].Length - 1 - j).Value);
                         }
                     }
                 }
@@ -232,7 +227,7 @@ namespace MountainView
 
                 var x = zs.Select(p => p.Where(q => q.HasValue).Average()).Where(p => p.HasValue).Distinct().ToArray();
 
-                log?.WriteLine(x.Min() + "\t" + x.Max() + "\t" + x.Count());
+                log?.WriteLine(x.Min() + "\t " + x.Max() + "\t " + x.Count());
                 drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG));
 
                 using (var fs = File.OpenWrite(Path.Combine(".", counter + ".jpg")))

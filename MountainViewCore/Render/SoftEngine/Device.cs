@@ -3,6 +3,7 @@
 
 using MountainView.Base;
 using MountainView.Render;
+using MountainViewCore.Base;
 using SharpDX;
 using System;
 using System.Collections.ObjectModel;
@@ -12,8 +13,6 @@ namespace SoftEngine
 {
     public class Device
     {
-        private static readonly Vector3f UnitY = new Vector3f(0, 1, 0);
-
         public Camera Camera { get; set; }
         public Vector3f Light { get; set; }
         public float DirectLight { get; set; }
@@ -231,9 +230,9 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public RenderState RenderInto(DirectBitmap bmp)
+        public RenderState RenderInto(DirectBitmap bmp, float backToMeters)
         {
-            RenderState state = new RenderState(bmp);
+            RenderState state = new RenderState(bmp, backToMeters);
 
             // To understand this part, please read the prerequisites resources
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
@@ -299,12 +298,14 @@ namespace SoftEngine
             private readonly float[] DepthBuffer;
             private readonly Vector2f[] UVs;
             private readonly float?[] DistSq;
+            private readonly float backToMeters;
             public readonly int Width;
             public readonly int Height;
 
-            public RenderState(DirectBitmap bmp)
+            public RenderState(DirectBitmap bmp, float backToMeters)
             {
                 Bmp = bmp;
+                this.backToMeters = backToMeters;
                 Width = bmp.Width;
                 Height = bmp.Height;
                 DepthBuffer = new float[Width * Height];
@@ -333,6 +334,12 @@ namespace SoftEngine
                     if (DepthBuffer[index] > z)
                     {
                         DepthBuffer[index] = z;
+
+                        double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-8);
+                        color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
+                        color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
+                        color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
+
                         Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
                         UVs[index] = new Vector2f(u, v);
                         DistSq[index] = distSq;
