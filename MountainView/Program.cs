@@ -244,7 +244,7 @@ namespace MountainView
                 log?.WriteLine(counter);
             }
 
-            FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value.X, p.Value.Y)).ToArray()).ToArray();
+            FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
             drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG), features);
 
             using (var fs = File.OpenWrite(counter + ".jpg"))
@@ -260,7 +260,7 @@ namespace MountainView
 
         public static string ProcessImageMap(Vector2d?[][] view, string imageName)
         {
-            var features = view.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value.X, p.Value.Y)).ToArray()).ToArray();
+            var features = view.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
             var polys = View.GetPolygons(features);
             var polymap = polys
                 .Where(p => p.Value != null)

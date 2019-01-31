@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MountainView.Mesh;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace MountainView.Base
     {
         private double median;
         private Point location;
-        private int depth;
+        private readonly int depth;
         private KDNode<T> lChild;
         private KDNode<T> rChild;
         private HyperRect hr;
@@ -19,17 +20,17 @@ namespace MountainView.Base
             this.location = location;
             this.hr = hr;
             this.depth = depth;
-            median = GetValue(location, depth);
+            median = GetValue(ref location.Location, depth);
         }
 
         public static KDNode<T> Process(IEnumerable<Point> pointList)
         {
-            return Process(pointList.ToArray(), HyperRect.GetInfinite(pointList.First().Vector.Length), 0);
+            return Process(pointList.ToArray(), HyperRect.GetInfinite(), 0);
         }
 
-        public Point GetNearest(params double[] v)
+        public Point GetNearest(ref Vector2d p)
         {
-            return GetNearest(new Point(v)).Item1.location;
+            return GetNearestWorker(ref p).Item1.location;
         }
 
         private static KDNode<T> Process(Point[] pointList, HyperRect hr, int depth)
@@ -37,7 +38,7 @@ namespace MountainView.Base
             if (pointList.Length == 0) return null;
 
             // Sort point list and choose median as pivot element
-            var sorted = pointList.OrderBy(p => GetValue(p, depth)).ToArray();
+            var sorted = pointList.OrderBy(p => GetValue(ref p.Location, depth)).ToArray();
             var medianIndex = sorted.Length / 2;
             var location = sorted[medianIndex];
 
@@ -46,8 +47,8 @@ namespace MountainView.Base
             var split = hr.Split(node.median, depth);
             if (pointList.Length > 1)
             {
-                var lnodes = pointList.Where(p => GetValue(p, depth) < node.median).ToArray();
-                var rnodes = pointList.Where(p => GetValue(p, depth) >= node.median && p != node.location).ToArray();
+                var lnodes = pointList.Where(p => GetValue(ref p.Location, depth) < node.median).ToArray();
+                var rnodes = pointList.Where(p => GetValue(ref p.Location, depth) >= node.median && p != node.location).ToArray();
                 node.lChild = Process(lnodes, split.Item1, depth + 1);
                 node.rChild = Process(rnodes, split.Item2, depth + 1);
             }
@@ -55,15 +56,15 @@ namespace MountainView.Base
             return node;
         }
 
-        private Tuple<KDNode<T>, double> GetNearest(Point p)
+        private Tuple<KDNode<T>, double> GetNearestWorker(ref Vector2d p)
         {
-            double val = GetValue(p, depth);
+            double val = GetValue(ref p, depth);
             var closestChild = val > median ? this.rChild : this.lChild;
             var farthestChild = val > median ? this.lChild : this.rChild;
-            var best = new Tuple<KDNode<T>, double>(this, p.DistanceSqTo(this.location));
+            var best = new Tuple<KDNode<T>, double>(this, p.DistSqTo(ref this.location.Location));
             if (closestChild != null)
             {
-                var c1Best = closestChild.GetNearest(p);
+                var c1Best = closestChild.GetNearestWorker(ref p);
                 if (best.Item2 > c1Best.Item2)
                 {
                     best = c1Best;
@@ -72,10 +73,10 @@ namespace MountainView.Base
 
             if (farthestChild != null)
             {
-                var distanceSquaredToTarget = farthestChild.hr.GetDistSqToClosestPoint(p);
+                var distanceSquaredToTarget = farthestChild.hr.GetDistSqToClosestPoint(ref p);
                 if (distanceSquaredToTarget < best.Item2)
                 {
-                    var c2Best = farthestChild.GetNearest(p);
+                    var c2Best = farthestChild.GetNearestWorker(ref p);
                     if (best.Item2 > c2Best.Item2)
                     {
                         best = c2Best;
@@ -86,9 +87,9 @@ namespace MountainView.Base
             return best;
         }
 
-        private static double GetValue(Point p, int dim)
+        private static double GetValue(ref Vector2d p, int dim)
         {
-            return p.Vector[dim % p.Vector.Length];
+            return dim % 2 == 0 ? p.X : p.Y;
         }
 
         public override string ToString()
@@ -102,22 +103,25 @@ namespace MountainView.Base
         {
             KDNode<int> root = KDNode<int>.Process(new KDNode<int>.Point[]
             {
-                KDNode<int>.Point.WithKey(0, +0, +0),
-                KDNode<int>.Point.WithKey(1, +1, +1),
-                KDNode<int>.Point.WithKey(2, -1, +1),
-                KDNode<int>.Point.WithKey(3, +1, -1),
-                KDNode<int>.Point.WithKey(4, -1, -1),
-                KDNode<int>.Point.WithKey(5, -2, -0),
+                new KDNode<int>.Point(new Vector2d() { X = +0, Y = +0 }, 0),
+                new KDNode<int>.Point(new Vector2d() { X = +1, Y = +1 }, 1),
+                new KDNode<int>.Point(new Vector2d() { X = -1, Y = +1 }, 2),
+                new KDNode<int>.Point(new Vector2d() { X = +1, Y = -1 }, 3),
+                new KDNode<int>.Point(new Vector2d() { X = -1, Y = -1 }, 4),
+                new KDNode<int>.Point(new Vector2d() { X = -2, Y = -0 }, 5),
             });
 
             log?.WriteLine(root);
             double x = -2.0;
             double y = 0.1;
+            Vector2d buff = new Vector2d();
             for (y = 2.0; y > -2; y -= 0.25)
             {
                 for (x = -3.0; x < 3; x += 0.25)
                 {
-                    var ret = root.GetNearest(x, y);
+                    buff.X = x;
+                    buff.Y = y;
+                    var ret = root.GetNearest(ref buff);
                     log?.Write(ret.Key);
                 }
 
@@ -127,83 +131,80 @@ namespace MountainView.Base
 
         public class Point
         {
-            public double[] Vector { get; private set; }
+            public Vector2d Location;
+            //public double[] Vector { get; private set; }
             public T Key { get; private set; }
 
-            public Point(params double[] vector)
+            public Point(Vector2d location, T key)
             {
-                this.Vector = vector;
-            }
-
-            public static Point WithKey(T key, params double[] vector)
-            {
-                return new Point(vector) { Key = key };
+                Location = location;
+                Key = key;
             }
 
             public double DistanceSqTo(Point b)
             {
-                var v1 = Vector;
-                var v2 = b.Vector;
-                if (v1.Length != v2.Length) throw new InvalidOperationException();
-
-                double ret = 0.0;
-                for (int i = 0; i < v1.Length; i++)
-                {
-                    var tmp = v1[i] - v2[i];
-                    ret += tmp * tmp;
-                }
-
-                return ret;
+                return Location.DistSqTo(ref b.Location);
             }
 
             public override string ToString()
             {
-                return Key + " at (" + string.Join(",", Vector) + ")";
+                return Key + " at (" + Location.X + "," + Location.Y + ")";
             }
         }
 
         private class HyperRect
         {
-            private int len;
-            public double[] MinPoint { get; private set; }
-            public double[] MaxPoint { get; private set; }
+            public Vector2d MinPoint;
+            public Vector2d MaxPoint;
 
-            private HyperRect(double[] minPoint, double[] maxPoint)
+            private HyperRect(Vector2d minPoint, Vector2d maxPoint)
             {
-                this.len = minPoint.Length;
                 this.MinPoint = minPoint;
                 this.MaxPoint = maxPoint;
             }
 
-            public static HyperRect GetInfinite(int len)
+            public static HyperRect GetInfinite()
             {
-                var ret = new HyperRect(new double[len], new double[len]);
-                for (var i = 0; i < len; i++)
-                {
-                    ret.MinPoint[i] = double.NegativeInfinity;
-                    ret.MaxPoint[i] = double.PositiveInfinity;
-                }
-
-                return ret;
+                return new HyperRect(
+                    new Vector2d()
+                    {
+                        X = double.NegativeInfinity,
+                        Y = double.NegativeInfinity,
+                    },
+                    new Vector2d()
+                    {
+                        X = double.PositiveInfinity,
+                        Y = double.PositiveInfinity
+                    });
             }
 
-            public double GetDistSqToClosestPoint(Point p)
+            public double GetDistSqToClosestPoint(ref Vector2d p)
             {
                 double ret = 0.0;
                 double tmp = 0.0;
-                for (var i = 0; i < len; i++)
+
+                double pi = p.X;
+                if (MinPoint.X > pi)
                 {
-                    double pi = p.Vector[i];
-                    if (MinPoint[i] > pi)
-                    {
-                        tmp = pi - MinPoint[i];
-                        ret += tmp * tmp;
-                    }
-                    else if (MaxPoint[i] < pi)
-                    {
-                        tmp = pi - MaxPoint[i];
-                        ret += tmp * tmp;
-                    }
+                    tmp = pi - MinPoint.X;
+                    ret += tmp * tmp;
+                }
+                else if (MaxPoint.X < pi)
+                {
+                    tmp = pi - MaxPoint.X;
+                    ret += tmp * tmp;
+                }
+
+                pi = p.Y;
+                if (MinPoint.Y > pi)
+                {
+                    tmp = pi - MinPoint.Y;
+                    ret += tmp * tmp;
+                }
+                else if (MaxPoint.Y < pi)
+                {
+                    tmp = pi - MaxPoint.Y;
+                    ret += tmp * tmp;
                 }
 
                 return ret;
@@ -211,11 +212,19 @@ namespace MountainView.Base
 
             public Tuple<HyperRect, HyperRect> Split(double x, int dim)
             {
-                var lRect = new HyperRect((double[])this.MinPoint.Clone(), (double[])this.MaxPoint.Clone());
-                lRect.MaxPoint[dim % lRect.MaxPoint.Length] = x;
+                var lRect = new HyperRect(MinPoint, MaxPoint);
+                var rRect = new HyperRect(MinPoint, MaxPoint);
 
-                var rRect = new HyperRect((double[])this.MinPoint.Clone(), (double[])this.MaxPoint.Clone());
-                rRect.MinPoint[dim % lRect.MaxPoint.Length] = x;
+                if (dim % 2 == 0)
+                {
+                    lRect.MaxPoint.X = x;
+                    rRect.MinPoint.X = x;
+                }
+                else
+                {
+                    lRect.MaxPoint.Y = x;
+                    rRect.MinPoint.Y = x;
+                }
 
                 return new Tuple<HyperRect, HyperRect>(lRect, rRect);
             }

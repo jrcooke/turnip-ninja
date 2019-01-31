@@ -2,6 +2,7 @@
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
+using MountainView.Mesh;
 using MountainViewCore.Landmarks;
 using System;
 using System.Collections.Generic;
@@ -195,7 +196,7 @@ namespace MountainViewCore.Base
 
         public static string ProcessImageMap(ColorHeight[][] view, string imageName)
         {
-            var features = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(p.LatDegrees, p.LonDegrees)).ToArray()).ToArray();
+            var features = view.Select(q => q.Select(p => p.ChunkKey == 0 ? null : UsgsRawFeatures.GetData(new Vector2d(p.LatDegrees, p.LonDegrees))).ToArray()).ToArray();
             var polys = GetPolygons(features);
             var polymap = polys
                 .Where(p => p.Value != null)

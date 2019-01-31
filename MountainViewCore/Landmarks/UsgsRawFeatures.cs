@@ -1,4 +1,5 @@
 ﻿using MountainView.Base;
+using MountainView.Mesh;
 using System;
 using System.Linq;
 
@@ -136,19 +137,18 @@ namespace MountainViewCore.Landmarks
 
             return KDNode<FeatureInfo>.Process(fileInfo
                 .Where(p => !dullFeatures.Contains(p.FeatureClass))
-                .Select(p => KDNode<FeatureInfo>.Point.WithKey(p, p.Lat.DecimalDegree, p.Lon.DecimalDegree)));
+                .Select(p => new KDNode<FeatureInfo>.Point(new Vector2d(p.Lat.DecimalDegree, p.Lon.DecimalDegree), p)));
         });
 
         public static FeatureInfo GetData(Angle lat, Angle lon)
         {
-            var latDegree = lat.DecimalDegree;
-            var lonDegree = lon.DecimalDegree;
-            return GetData(latDegree, lonDegree);
+            var tmp = new Vector2d() { X = lat.DecimalDegree, Y = lon.DecimalDegree };
+            return GetData(tmp);
         }
 
-        public static FeatureInfo GetData(double latDegree, double lonDegree)
+        public static FeatureInfo GetData(Vector2d latLonDegree)
         {
-            return featureInfos.Value.GetNearest(latDegree, lonDegree).Key;
+            return featureInfos.Value.GetNearest(ref latLonDegree).Key;
         }
     }
 }
