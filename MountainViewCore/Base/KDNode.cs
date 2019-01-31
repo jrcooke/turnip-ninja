@@ -8,13 +8,13 @@ namespace MountainView.Base
 {
     public class KDNode
     {
-        private double median;
-        private int key;
-        private Vector2d location;
+        private readonly double median;
+        private readonly int key;
+        private readonly Vector2d location;
         private readonly int depth;
         private KDNode lChild;
         private KDNode rChild;
-        private HyperRect hr;
+        private readonly HyperRect hr;
 
         private KDNode(Vector2d location, int key, HyperRect hr, int depth)
         {
@@ -30,17 +30,56 @@ namespace MountainView.Base
             return Process(pointList.ToArray(), HyperRect.GetInfinite(), 0);
         }
 
-        private GetNearestTuple[] buffs = new GetNearestTuple[100];
+        private readonly GetNearestTuple[] buffs = new GetNearestTuple[100];
         public int GetNearest(ref Vector2d p)
         {
-            GetNearestWorker(ref p, 0, buffs);
+            GetNearestWorker(ref p, this, buffs);
             return buffs[0].Node.key;
+        }
+
+        private static void GetNearestWorker(ref Vector2d p, KDNode curr, GetNearestTuple[] buffs)
+        {
+            double val = curr.depth % 2 == 0 ? p.X : p.Y;
+            var nearC = val > curr.median ? curr.rChild : curr.lChild;
+            var farrC = val > curr.median ? curr.lChild : curr.rChild;
+
+            double dx = p.X - curr.location.X;
+            double dy = p.Y - curr.location.Y;
+            var distsq = dx * dx + dy * dy;
+
+            buffs[curr.depth].Node = curr;
+            buffs[curr.depth].DiSq = distsq;
+            if (nearC != null)
+            {
+                GetNearestWorker(ref p, nearC, buffs);
+                if (buffs[curr.depth].DiSq > buffs[curr.depth + 1].DiSq)
+                {
+                    buffs[curr.depth].Node = buffs[curr.depth + 1].Node;
+                    buffs[curr.depth].DiSq = buffs[curr.depth + 1].DiSq;
+                }
+            }
+
+            if (farrC != null)
+            {
+                var dX = farrC.hr.MinPoint.X > p.X ? p.X - farrC.hr.MinPoint.X : farrC.hr.MaxPoint.X < p.X ? p.X - farrC.hr.MaxPoint.X : 0.0;
+                var dY = farrC.hr.MinPoint.Y > p.Y ? p.Y - farrC.hr.MinPoint.Y : farrC.hr.MaxPoint.Y < p.Y ? p.Y - farrC.hr.MaxPoint.Y : 0.0;
+                var distanceSquaredToTarget = dX * dX + dY * dY;
+                if (distanceSquaredToTarget < buffs[curr.depth].DiSq)
+                {
+                    GetNearestWorker(ref p, farrC, buffs);
+                    if (buffs[curr.depth].DiSq > buffs[curr.depth + 1].DiSq)
+                    {
+                        buffs[curr.depth].Node = buffs[curr.depth + 1].Node;
+                        buffs[curr.depth].DiSq = buffs[curr.depth + 1].DiSq;
+                    }
+                }
+            }
         }
 
         private struct GetNearestTuple
         {
             public KDNode Node;
-            public double DistSq;
+            public double DiSq;
         }
 
         private static KDNode Process(Tuple<Vector2d, int>[] pointList, HyperRect hr, int depth)
@@ -64,45 +103,6 @@ namespace MountainView.Base
             }
 
             return node;
-        }
-
-        private void GetNearestWorker(ref Vector2d p, int depth, GetNearestTuple[] buffs)
-        {
-            double val = depth % 2 == 0 ? p.X : p.Y;
-            var closestChild = val > median ? rChild : lChild;
-            var farthestChild = val > median ? lChild : rChild;
-
-            double dx = p.X - location.X;
-            double dy = p.Y - location.Y;
-            var distsq = dx * dx + dy * dy;
-
-            buffs[depth].Node = this;
-            buffs[depth].DistSq = distsq;
-            if (closestChild != null)
-            {
-                closestChild.GetNearestWorker(ref p, depth + 1, buffs);
-                if (buffs[depth].DistSq > buffs[depth + 1].DistSq)
-                {
-                    buffs[depth].Node = buffs[depth + 1].Node;
-                    buffs[depth].DistSq = buffs[depth + 1].DistSq;
-                }
-            }
-
-            if (farthestChild != null)
-            {
-                var dX = farthestChild.hr.MinPoint.X > p.X ? p.X - farthestChild.hr.MinPoint.X : farthestChild.hr.MaxPoint.X < p.X ? p.X - farthestChild.hr.MaxPoint.X : 0.0;
-                var dY = farthestChild.hr.MinPoint.Y > p.Y ? p.Y - farthestChild.hr.MinPoint.Y : farthestChild.hr.MaxPoint.Y < p.Y ? p.Y - farthestChild.hr.MaxPoint.Y : 0.0;
-                var distanceSquaredToTarget = dX * dX + dY * dY;
-                if (distanceSquaredToTarget < buffs[depth].DistSq)
-                {
-                    farthestChild.GetNearestWorker(ref p, depth + 1, buffs);
-                    if (buffs[depth].DistSq > buffs[depth + 1].DistSq)
-                    {
-                        buffs[depth].Node = buffs[depth + 1].Node;
-                        buffs[depth].DistSq = buffs[depth + 1].DistSq;
-                    }
-                }
-            }
         }
 
         private static double GetValue(Vector2d p, int dim)
@@ -163,14 +163,6 @@ namespace MountainView.Base
                 return new HyperRect(
                     new Vector2d(double.NegativeInfinity, double.NegativeInfinity),
                     new Vector2d(double.PositiveInfinity, double.PositiveInfinity));
-            }
-
-            public double GetDistSqToClosestPoint(ref Vector2d p)
-            {
-                var dX = MinPoint.X > p.X ? p.X - MinPoint.X : MaxPoint.X < p.X ? p.X - MaxPoint.X : 0.0;
-                var dY = MinPoint.Y > p.Y ? p.Y - MinPoint.Y : MaxPoint.Y < p.Y ? p.Y - MaxPoint.Y : 0.0;
-                var ret = dX * dX + dY * dY;
-                return ret;
             }
 
             public Tuple<HyperRect, HyperRect> Split(double x, int dim)
