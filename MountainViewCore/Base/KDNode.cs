@@ -32,25 +32,17 @@ namespace MountainView.Base
             return Process(pointList.ToArray(), HyperRect.GetInfinite(), 0);
         }
 
-        private readonly GetNearestTuple[] buffs = new GetNearestTuple[100];
-        public int GetNearest(ref Vector2d p)
-        {
-            GetNearestWorkerF(ref p, this, buffs);
-            //            GetNearestWorker(ref p, this, buffs);
-            return buffs[0].Node.key;
-        }
-
         private struct WorkerState
         {
             public KDNode Curr;
             public KDNode NearC;
             public KDNode FarrC;
             public int Address;
-                public double DiSq;
+            public double DisSq;
+            public KDNode Match;
         }
 
-
-        private static void GetNearestWorkerF(ref Vector2d p, KDNode root, GetNearestTuple[] buffs)
+        public int GetNearest(ref Vector2d p)
         {
             if (stack == null)
             {
@@ -58,7 +50,7 @@ namespace MountainView.Base
             }
 
             int stackLevel = 0;
-            stack[stackLevel].Curr = root;
+            stack[stackLevel].Curr = this;
             stack[stackLevel].Address = 1;
 
             while (stackLevel >= 0)
@@ -72,9 +64,8 @@ namespace MountainView.Base
                     double dx = p.X - curr.location.X;
                     double dy = p.Y - curr.location.Y;
                     var distsq = dx * dx + dy * dy;
-
-                    buffs[curr.depth].Node = curr;
-                    buffs[curr.depth].DiSq = distsq;
+                    stack[stackLevel].DisSq = distsq;
+                    stack[stackLevel].Match = curr;
 
                     double val = curr.depth % 2 == 0 ? p.X : p.Y;
                     var nearC = val > curr.median ? curr.rChild : curr.lChild;
@@ -99,7 +90,7 @@ namespace MountainView.Base
                         var dX = farrC.hr.MinPoint.X > p.X ? p.X - farrC.hr.MinPoint.X : farrC.hr.MaxPoint.X < p.X ? p.X - farrC.hr.MaxPoint.X : 0.0;
                         var dY = farrC.hr.MinPoint.Y > p.Y ? p.Y - farrC.hr.MinPoint.Y : farrC.hr.MaxPoint.Y < p.Y ? p.Y - farrC.hr.MaxPoint.Y : 0.0;
                         var distanceSquaredToTarget = dX * dX + dY * dY;
-                        if (distanceSquaredToTarget < buffs[curr.depth].DiSq)
+                        if (distanceSquaredToTarget < stack[stackLevel].DisSq)
                         {
                             stackLevel++;
                             stack[stackLevel].Curr = farrC;
@@ -109,80 +100,17 @@ namespace MountainView.Base
                 }
                 else // if (address == 3)
                 {
-                    if (curr.depth > 0 && buffs[curr.depth - 1].DiSq > buffs[curr.depth].DiSq)
+                    if (stackLevel > 0 && stack[stackLevel - 1].DisSq > stack[stackLevel].DisSq)
                     {
-                        buffs[curr.depth - 1].Node = buffs[curr.depth].Node;
-                        buffs[curr.depth - 1].DiSq = buffs[curr.depth].DiSq;
+                        stack[stackLevel - 1].Match = stack[stackLevel].Match;
+                        stack[stackLevel - 1].DisSq = stack[stackLevel].DisSq;
                     }
 
                     stackLevel--;
                 }
             }
-        }
 
-        private static void GetNearestWorker(ref Vector2d p, KDNode curr, GetNearestTuple[] buffs)
-        {
-            if (curr == null) return;
-
-            double dx = p.X - curr.location.X;
-            double dy = p.Y - curr.location.Y;
-            var distsq = dx * dx + dy * dy;
-
-            buffs[curr.depth].Node = curr;
-            buffs[curr.depth].DiSq = distsq;
-
-            double val = curr.depth % 2 == 0 ? p.X : p.Y;
-            var nearC = val > curr.median ? curr.rChild : curr.lChild;
-            var farrC = val > curr.median ? curr.lChild : curr.rChild;
-
-            GetNearestWorker(ref p, nearC, buffs);
-
-            if (farrC != null)
-            {
-                var dX = farrC.hr.MinPoint.X > p.X ? p.X - farrC.hr.MinPoint.X : farrC.hr.MaxPoint.X < p.X ? p.X - farrC.hr.MaxPoint.X : 0.0;
-                var dY = farrC.hr.MinPoint.Y > p.Y ? p.Y - farrC.hr.MinPoint.Y : farrC.hr.MaxPoint.Y < p.Y ? p.Y - farrC.hr.MaxPoint.Y : 0.0;
-                var distanceSquaredToTarget = dX * dX + dY * dY;
-                if (distanceSquaredToTarget < buffs[curr.depth].DiSq)
-                {
-                    GetNearestWorker(ref p, farrC, buffs);
-                }
-            }
-
-            if (curr.depth > 0 && buffs[curr.depth - 1].DiSq > buffs[curr.depth].DiSq)
-            {
-                buffs[curr.depth - 1].Node = buffs[curr.depth].Node;
-                buffs[curr.depth - 1].DiSq = buffs[curr.depth].DiSq;
-            }
-        }
-
-        //private static void GetNearestWorker(ref Vector2d p, KDNode curr, GetNearestTuple[] buffs)
-        //{
-        //    NewMethod(p, buffs, curr);
-
-        //    double val = curr.depth % 2 == 0 ? p.X : p.Y;
-        //    var nearC = val > curr.median ? curr.rChild : curr.lChild;
-        //    var farrC = val > curr.median ? curr.lChild : curr.rChild;
-        //    if (nearC != null)
-        //    {
-        //        GetNearestWorker(ref p, nearC, buffs);
-        //        NewMethod1(buffs, curr);
-        //    }
-
-        //    if (farrC != null)
-        //    {
-        //        double distanceSquaredToTarget = NewMethod2(p, farrC);
-        //        if (distanceSquaredToTarget < buffs[curr.depth].DiSq)
-        //        {
-        //            GetNearestWorker(ref p, farrC, buffs);
-        //            NewMethod1(buffs, curr);
-        //        }
-        //    }
-        //}
-
-        private struct GetNearestTuple
-        {
-            public KDNode Node;
-            public double DiSq;
+            return stack[0].Match.key;
         }
 
         private static KDNode Process(Tuple<Vector2d, int>[] pointList, HyperRect hr, int depth)

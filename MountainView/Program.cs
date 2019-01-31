@@ -120,7 +120,7 @@ namespace MountainView
 
         public static async Task Doit(Config config, TraceListener log, Action<Stream, FeatureInfo[][]> drawToScreen)
         {
-            //            KDNode<int>.Test(log);
+            //KDNode.Test(log);
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
