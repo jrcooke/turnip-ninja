@@ -30,9 +30,17 @@ namespace MountainView.Base
             return Process(pointList.ToArray(), HyperRect.GetInfinite(), 0);
         }
 
+        private GetNearestTuple[] buffs = new GetNearestTuple[100];
         public int GetNearest(ref Vector2d p)
         {
-            return GetNearestWorker(ref p).Item1.key;
+            GetNearestWorker(ref p, 0, buffs);
+            return buffs[0].Node.key;
+        }
+
+        private struct GetNearestTuple
+        {
+            public KDNode Node;
+            public double DistSq;
         }
 
         private static KDNode Process(Tuple<Vector2d, int>[] pointList, HyperRect hr, int depth)
@@ -58,7 +66,7 @@ namespace MountainView.Base
             return node;
         }
 
-        private Tuple<KDNode, double> GetNearestWorker(ref Vector2d p)
+        private void GetNearestWorker(ref Vector2d p, int depth, GetNearestTuple[] buffs)
         {
             double val = depth % 2 == 0 ? p.X : p.Y;
             var closestChild = val > median ? rChild : lChild;
@@ -68,30 +76,33 @@ namespace MountainView.Base
             double dy = p.Y - location.Y;
             var distsq = dx * dx + dy * dy;
 
-            var best = new Tuple<KDNode, double>(this, distsq);
+            buffs[depth].Node = this;
+            buffs[depth].DistSq = distsq;
             if (closestChild != null)
             {
-                var c1Best = closestChild.GetNearestWorker(ref p);
-                if (best.Item2 > c1Best.Item2)
+                closestChild.GetNearestWorker(ref p, depth + 1, buffs);
+                if (buffs[depth].DistSq > buffs[depth + 1].DistSq)
                 {
-                    best = c1Best;
+                    buffs[depth].Node = buffs[depth + 1].Node;
+                    buffs[depth].DistSq = buffs[depth + 1].DistSq;
                 }
             }
 
             if (farthestChild != null)
             {
-                var distanceSquaredToTarget = farthestChild.hr.GetDistSqToClosestPoint(ref p);
-                if (distanceSquaredToTarget < best.Item2)
+                var dX = farthestChild.hr.MinPoint.X > p.X ? p.X - farthestChild.hr.MinPoint.X : farthestChild.hr.MaxPoint.X < p.X ? p.X - farthestChild.hr.MaxPoint.X : 0.0;
+                var dY = farthestChild.hr.MinPoint.Y > p.Y ? p.Y - farthestChild.hr.MinPoint.Y : farthestChild.hr.MaxPoint.Y < p.Y ? p.Y - farthestChild.hr.MaxPoint.Y : 0.0;
+                var distanceSquaredToTarget = dX * dX + dY * dY;
+                if (distanceSquaredToTarget < buffs[depth].DistSq)
                 {
-                    var c2Best = farthestChild.GetNearestWorker(ref p);
-                    if (best.Item2 > c2Best.Item2)
+                    farthestChild.GetNearestWorker(ref p, depth + 1, buffs);
+                    if (buffs[depth].DistSq > buffs[depth + 1].DistSq)
                     {
-                        best = c2Best;
+                        buffs[depth].Node = buffs[depth + 1].Node;
+                        buffs[depth].DistSq = buffs[depth + 1].DistSq;
                     }
                 }
             }
-
-            return best;
         }
 
         private static double GetValue(Vector2d p, int dim)
