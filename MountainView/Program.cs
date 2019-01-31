@@ -120,6 +120,7 @@ namespace MountainView
 
         public static async Task Doit(Config config, TraceListener log, Action<Stream, FeatureInfo[][]> drawToScreen)
         {
+            //            KDNode<int>.Test(log);
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
@@ -224,11 +225,9 @@ namespace MountainView
                         var r = renderState.GetUV(latLons.Length - 1 - i, latLons[i].Length - 1 - j);
                         if (r != null)
                         {
-                            latLons[i][j] = new Vector2d()
-                            {
-                                X = chunk.LatLo.DecimalDegree + chunk.LatDelta.DecimalDegree * (1.0 - r.Y),
-                                Y = chunk.LonLo.DecimalDegree + chunk.LonDelta.DecimalDegree * r.X,
-                            };
+                            latLons[i][j] = new Vector2d(
+                                chunk.LatLo.DecimalDegree + chunk.LatDelta.DecimalDegree * (1.0 - r.Y),
+                                chunk.LonLo.DecimalDegree + chunk.LonDelta.DecimalDegree * r.X);
                             zs[i][j] = norm.BackToMeters * Math.Sqrt(renderState.GetDistSq(latLons.Length - 1 - i, latLons[i].Length - 1 - j).Value);
                         }
                     }

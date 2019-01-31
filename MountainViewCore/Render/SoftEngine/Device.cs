@@ -63,7 +63,8 @@ namespace SoftEngine
             var lightPos = Light;
             Vector3f.SubAndNorm(ref lightPos, ref vertex, ref buffv);
             var dot = Math.Max(0, Vector3f.Dot(ref normal, ref buffv));
-            return Clamp(dot * DirectLight + AmbientLight);
+            var ret = dot * DirectLight + AmbientLight;
+            return ret > 1.0f ? 1.0f : ret < 0.0f ? 0.0f : ret;
         }
 
         // drawing line between 2 points from left to right
@@ -79,8 +80,8 @@ namespace SoftEngine
             // Thanks to current Y, we can compute the gradient to compute others values like
             // the starting X (sx) and ending X (ex) to draw between
             // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
-            var gradient1 = Math.Abs(pa.Y - pb.Y) > 0.0001 ? Clamp((currentY - pa.Y) * 1.0f / (pb.Y - pa.Y)) : 1;
-            var gradient2 = Math.Abs(pc.Y - pd.Y) > 0.0001 ? Clamp((currentY - pc.Y) * 1.0f / (pd.Y - pc.Y)) : 1;
+            var gradient1 = Math.Abs(pa.Y - pb.Y) > 0.0001 ? ((currentY - pa.Y) * 1.0f / (pb.Y - pa.Y)) : 1;
+            var gradient2 = Math.Abs(pc.Y - pd.Y) > 0.0001 ? ((currentY - pc.Y) * 1.0f / (pd.Y - pc.Y)) : 1;
 
             int sx = (int)Interpolate(pa.X, pb.X, gradient1);
             int ex = (int)Interpolate(pc.X, pd.X, gradient2);
@@ -119,13 +120,13 @@ namespace SoftEngine
             // drawing a line from left (sx) to right (ex), but only for what is visible on screen.
             for (int x = Math.Max(sx, 0); x < Math.Min(ex, state.Width); x++)
             {
-                float gradient = Clamp((x - sx) / (float)(ex - sx));
+                float gradient = (x - sx) / (float)(ex - sx);
 
                 // Interpolating Z, normal and texture coordinates on X
                 var z = Interpolate(z1, z2, gradient);
                 var ndotl = Interpolate(snl, enl, gradient);
-                var u = Clamp(Interpolate(su, eu, gradient));
-                var v = Clamp(Interpolate(sv, ev, gradient));
+                var u = (Interpolate(su, eu, gradient));
+                var v = (Interpolate(sv, ev, gradient));
 
                 var sqD = Interpolate(sSqD, eSqD, gradient);
 
@@ -145,11 +146,6 @@ namespace SoftEngine
 
                 state.PutPixel(x, currentY, z, textureColor, u, v, sqD);
             }
-        }
-
-        private float Clamp(float v)
-        {
-            return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
         }
 
         private void DrawTriangle(RenderState state, ref VertexProj v1, ref VertexProj v2, ref VertexProj v3, Texture texture, ref Vector3f buffv)

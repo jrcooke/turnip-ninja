@@ -103,12 +103,12 @@ namespace MountainView.Base
         {
             KDNode<int> root = KDNode<int>.Process(new KDNode<int>.Point[]
             {
-                new KDNode<int>.Point(new Vector2d() { X = +0, Y = +0 }, 0),
-                new KDNode<int>.Point(new Vector2d() { X = +1, Y = +1 }, 1),
-                new KDNode<int>.Point(new Vector2d() { X = -1, Y = +1 }, 2),
-                new KDNode<int>.Point(new Vector2d() { X = +1, Y = -1 }, 3),
-                new KDNode<int>.Point(new Vector2d() { X = -1, Y = -1 }, 4),
-                new KDNode<int>.Point(new Vector2d() { X = -2, Y = -0 }, 5),
+                new KDNode<int>.Point(new Vector2d(+0, +0), 0),
+                new KDNode<int>.Point(new Vector2d(+1, +1), 1),
+                new KDNode<int>.Point(new Vector2d(-1, +1), 2),
+                new KDNode<int>.Point(new Vector2d(+1, -1), 3),
+                new KDNode<int>.Point(new Vector2d(-1, -1), 4),
+                new KDNode<int>.Point(new Vector2d(-2, -0), 5),
             });
 
             log?.WriteLine(root);
@@ -159,54 +159,22 @@ namespace MountainView.Base
 
             private HyperRect(Vector2d minPoint, Vector2d maxPoint)
             {
-                this.MinPoint = minPoint;
-                this.MaxPoint = maxPoint;
+                MinPoint = minPoint;
+                MaxPoint = maxPoint;
             }
 
             public static HyperRect GetInfinite()
             {
                 return new HyperRect(
-                    new Vector2d()
-                    {
-                        X = double.NegativeInfinity,
-                        Y = double.NegativeInfinity,
-                    },
-                    new Vector2d()
-                    {
-                        X = double.PositiveInfinity,
-                        Y = double.PositiveInfinity
-                    });
+                    new Vector2d(double.NegativeInfinity, double.NegativeInfinity),
+                    new Vector2d(double.PositiveInfinity, double.PositiveInfinity));
             }
 
             public double GetDistSqToClosestPoint(ref Vector2d p)
             {
-                double ret = 0.0;
-                double tmp = 0.0;
-
-                double pi = p.X;
-                if (MinPoint.X > pi)
-                {
-                    tmp = pi - MinPoint.X;
-                    ret += tmp * tmp;
-                }
-                else if (MaxPoint.X < pi)
-                {
-                    tmp = pi - MaxPoint.X;
-                    ret += tmp * tmp;
-                }
-
-                pi = p.Y;
-                if (MinPoint.Y > pi)
-                {
-                    tmp = pi - MinPoint.Y;
-                    ret += tmp * tmp;
-                }
-                else if (MaxPoint.Y < pi)
-                {
-                    tmp = pi - MaxPoint.Y;
-                    ret += tmp * tmp;
-                }
-
+                var dX = MinPoint.X > p.X ? p.X - MinPoint.X : MaxPoint.X < p.X ? p.X - MaxPoint.X : 0.0;
+                var dY = MinPoint.Y > p.Y ? p.Y - MinPoint.Y : MaxPoint.Y < p.Y ? p.Y - MaxPoint.Y : 0.0;
+                var ret = dX * dX + dY * dY;
                 return ret;
             }
 

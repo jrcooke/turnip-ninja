@@ -150,10 +150,16 @@ namespace SoftEngine
             for (int i = 0; i < mesh.VertexToImage.Length; i++)
             {
                 var orig = mesh.VertexToImage[i];
-                ret.Vertices[i].TextureCoordinates = new Vector2f((float)orig.X, (float)orig.Y);
+                ret.Vertices[i].TextureCoordinates = new Vector2f(Clamp(orig.X), Clamp(orig.Y));
             }
 
             return ret;
+        }
+
+        private static float Clamp(double d)
+        {
+            var v = (float)d;
+            return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
         }
 
         public static Mesh MakeCube()
