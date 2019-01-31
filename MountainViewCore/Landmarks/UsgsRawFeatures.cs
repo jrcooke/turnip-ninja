@@ -1,6 +1,7 @@
 ﻿using MountainView.Base;
 using MountainView.Mesh;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace MountainViewCore.Landmarks
@@ -115,29 +116,35 @@ namespace MountainViewCore.Landmarks
             FeatureClass.Well,
         };
 
-        private static Lazy<KDNode<FeatureInfo>> featureInfos = new Lazy<KDNode<FeatureInfo>>(() =>
+        private static Lazy<Dictionary<int, FeatureInfo>> fileInfo = new Lazy<Dictionary<int, FeatureInfo>>(() =>
+         {
+             var metadataLines = BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt", null).Result;
+             string[] header = metadataLines.First().Split('|');
+             string[] header2 = metadataLines.Skip(1).First().Split('|');
+             var nameToIndex = header.Select((p, i) => new { p, i }).ToDictionary(p => p.p, p => p.i);
+             var xx = metadataLines
+                 .Skip(1)
+                 .Select(p => p.Split('|'))
+                 .Select(p => new FeatureInfo
+                 {
+                     Id = int.Parse(p[nameToIndex["FEATURE_ID"]]),
+                     FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ", "")),
+                     Name = p[nameToIndex["FEATURE_NAME"]],
+                     Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
+                     Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
+                     MapName = p[nameToIndex["MAP_NAME"]],
+                 })
+                 .ToArray();
+             return xx
+                .GroupBy(p => p.Id)
+                .Select(p => p.First())
+                .ToDictionary(p => p.Id, p => p);
+         });
+        private static Lazy<KDNode> featureInfos = new Lazy<KDNode>(() =>
         {
-            var metadataLines = BlobHelper.ReadAllLines(cachedFileContainer, "WA_Features_20170801.txt", null).Result;
-            string[] header = metadataLines.First().Split('|');
-            string[] header2 = metadataLines.Skip(1).First().Split('|');
-            var nameToIndex = header.Select((p, i) => new { p, i }).ToDictionary(p => p.p, p => p.i);
-            var fileInfo = metadataLines
-                .Skip(1)
-                .Select(p => p.Split('|'))
-                .Select(p => new FeatureInfo
-                {
-                    Id = int.Parse(p[nameToIndex["FEATURE_ID"]]),
-                    FeatureClass = (FeatureClass)Enum.Parse(typeof(FeatureClass), p[nameToIndex["FEATURE_CLASS"]].Replace(" ", "")),
-                    Name = p[nameToIndex["FEATURE_NAME"]],
-                    Lat = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LAT_DEC"]])),
-                    Lon = Angle.FromDecimalDegrees(double.Parse(p[nameToIndex["PRIM_LONG_DEC"]])),
-                    MapName = p[nameToIndex["MAP_NAME"]],
-                })
-                .ToArray();
-
-            return KDNode<FeatureInfo>.Process(fileInfo
+            return KDNode.Process(fileInfo.Value.Values
                 .Where(p => !dullFeatures.Contains(p.FeatureClass))
-                .Select(p => new KDNode<FeatureInfo>.Point(new Vector2d(p.Lat.DecimalDegree, p.Lon.DecimalDegree), p)));
+                .Select(p => new Tuple<Vector2d, int>(new Vector2d(p.Lat.DecimalDegree, p.Lon.DecimalDegree), p.Id)));
         });
 
         public static FeatureInfo GetData(Angle lat, Angle lon)
@@ -148,7 +155,8 @@ namespace MountainViewCore.Landmarks
 
         public static FeatureInfo GetData(Vector2d latLonDegree)
         {
-            return featureInfos.Value.GetNearest(ref latLonDegree).Key;
+            var key = featureInfos.Value.GetNearest(ref latLonDegree);
+            return fileInfo.Value[key];
         }
     }
 }
