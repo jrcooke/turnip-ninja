@@ -198,9 +198,6 @@
     <Compile Include="..\MountainViewCore\Mesh\VectorPolar3d.cs">
       <Link>Mesh\VectorPolar3d.cs</Link>
     </Compile>
-    <Compile Include="..\MountainViewCore\Render\SharpDX\Matrix.cs">
-      <Link>Render\SharpDX\Matrix.cs</Link>
-    </Compile>
     <Compile Include="..\MountainViewCore\Render\SoftEngine\Camera.cs">
       <Link>Render\SoftEngine\Camera.cs</Link>
     </Compile>

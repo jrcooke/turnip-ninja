@@ -4,7 +4,6 @@
 using MountainView.Base;
 using MountainView.Render;
 using MountainViewCore.Base;
-using SharpDX;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -247,15 +246,6 @@ namespace SoftEngine
         {
             RenderState state = new RenderState(bmp, backToMeters, useHaze);
 
-            // To understand this part, please read the prerequisites resources
-            var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
-
-            var projectionMatrix = Matrix.PerspectiveFovLH(
-                Camera.FovRad,
-                (float)state.Width / state.Height,
-                0.01f,
-                1.0f);
-
             Vector3f buffv = new Vector3f();
             Vector3f cameraTarget = Camera.Target;
             Vector3f cameraPos = Camera.Position;
@@ -265,7 +255,6 @@ namespace SoftEngine
 
             foreach (Mesh mesh in Meshes.ToArray())
             {
-                var transformMatrix = Matrix.Mul(viewMatrix, projectionMatrix);
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
                 {
                     var face = mesh.Faces[faceIndex];
@@ -281,8 +270,7 @@ namespace SoftEngine
                         continue;
                     }
 
-                    // This appears to be over aggressive, blocking triangles from being render that shoudl be
-                    //// Face-back culling
+                    // Consider implementing Face-back culling
                     //var transformedNormalZ =
                     //    face.Normal.X * viewMatrix.M13 +
                     //    face.Normal.Y * viewMatrix.M23 +
