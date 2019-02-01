@@ -343,7 +343,7 @@ namespace SoftEngine
 
                         if (useHaze)
                         {
-                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-10);
+                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-9);
                             color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
                             color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
                             color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
