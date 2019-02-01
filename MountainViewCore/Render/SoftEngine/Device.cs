@@ -35,17 +35,34 @@ namespace SoftEngine
         // in 2D coordinates using the transformation matrix
         // It also transform the same coordinates and the normal to the vertex
         // in the 3D world
-        private VertexProj Project(RenderState state, ref Vertex vertex, ref Matrix transMat)
+        private VertexProj Project(RenderState state, ref Vertex vertex, float FovRad, double lookAngle)
         {
             // transforming the coordinates into 2D space
             Vector3f point2d = new Vector3f();
-            Matrix.TransformCoordinate(ref vertex.Coordinates, ref transMat, ref point2d);
+            //            Matrix.TransformCoordinate(ref vertex.Coordinates, ref transMat, ref point2d);
 
-            // The transformed coordinates will be based on coordinate system
-            // starting on the center of the screen. But drawing on screen normally starts
-            // from top left. We then need to transform them again to have x:0, y:0 on top left.
-            point2d.X = +point2d.X * state.Width + state.Width / 2.0f;
-            point2d.Y = -point2d.Y * state.Height + state.Height / 2.0f;
+            //// The transformed coordinates will be based on coordinate system
+            //// starting on the center of the screen. But drawing on screen normally starts
+            //// from top left. We then need to transform them again to have x:0, y:0 on top left.
+            //point2d.X = +point2d.X * state.Width + state.Width / 2.0f;
+            //point2d.Y = -point2d.Y * state.Height + state.Height / 2.0f;
+
+            // Figure out angle in x-y plane.
+            var theta = Math.Atan2(vertex.Coordinates.X, vertex.Coordinates.Y) - lookAngle;
+            // Then the "height" angle.
+            var xz = Math.Sqrt(vertex.Coordinates.Y * vertex.Coordinates.Y + vertex.Coordinates.X * vertex.Coordinates.X);
+            var phi = Math.Atan2(vertex.Coordinates.Z, xz);
+
+            theta *= state.Width / Camera.FovRad;
+            phi *= state.Width / Camera.FovRad;
+
+            //  Debug.WriteLine("A: " + point2d.X + "\t " + point2d.Y);
+
+            point2d.X = (float)(-theta + state.Width / 2.0f);
+            point2d.Y = (float)(-phi + state.Height / 2.0f);
+            point2d.Z = Vector3f.Dot(ref vertex.Coordinates, ref vertex.Coordinates);
+
+            //   Debug.WriteLine("B: " + point2d.X + "\t " + point2d.Y);
 
             return new VertexProj
             {
@@ -232,6 +249,7 @@ namespace SoftEngine
 
             // To understand this part, please read the prerequisites resources
             var viewMatrix = Matrix.LookAtLH(Camera.Position, Camera.Target, Camera.UpDirection);
+
             var projectionMatrix = Matrix.PerspectiveFovLH(
                 Camera.FovRad,
                 (float)state.Width / state.Height,
@@ -243,6 +261,8 @@ namespace SoftEngine
             Vector3f cameraPos = Camera.Position;
             Vector3f lookDir = new Vector3f();
             Vector3f.SubAndNorm(ref cameraTarget, ref cameraPos, ref lookDir);
+            var lookAngle = Math.Atan2(lookDir.X, lookDir.Y);
+
             foreach (Mesh mesh in Meshes.ToArray())
             {
                 var transformMatrix = Matrix.Mul(viewMatrix, projectionMatrix);
@@ -270,9 +290,9 @@ namespace SoftEngine
                     //if (transformedNormalZ < 0.0f)
                     {
                         // Render this face
-                        var pixelA = Project(state, ref mesh.Vertices[face.A], ref transformMatrix);
-                        var pixelB = Project(state, ref mesh.Vertices[face.B], ref transformMatrix);
-                        var pixelC = Project(state, ref mesh.Vertices[face.C], ref transformMatrix);
+                        var pixelA = Project(state, ref mesh.Vertices[face.A], Camera.FovRad, lookAngle);
+                        var pixelB = Project(state, ref mesh.Vertices[face.B], Camera.FovRad, lookAngle);
+                        var pixelC = Project(state, ref mesh.Vertices[face.C], Camera.FovRad, lookAngle);
 
                         DrawTriangle(state, ref pixelA, ref pixelB, ref pixelC, mesh.Texture, ref buffv);
                     }
