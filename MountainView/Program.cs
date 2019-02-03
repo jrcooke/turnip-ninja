@@ -126,7 +126,6 @@ namespace MountainView
 
             // await NewMethod(log, drawToScreen);
 
-            var theta = (config.MaxAngle.DecimalDegree + config.MinAngle.DecimalDegree) * Math.PI / 360;
             var z = 0.01f;// 0.05f;
             int subpixel = 3;
 
@@ -141,39 +140,35 @@ namespace MountainView
                 latLons[i] = new Vector2d?[compositeBmp.Height];
                 zs[i] = new double?[compositeBmp.Height];
             }
-            //Vector2f[][] uvs = new Vector2f[compositeBmp.Height][];
-            //float?[][] zs = new float?[compositeBmp.Height][];
-            //for (int i = 0; i < compositeBmp.Height; i++)
-            //{
-            //    uvs[i] = new Vector2f[compositeBmp.Width];
-            //    zs[i] = new float?[compositeBmp.Width];
-            //}
 
             Device device = new Device()
             {
                 Camera = new Camera()
                 {
                     Position = new Vector3f(0, 0, z),
-                    Target = new Vector3f((float)Math.Sin(theta), (float)Math.Cos(theta), z),
-                    UpDirection = new Vector3f(0, 0, 1),
-                    FovRad = (float)config.FOV.Radians,
-                    //Position = new Vector3f(0, 0, 1000),
-                    //Target = new Vector3f(0, 0, 0),
-                    //UpDirection = new Vector3f(1, 0, 0),
-                    //FovRad = 0.5f,
+                    MaxAngleRad = config.MaxAngleDec * Math.PI / 180,
+                    MinAngleRad = config.MinAngleDec * Math.PI / 180,
+                    HeightOffset = 0.01f,
                 },
                 AmbientLight = 0.5f,
                 DirectLight = 1.0f,
                 Light = new Vector3f(0, 0, 20),
             };
 
-            //            config.UseHaze = false;
-
             var chunks = View.GetRelevantChunkKeys(config, log);
+
 
             StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
             var mainMesh = await Meshes.Current.GetData(mainChunk, log);
-            var norm = mainMesh.GetCenterAndScale(config.Lat.DecimalDegree, config.Lon.DecimalDegree, mainChunk.ZoomLevel, mainChunk.LatDelta.DecimalDegree, 10, log);
+            var norm = mainMesh.GetCenterAndScale(
+                config.Lat.DecimalDegree,
+                config.Lon.DecimalDegree,
+                mainChunk.ZoomLevel,
+                mainChunk.LatDelta.DecimalDegree,
+                10,
+                log);
+
+            string fileNameRoot = DateTime.Now.ToString("HHMMss");
 
             int counter = 0;
             foreach (var chunkKey in chunks)

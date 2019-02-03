@@ -8,9 +8,8 @@ namespace SoftEngine
     public struct Camera
     {
         public Vector3f Position;
-        public Vector3f Target;
-        public Vector3f UpDirection;
-
-        public float FovRad;
+        public double MaxAngleRad;
+        public double MinAngleRad;
+        public double HeightOffset;
     }
 }

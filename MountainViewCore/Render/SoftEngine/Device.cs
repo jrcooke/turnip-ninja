@@ -2,6 +2,7 @@
 // https://www.davrous.com/2013/07/18/tutorial-part-6-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-texture-mapping-back-face-culling-webgl/
 
 using MountainView.Base;
+using MountainView.Mesh;
 using MountainView.Render;
 using MountainViewCore.Base;
 using System;
@@ -28,48 +29,6 @@ namespace SoftEngine
         private float Interpolate(float min, float max, float gradient)
         {
             return min + (max - min) * gradient;
-        }
-
-        // Project takes some 3D coordinates and transform them
-        // in 2D coordinates using the transformation matrix
-        // It also transform the same coordinates and the normal to the vertex
-        // in the 3D world
-        private VertexProj Project(RenderState state, ref Vertex vertex, float FovRad, double lookAngle)
-        {
-            // transforming the coordinates into 2D space
-            Vector3f point2d = new Vector3f();
-            //            Matrix.TransformCoordinate(ref vertex.Coordinates, ref transMat, ref point2d);
-
-            //// The transformed coordinates will be based on coordinate system
-            //// starting on the center of the screen. But drawing on screen normally starts
-            //// from top left. We then need to transform them again to have x:0, y:0 on top left.
-            //point2d.X = +point2d.X * state.Width + state.Width / 2.0f;
-            //point2d.Y = -point2d.Y * state.Height + state.Height / 2.0f;
-
-            // Figure out angle in x-y plane.
-            var theta = Math.Atan2(vertex.Coordinates.X, vertex.Coordinates.Y) - lookAngle;
-            // Then the "height" angle.
-            var xz = Math.Sqrt(vertex.Coordinates.Y * vertex.Coordinates.Y + vertex.Coordinates.X * vertex.Coordinates.X);
-            var phi = Math.Atan2(vertex.Coordinates.Z, xz);
-
-            theta *= state.Width / Camera.FovRad;
-            phi *= state.Width / Camera.FovRad;
-
-            //  Debug.WriteLine("A: " + point2d.X + "\t " + point2d.Y);
-
-            point2d.X = (float)(-theta + state.Width / 2.0f);
-            point2d.Y = (float)(-phi + state.Height / 2.0f);
-            point2d.Z = Vector3f.Dot(ref vertex.Coordinates, ref vertex.Coordinates);
-
-            //   Debug.WriteLine("B: " + point2d.X + "\t " + point2d.Y);
-
-            return new VertexProj
-            {
-                Coordinates = new Vector3fProj((int)point2d.X, (int)point2d.Y, point2d.Z),
-                Normal = vertex.Normal,
-                WorldCoordinates = vertex.Coordinates,
-                TextureCoordinates = vertex.TextureCoordinates
-            };
         }
 
         // Compute the cosine of the angle between the light vector and the normal vector
@@ -244,45 +203,90 @@ namespace SoftEngine
         // during each frame
         public RenderState RenderInto(DirectBitmap bmp, float backToMeters, bool useHaze)
         {
+            bool isFirst = true;
             RenderState state = new RenderState(bmp, backToMeters, useHaze);
-
             Vector3f buffv = new Vector3f();
-            Vector3f cameraTarget = Camera.Target;
-            Vector3f cameraPos = Camera.Position;
-            Vector3f lookDir = new Vector3f();
-            Vector3f.SubAndNorm(ref cameraTarget, ref cameraPos, ref lookDir);
-            var lookAngle = Math.Atan2(lookDir.X, lookDir.Y);
-
+            GeoPolar3d polarA = new GeoPolar3d();
+            GeoPolar3d polarB = new GeoPolar3d();
+            GeoPolar3d polarC = new GeoPolar3d();
+            Vector3f midAB = new Vector3f();
+            Vector3f midAC = new Vector3f();
+            Vector3f midBC = new Vector3f();
+            GeoPolar3d polarMidAB = new GeoPolar3d();
+            GeoPolar3d polarMidAC = new GeoPolar3d();
+            GeoPolar3d polarMidBC = new GeoPolar3d();
             foreach (Mesh mesh in Meshes.ToArray())
             {
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
                 {
                     var face = mesh.Faces[faceIndex];
 
-                    // First, check to see if all the vertices are *behind* the camera.
-                    // We don't care about those.
-                    if (IsBehind(ref mesh.Vertices[face.A].Coordinates, ref cameraPos, ref lookDir, ref buffv) ||
-                        IsBehind(ref mesh.Vertices[face.B].Coordinates, ref cameraPos, ref lookDir, ref buffv) ||
-                        IsBehind(ref mesh.Vertices[face.C].Coordinates, ref cameraPos, ref lookDir, ref buffv))
+                    TransformToPolar(ref mesh.Vertices[face.A].Coordinates, ref polarA);
+                    TransformToPolar(ref mesh.Vertices[face.B].Coordinates, ref polarB);
+                    TransformToPolar(ref mesh.Vertices[face.C].Coordinates, ref polarC);
+
+
+                    if (isFirst)
                     {
-                        // It is possible we will get a gap when the triangle straddles the
-                        // viewer's plane, but should be fine in most cases.
-                        continue;
+                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.A].Coordinates);
+                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.B].Coordinates);
+                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.C].Coordinates);
+
+                        System.Diagnostics.Debug.WriteLine(polarA);
+                        System.Diagnostics.Debug.WriteLine(polarB);
+                        System.Diagnostics.Debug.WriteLine(polarC);
+
+                        isFirst = false;
                     }
 
-                    // Consider implementing Face-back culling
-                    //var transformedNormalZ =
-                    //    face.Normal.X * viewMatrix.M13 +
-                    //    face.Normal.Y * viewMatrix.M23 +
-                    //    face.Normal.Z * viewMatrix.M33;
-                    //if (transformedNormalZ < 0.0f)
+                    // TODO: Skip this triangle if it contains the point we are at?
+
+                    // Also need to maintain the triangle topology that can be distrupted by
+                    // discontinuities in arctan.
+
+                    Vector3f.Avg(ref mesh.Vertices[face.A].Coordinates, ref mesh.Vertices[face.B].Coordinates, ref midAB);
+                    Vector3f.Avg(ref mesh.Vertices[face.A].Coordinates, ref mesh.Vertices[face.C].Coordinates, ref midAC);
+                    Vector3f.Avg(ref mesh.Vertices[face.B].Coordinates, ref mesh.Vertices[face.C].Coordinates, ref midBC);
+                    TransformToPolar(ref midAB, ref polarMidAB);
+                    TransformToPolar(ref midAC, ref polarMidAC);
+                    TransformToPolar(ref midBC, ref polarMidBC);
+
+                    bool abOK = CheckBetween(polarA.Lat, polarMidAB.Lat, polarB.Lat);
+                    bool acOK = CheckBetween(polarA.Lat, polarMidAC.Lat, polarC.Lat);
+                    bool bcOK = CheckBetween(polarB.Lat, polarMidBC.Lat, polarC.Lat);
+                    if (!(abOK && acOK && bcOK))
                     {
-                        // Render this face
-                        var pixelA = Project(state, ref mesh.Vertices[face.A], Camera.FovRad, lookAngle);
-                        var pixelB = Project(state, ref mesh.Vertices[face.B], Camera.FovRad, lookAngle);
-                        var pixelC = Project(state, ref mesh.Vertices[face.C], Camera.FovRad, lookAngle);
+                        if (abOK) polarC.Lat += (polarC.Lat < polarA.Lat ? 1 : -1) * 2 * Math.PI;
+                        if (acOK) polarB.Lat += (polarB.Lat < polarA.Lat ? 1 : -1) * 2 * Math.PI;
+                        if (bcOK) polarA.Lat += (polarA.Lat < polarC.Lat ? 1 : -1) * 2 * Math.PI;
+                    }
+
+                    // Now check if any triangles need to be shifted by multiple of 2Pi to move into view
+                    // First, shift neg
+                    while (
+                        polarA.Lat - 2 * Math.PI >= Camera.MinAngleRad ||
+                        polarB.Lat - 2 * Math.PI >= Camera.MinAngleRad ||
+                        polarC.Lat - 2 * Math.PI >= Camera.MinAngleRad)
+                    {
+                        polarC.Lat -= 2 * Math.PI;
+                        polarB.Lat -= 2 * Math.PI;
+                        polarA.Lat -= 2 * Math.PI;
+                    }
+
+                    while (
+                        polarA.Lat <= Camera.MaxAngleRad ||
+                        polarB.Lat <= Camera.MaxAngleRad ||
+                        polarC.Lat <= Camera.MaxAngleRad)
+                    {
+                        var pixelA = Project(state, ref mesh.Vertices[face.A], ref polarA);
+                        var pixelB = Project(state, ref mesh.Vertices[face.B], ref polarB);
+                        var pixelC = Project(state, ref mesh.Vertices[face.C], ref polarC);
 
                         DrawTriangle(state, ref pixelA, ref pixelB, ref pixelC, mesh.Texture, ref buffv);
+
+                        polarC.Lat += 2 * Math.PI;
+                        polarB.Lat += 2 * Math.PI;
+                        polarA.Lat += 2 * Math.PI;
                     }
                 }
             }
@@ -290,10 +294,43 @@ namespace SoftEngine
             return state;
         }
 
-        private bool IsBehind(ref Vector3f vertex, ref Vector3f cameraPos, ref Vector3f lookDir, ref Vector3f buffv)
+        private const double CheckBetweenEps = 0.00001;
+        private static bool CheckBetween(double a, double ab, double b)
         {
-            Vector3f.SubAndNorm(ref vertex, ref cameraPos, ref buffv);
-            return Vector3f.Dot(ref lookDir, ref buffv) < 0.00001;
+            if (Math.Abs(a - b) < CheckBetweenEps) return Math.Abs(a - ab) < 2 * CheckBetweenEps;
+            if (Math.Abs(a - ab) < CheckBetweenEps) return true;
+            if (Math.Abs(b - ab) < CheckBetweenEps) return true;
+            return (a < ab) == (ab < b);
+        }
+
+        // Project takes some 3D coordinates and transform them
+        // in 2D coordinates using the transformation matrix
+        // It also transform the same coordinates and the normal to the vertex
+        // in the 3D world
+        private VertexProj Project(RenderState state, ref Vertex vertex, ref GeoPolar3d polar)
+        {
+            double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
+            return new VertexProj
+            {
+                Coordinates = new Vector3fProj(
+                    (int)(state.Width * 0.5 - state.Width / fovRad * (polar.Lat - (Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5)),
+                    (int)(state.Height * 0.5 - state.Width / fovRad * polar.Lon),
+                    (float)polar.Height),
+                Normal = vertex.Normal,
+                WorldCoordinates = vertex.Coordinates,
+                TextureCoordinates = vertex.TextureCoordinates
+            };
+        }
+
+        private void TransformToPolar(ref Vector3f p, ref GeoPolar3d delta)
+        {
+            // Figure out angle in x-y plane.
+            delta.Lat = Math.Atan2(p.X, p.Y);
+            // Then the "height" angle.
+            var xy = p.Y * p.Y + p.X * p.X;
+            var dZ = p.Z - Camera.HeightOffset;
+            delta.Lon = Math.Atan2(dZ, Math.Sqrt(xy));
+            delta.Height = Math.Sqrt(xy + dZ * dZ);
         }
 
         public class RenderState

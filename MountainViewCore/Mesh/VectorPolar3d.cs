@@ -12,5 +12,10 @@
             Lon = lon;
             Height = height;
         }
+
+        public override string ToString()
+        {
+            return Lat + ", " + Lon + ", " + Height;
+        }
     }
 }

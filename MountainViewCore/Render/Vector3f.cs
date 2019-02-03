@@ -94,5 +94,12 @@ namespace MountainView.Render
             result.Y = a.Z * b.X - a.X * b.Z;
             result.Z = a.X * b.Y - a.Y * b.X;
         }
+
+        public static void Avg(ref Vector3f a, ref Vector3f b, ref Vector3f result)
+        {
+            result.X = (a.X + b.X) * 0.5f;
+            result.Y = (a.Y + b.Y) * 0.5f;
+            result.Z = (a.Z + b.Z) * 0.5f;
+        }
     }
 }

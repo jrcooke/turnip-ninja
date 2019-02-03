@@ -13,15 +13,14 @@
         /// <summary>
         /// 0 is facing north. 90 degrees is facing east.
         /// </summary>
-        public Angle MinAngle { get; set; }
+        public double MinAngleDec { get; set; }
 
         /// <summary>
         /// 0 is facing north. 90 degrees is facing east.
         /// </summary>
-        public Angle MaxAngle { get; set; }
+        public double MaxAngleDec { get; set; }
 
-        public Angle FOV { get { return Angle.Subtract(MaxAngle, MinAngle); } }
-        public Angle AngularResolution { get { return Angle.Divide(FOV, Width); } }
+        public Angle AngularResolution { get { return Angle.Divide(Angle.FromDecimalDegrees(MaxAngleDec-MinAngleDec), Width); } }
 
         private bool hasIThetaMin;
         private int iThetaMin;
@@ -31,7 +30,7 @@
             {
                 if (!hasIThetaMin)
                 {
-                    iThetaMin = Angle.FloorDivide(MinAngle, AngularResolution);
+                    iThetaMin = Angle.FloorDivide(Angle.FromDecimalDegrees(MinAngleDec), AngularResolution);
                     hasIThetaMin = true;
                 }
 
@@ -49,8 +48,8 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                MinAngle = Angle.FromDecimalDegrees(85.0),
-                MaxAngle = Angle.FromDecimalDegrees(95.0),
+                MinAngleDec = (85.0),
+                MaxAngleDec = (95.0),
                 //ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
                 //ElevationViewMax = Angle.FromDecimalDegrees(2.0),
                 //AngularResolution = Angle.FromDecimalDegrees(0.01),
@@ -63,8 +62,8 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                MinAngle = Angle.FromDecimalDegrees(0.0),
-                MaxAngle = Angle.FromDecimalDegrees(360.0),
+                MinAngleDec = (0.0),
+                MaxAngleDec = (360.0),
                 //ElevationViewMin = Angle.FromDecimalDegrees(-5.0),
                 //ElevationViewMax = Angle.FromDecimalDegrees(5.0),
                 //AngularResolution = Angle.FromDecimalDegrees(0.1),
@@ -77,8 +76,8 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.695736),
                 Lon = Angle.FromDecimalDegrees(-122.232330),
-                MinAngle = Angle.FromDecimalDegrees(145.0),
-                MaxAngle = Angle.FromDecimalDegrees(170.0),
+                MinAngleDec = (145.0),
+                MaxAngleDec = (170.0),
                 //ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
                 //ElevationViewMax = Angle.FromDecimalDegrees(2.5),
                 //AngularResolution = Angle.FromDecimalDegrees(0.01),
@@ -91,8 +90,8 @@
             {
                 Lat = Angle.FromDecimalDegrees(47.6867797),
                 Lon = Angle.FromDecimalDegrees(-122.2907541),
-                MinAngle = Angle.FromDecimalDegrees(85.0),
-                MaxAngle = Angle.FromDecimalDegrees(95.0),
+                MinAngleDec = (85.0),
+                MaxAngleDec = (95.0),
                 //ElevationViewMin = Angle.FromDecimalDegrees(-1.0),
                 //ElevationViewMax = Angle.FromDecimalDegrees(2.0),
                 //AngularResolution = Angle.FromDecimalDegrees(0.01),
@@ -105,8 +104,8 @@
             {
                 Lat = Angle.FromDecimalDegrees(42.130303),
                 Lon = Angle.FromDecimalDegrees(-76.243376),
-                MinAngle = Angle.FromDecimalDegrees(180),
-                MaxAngle = Angle.FromDecimalDegrees(270),
+                MinAngleDec = (180),
+                MaxAngleDec = (270),
                 //ElevationViewMin = Angle.FromDecimalDegrees(-25.0),
                 //ElevationViewMax = Angle.FromDecimalDegrees(5.0),
                 //AngularResolution = Angle.FromDecimalDegrees(0.05),

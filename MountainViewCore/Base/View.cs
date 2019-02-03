@@ -1,14 +1,11 @@
 ﻿using MountainView.Base;
 using MountainView.ChunkManagement;
-using MountainView.Elevation;
-using MountainView.Imaging;
 using MountainView.Mesh;
 using MountainViewCore.Landmarks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace MountainViewCore.Base
 {
@@ -77,121 +74,6 @@ namespace MountainViewCore.Base
                 .OrderBy(p => chunkZoom[p])
                 .ThenByDescending(p => distToFarthestPointInChunk[p])
                 ).ToArray();
-        }
-
-        //public static async Task<IEnumerable<SparseColorHeight>> GetPolarData(Config config, long chunkKey, float heightOffset, TraceListener log)
-        //{
-        //    List<SparseColorHeight> ret = new List<SparseColorHeight>();
-        //    int numParts = (int)((config.ElevationViewMax.Radians - config.ElevationViewMin.Radians) / config.AngularResolution.Radians);
-        //    double cosLat = Math.Cos(config.Lat.Radians);
-        //    int numR = (int)(config.R / config.DeltaR);
-        //    int[] viewElev = new int[config.NumTheta];
-        //    NearestInterpolatingChunk<float> interpChunkH = null;
-
-        //    StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-        //    if (chunk == null)
-        //    {
-        //        return null;
-        //    }
-
-        //    log?.WriteLine(chunk);
-
-        //    using (interpChunkH = await Heights.Current.GetLazySimpleInterpolator(chunk, log))
-        //    {
-        //        // Now do that again, but do the rendering per chunk.
-        //        for (int iTheta = 0; iTheta < config.NumTheta; iTheta++)
-        //        {
-        //            Angle theta = Angle.Multiply(config.AngularResolution, iTheta + config.IThetaMin);
-        //            var endRLat = Utils.DeltaMetersLat(theta, config.R);
-        //            var endRLon = Utils.DeltaMetersLon(theta, config.R, cosLat);
-
-        //            // Get intersection between the chunk and the line we are going along.
-        //            // See which range of R intersects with chunk.
-        //            if (!chunk.TryGetIntersectLine(
-        //                config.Lat.DecimalDegree, endRLat.DecimalDegree,
-        //                config.Lon.DecimalDegree, endRLon.DecimalDegree,
-        //                out double loX, out double hiX))
-        //            {
-        //                continue;
-        //            }
-
-        //            int loR = Math.Max(1, (int)(loX * numR) + 1);
-        //            int hiR = Math.Min(numR, (int)(hiX * numR));
-        //            for (int iR = loR; iR < hiR; iR++)
-        //            {
-        //                var mult = iR * config.DeltaR / config.R;
-        //                var latDegrees = config.Lat.DecimalDegree + endRLat.DecimalDegree * mult;
-        //                var lonDegrees = config.Lon.DecimalDegree + endRLon.DecimalDegree * mult;
-        //                var heightResult = await interpChunkH.TryGetDataAtPoint(latDegrees, lonDegrees, log);
-        //                if (!heightResult.Success) continue;
-        //                var height = heightResult.Data;
-
-        //                double distance = iR * config.DeltaR;
-        //                double curTheta = Math.Atan2(height - heightOffset, distance);
-        //                var delta = curTheta - config.ElevationViewMin.Radians;
-        //                var norm = delta / config.AngularResolution.Radians;
-        //                while (viewElev[iTheta] < norm)
-        //                {
-        //                    if (viewElev[iTheta] == numParts) break;
-        //                    ret.Add(new SparseColorHeight()
-        //                    {
-        //                        iTheta = iTheta,
-        //                        iViewElev = viewElev[iTheta]++,
-        //                        ChunkKey = chunkKey,
-        //                        LatDegrees = latDegrees,
-        //                        LonDegrees = lonDegrees,
-        //                        Distance = distance,
-        //                        Height = height,
-        //                    });
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    return ret;
-        //}
-
-        public static async Task<MyColor[][]> ProcessImage(ColorHeight[][] view, TraceListener log)
-        {
-            var chunkKeys = view.SelectMany(p => p).Select(p => p.ChunkKey).Distinct();
-
-            var ret = new MyColor[view.Length][];
-            for (int i = 0; i < view.Length; i++)
-            {
-                ret[i] = new MyColor[view[i].Length];
-            }
-
-            foreach (var chunkKey in chunkKeys)
-            {
-                StandardChunkMetadata chunk = StandardChunkMetadata.GetRangeFromKey(chunkKey);
-                using (var image = await Images.Current.GetLazySimpleInterpolator(chunk, log))
-                {
-                    for (int i = 0; i < view.Length; i++)
-                    {
-                        for (int j = 0; j < view[i].Length; j++)
-                        {
-                            var p = view[i][j];
-                            if (p.ChunkKey != chunkKey) continue;
-                            if (chunkKey == 0)
-                            {
-                                ret[i][j] = new MyColor();
-                            }
-                            else
-                            {
-                                var imageResult = await image.TryGetDataAtPoint(p.LatDegrees, p.LonDegrees, log);
-                                MyColor color = imageResult.Data;
-                                double clearWeight = 0.2 + 0.8 / (1.0 + p.Distance * p.Distance * 1.0e-8);
-                                ret[i][j] = new MyColor(
-                                    (byte)(int)(color.R * clearWeight + skyColor.R * (1 - clearWeight)),
-                                    (byte)(int)(color.G * clearWeight + skyColor.G * (1 - clearWeight)),
-                                    (byte)(int)(color.B * clearWeight + skyColor.B * (1 - clearWeight)));
-                            }
-                        }
-                    }
-                }
-            }
-
-            return ret;
         }
 
         public static string ProcessImageMap(ColorHeight[][] view, string imageName)

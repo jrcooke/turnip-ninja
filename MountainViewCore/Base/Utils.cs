@@ -19,6 +19,20 @@ namespace MountainView.Base
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;
 
+        public static double DistBetweenLatLon(Angle lat1, Angle lon1, Angle lat2, Angle lon2)
+        {
+            // haversine, https://www.movable-type.co.uk/scripts/latlong.html
+            var φ1 = lat1.Radians;
+            var φ2 = lat2.Radians;
+            var Δφ = lat2.Radians - lat1.Radians;
+            var Δλ = lon2.Radians - lon1.Radians;
+
+            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) +
+                    Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2) * Math.Cos(φ1) * Math.Cos(φ2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return AlphaMeters * c;
+        }
+
         public static Tuple<long, long> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
         {
             double cosLatVal = cosLat ?? Math.Cos(lat.Radians);
