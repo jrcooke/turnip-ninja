@@ -1,4 +1,6 @@
-﻿namespace MountainView.Base
+﻿using MountainView.Mesh;
+
+namespace MountainView.Base
 {
     public class Config
     {
@@ -20,7 +22,7 @@
         /// </summary>
         public double MaxAngleDec { get; set; }
 
-        public Angle AngularResolution { get { return Angle.Divide(Angle.FromDecimalDegrees(MaxAngleDec-MinAngleDec), Width); } }
+        public Angle AngularResolution { get { return Angle.Divide(Angle.FromDecimalDegrees(MaxAngleDec - MinAngleDec), Width); } }
 
         private bool hasIThetaMin;
         private int iThetaMin;
@@ -41,6 +43,7 @@
         public int MaxZoom { get; set; } = 6;
         public int MinZoom { get; set; } = 3;
         public bool UseHaze { get; set; } = true;
+        public GeoPolar2d HomePoint { get { return new GeoPolar2d(Lat, Lon); } }
 
         public static Config Juaneta()
         {

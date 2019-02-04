@@ -1,4 +1,5 @@
 ﻿using MountainView.ChunkManagement;
+using MountainView.Mesh;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,18 +20,34 @@ namespace MountainView.Base
         // Alpha is radius.
         public const double LengthOfLatDegree = AlphaMeters * Math.PI / 180.0;
 
-        public static double DistBetweenLatLon(Angle lat1, Angle lon1, Angle lat2, Angle lon2)
+        public static double DistBetweenLatLon(GeoPolar2d p1, GeoPolar2d p2)
         {
             // haversine, https://www.movable-type.co.uk/scripts/latlong.html
-            var φ1 = lat1.Radians;
-            var φ2 = lat2.Radians;
-            var Δφ = lat2.Radians - lat1.Radians;
-            var Δλ = lon2.Radians - lon1.Radians;
+            var phi1 = p1.Lat.Radians;
+            var phi2 = p2.Lat.Radians;
+            var deltaPhi = p2.Lat.Radians - p1.Lat.Radians;
+            var deltaLam = p2.Lon.Radians - p1.Lon.Radians;
 
-            var a = Math.Sin(Δφ / 2) * Math.Sin(Δφ / 2) +
-                    Math.Sin(Δλ / 2) * Math.Sin(Δλ / 2) * Math.Cos(φ1) * Math.Cos(φ2);
+            var a = Math.Sin(deltaPhi / 2) * Math.Sin(deltaPhi / 2) +
+                    Math.Sin(deltaLam / 2) * Math.Sin(deltaLam / 2) * Math.Cos(phi1) * Math.Cos(phi2);
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return AlphaMeters * c;
+        }
+
+        public static GeoPolar2d GetDestFromBearing(GeoPolar2d p1, Angle bearing, double d)
+        {
+            var phi1 = p1.Lat.Radians;
+            var lam1 = p1.Lon.Radians;
+            var brng = bearing.Radians;
+            var R = AlphaMeters;
+
+            var phi2 = Math.Asin(Math.Sin(phi1) * Math.Cos(d / R) +
+                Math.Cos(phi1) * Math.Sin(d / R) * Math.Cos(brng));
+            var lam2 = lam1 + Math.Atan2(
+                Math.Sin(brng) * Math.Sin(d / R) * Math.Cos(phi1),
+                Math.Cos(d / R) - Math.Sin(phi1) * Math.Sin(phi2));
+
+            return new GeoPolar2d(phi2 * 180/ Math.PI, lam2 * 180 / Math.PI);
         }
 
         public static Tuple<long, long> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)

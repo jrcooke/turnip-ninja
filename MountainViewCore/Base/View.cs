@@ -16,6 +16,34 @@ namespace MountainViewCore.Base
 
         public static long[] GetRelevantChunkKeys(Config config, TraceListener log)
         {
+            // Look for all chunks within R of current point.
+            var all = NewMethod(config, config.MinZoom, config.R, log);
+            return all.Reverse().ToArray();
+        }
+
+        private static long[] NewMethod(Config config, int zoom, double R, TraceListener log)
+        {
+            int numR = 1000;
+            List<long> orderedChunkKeys = new List<long>();
+            for (int iR = 1; iR <= numR; iR++)
+            {
+                for (double iTheta = config.MinAngleDec; iTheta <= config.MaxAngleDec; iTheta += (config.MaxAngleDec - config.MinAngleDec) / numR)
+                {
+                    var dest = Utils.GetDestFromBearing(config.HomePoint, Angle.FromDecimalDegrees(iTheta), R * iR / numR);
+                    var curr = StandardChunkMetadata.GetKey(dest.Lat.Fourths, dest.Lon.Fourths, zoom);
+                    if (!orderedChunkKeys.Contains(curr))
+                    {
+                        orderedChunkKeys.Add(curr);
+                        log?.WriteLine(StandardChunkMetadata.GetRangeFromKey(curr));
+                    }
+                }
+            }
+
+            return orderedChunkKeys.ToArray();
+        }
+
+        public static long[] GetRelevantChunkKeysOld(Config config, TraceListener log)
+        {
             double cosLat = Math.Cos(config.Lat.Radians);
             int numR = (int)(config.R / config.DeltaR);
 
