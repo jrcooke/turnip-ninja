@@ -10,6 +10,18 @@ namespace SoftEngine
         public Vector3f Position;
         public double MaxAngleRad;
         public double MinAngleRad;
-        public double HeightOffset;
+        private double heightOffset;
+        public double HeightOffset
+        {
+            get
+            {
+                return heightOffset;
+            }
+            set
+            {
+                heightOffset = value;
+                Position = new Vector3f(0, 0, (float)heightOffset);
+            }
+        }
     }
 }

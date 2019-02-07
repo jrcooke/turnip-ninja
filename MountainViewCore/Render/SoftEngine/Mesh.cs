@@ -4,8 +4,6 @@
 using MountainView.Mesh;
 using MountainView.Render;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace SoftEngine
@@ -125,16 +123,16 @@ namespace SoftEngine
                 };
             }
 
-            var x = Faces
-                .Select((p, i) => new[] { new { i, Ind = p.A }, new { i, Ind = p.B }, new { i, Ind = p.C } })
-                .SelectMany(p => p)
-                .GroupBy(p => p.Ind)
-                .Select(p => new { VertInd = p.Key, TriInds = p.Select(q => q.i).ToArray() })
-                .ToDictionary(p => p.VertInd, p => p.TriInds);
-            foreach (int vertInd in x.Keys)
-            {
-                Vector3f.AvgAndNorm(x[vertInd].Select(p => Faces[p]).Select(p => p.Normal).ToArray(), ref Vertices[vertInd].Normal);
-            }
+            //var x = Faces
+            //    .Select((p, i) => new[] { new { i, Ind = p.A }, new { i, Ind = p.B }, new { i, Ind = p.C } })
+            //    .SelectMany(p => p)
+            //    .GroupBy(p => p.Ind)
+            //    .Select(p => new { VertInd = p.Key, TriInds = p.Select(q => q.i).ToArray() })
+            //    .ToDictionary(p => p.VertInd, p => p.TriInds);
+            //foreach (int vertInd in x.Keys)
+            //{
+            //    Vector3f.AvgAndNorm(x[vertInd].Select(p => Faces[p]).Select(p => p.Normal).ToArray(), ref Vertices[vertInd].Normal);
+            //}
         }
 
         public static Mesh GetMesh(FriendlyMesh mesh)
@@ -160,41 +158,6 @@ namespace SoftEngine
         {
             var v = (float)d;
             return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v;
-        }
-
-        public static Mesh MakeCube()
-        {
-            var triangleIndices = new List<int>()
-            {
-                0, 1, 2,
-                1, 2, 3,
-                1, 3, 6,
-                1, 5, 6,
-                0, 1, 4,
-                1, 4, 5,
-                2, 3, 7,
-                3, 6, 7,
-                0, 2, 7,
-                0, 4, 7,
-                4, 5, 6,
-                4, 6, 7,
-            };
-
-            var vertices = new List<Vector3f>
-            {
-                new Vector3f(-1, +1, +1),
-                new Vector3f(+1, +1, +1),
-                new Vector3f(-1, -1, +1),
-                new Vector3f(+1, -1, +1),
-                new Vector3f(-1, +1, -1),
-                new Vector3f(+1, +1, -1),
-                new Vector3f(+1, -1, -1),
-                new Vector3f(-1, -1, -1),
-            };
-
-            var mesh = new Mesh(vertices.ToArray(), vertices.ToArray(), triangleIndices.ToArray());
-            return mesh;
-
         }
 
         private bool disposedValue = false; // To detect redundant calls

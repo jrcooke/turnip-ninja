@@ -120,13 +120,9 @@ namespace MountainView
 
         public static async Task Doit(Config config, TraceListener log, Action<Stream, FeatureInfo[][]> drawToScreen)
         {
-            //KDNode.Test(log);
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            // await NewMethod(log, drawToScreen);
-
-            var z = 0.01f;// 0.05f;
             int subpixel = 3;
 
             var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
@@ -134,30 +130,25 @@ namespace MountainView
             compositeBmp.SetAllPixels(View.skyColor);
 
             Vector2d?[][] latLons = new Vector2d?[compositeBmp.Width][];
-            double?[][] zs = new double?[compositeBmp.Width][];
             for (int i = 0; i < compositeBmp.Width; i++)
             {
                 latLons[i] = new Vector2d?[compositeBmp.Height];
-                zs[i] = new double?[compositeBmp.Height];
             }
 
             Device device = new Device()
             {
                 Camera = new Camera()
                 {
-                    Position = new Vector3f(0, 0, z),
                     MaxAngleRad = config.MaxAngleDec * Math.PI / 180,
                     MinAngleRad = config.MinAngleDec * Math.PI / 180,
-                    HeightOffset = 0.01f,
+                    HeightOffset = config.HeightOffset,
                 },
-                AmbientLight = 0.5f,
-                DirectLight = 1.0f,
-                Light = new Vector3f(0, 0, 20),
+                AmbientLight = config.AmbientLight, // 0.5f,
+                DirectLight = config.DirectLight, //1.0f,
+                Light = config.Light, // new Vector3f(0, 0, 20),
             };
 
             var chunks = View.GetRelevantChunkKeys(config, log);
-
-
             StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
             var mainMesh = await Meshes.Current.GetData(mainChunk, log);
             var norm = mainMesh.GetCenterAndScale(
@@ -210,7 +201,7 @@ namespace MountainView
 
                 device.Meshes.Clear();
                 device.Meshes.Add(renderMesh);
-                var renderState = device.RenderInto(chunkBmp, (float)norm.BackToMeters, config.UseHaze);
+                var renderState = device.RenderInto(chunkBmp, config.UseHaze);
                 compositeBmp.DrawOn(chunkBmp);
 
                 for (int i = 0; i < latLons.Length; i++)
@@ -223,16 +214,9 @@ namespace MountainView
                             latLons[i][j] = new Vector2d(
                                 chunk.LatLo.DecimalDegree + chunk.LatDelta.DecimalDegree * (1.0 - r.Y),
                                 chunk.LonLo.DecimalDegree + chunk.LonDelta.DecimalDegree * r.X);
-                            zs[i][j] = norm.BackToMeters * Math.Sqrt(renderState.GetDistSq(latLons.Length - 1 - i, latLons[i].Length - 1 - j).Value);
                         }
                     }
                 }
-
-                //                Utils.WriteImageFile(zs, "yyy" + counter + ".jpg", a => Utils.GetColorForHeight((float)(a ?? 0.0f)), OutputType.JPEG);
-                //Utils.WriteImageFile(latLons, "Lats" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.X ?? 0.0f)), OutputType.JPEG);
-                //Utils.WriteImageFile(latLons, "Lons" + counter + ".jpg", a => Utils.GetColorForHeight(1000 * (float)(a?.Y ?? 0.0f)), OutputType.JPEG);
-
-                //var xxx = ProcessImageMap(latLons, "test");
 
                 counter++;
                 log?.WriteLine(counter);
@@ -241,9 +225,9 @@ namespace MountainView
             FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
             drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG), features);
 
-            using (var fs = File.OpenWrite(counter + ".jpg"))
+            using (var fs = File.OpenWrite("final"+ fileNameRoot + ".jpg"))
             {
-                chunkBmp.WriteFile(OutputType.JPEG, fs);
+                compositeBmp.WriteFile(OutputType.JPEG, fs);
             }
 
             DateTime end = DateTime.Now;
@@ -274,8 +258,6 @@ namespace MountainView
                 "</div>";
             return mapText;
         }
-
-
 
         private static async Task NewMethod(TraceListener log, Action<Stream> drawToScreen)
         {

@@ -277,11 +277,7 @@ namespace MountainView.Mesh
 
             RotatePointToNormal(cosLat, sinLat, cosLon, sinLon, ref avgV);
 
-            // The characteristic length is the "height", Delta lat
-            var deltaV = scale / (latDelta * Utils.LengthOfLatDegree);
-            var backToMeters = 1 / deltaV;
-
-            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, deltaV, avgV, elevation, backToMeters);
+            var norm = new NormalizeSettings(cosLat, sinLat, cosLon, sinLon, avgV, elevation);
             return norm;
         }
 
@@ -346,17 +342,17 @@ namespace MountainView.Mesh
             for (int i = 0; i < Vertices.Length; i++)
             {
                 RotatePointToNormal(norm.CosLat, norm.SinLat, norm.CosLon, norm.SinLon, ref Vertices[i]);
-                Vertices[i].X = (Vertices[i].X - norm.AvgV.X) * norm.DeltaV;
-                Vertices[i].Y = (Vertices[i].Y - norm.AvgV.Y) * norm.DeltaV;
-                Vertices[i].Z = (Vertices[i].Z - norm.AvgV.Z) * norm.DeltaV;
+                Vertices[i].X = (Vertices[i].X - norm.AvgV.X);
+                Vertices[i].Y = (Vertices[i].Y - norm.AvgV.Y);
+                Vertices[i].Z = (Vertices[i].Z - norm.AvgV.Z);
             }
 
             for (int i = 0; i < Corners.Length; i++)
             {
                 RotatePointToNormal(norm.CosLat, norm.SinLat, norm.CosLon, norm.SinLon, ref Corners[i]);
-                Corners[i].X = (Corners[i].X - norm.AvgV.X) * norm.DeltaV;
-                Corners[i].Y = (Corners[i].Y - norm.AvgV.Y) * norm.DeltaV;
-                Corners[i].Z = (Corners[i].Z - norm.AvgV.Z) * norm.DeltaV;
+                Corners[i].X = (Corners[i].X - norm.AvgV.X);
+                Corners[i].Y = (Corners[i].Y - norm.AvgV.Y);
+                Corners[i].Z = (Corners[i].Z - norm.AvgV.Z);
             }
 
             for (int i = 0; i < VertexNormals.Length; i++)
@@ -410,26 +406,28 @@ namespace MountainView.Mesh
             }
         }
 
-        public class NormalizeSettings : NormalizeSettingsBasic
+        public class NormalizeSettings
         {
+            //            public double DeltaV { get; private set; }
+            public Vector3d AvgV { get; private set; }
             public double CosLon { get; private set; }
             public double SinLon { get; private set; }
             public double CosLat { get; private set; }
             public double SinLat { get; private set; }
             public double Height { get; set; }
-            public double BackToMeters { get; private set; }
+            //            public double BackToMeters { get; private set; }
 
             public NormalizeSettings(
                 double cosLat, double sinLat,
                 double cosLon, double sinLon,
-                double deltaV, Vector3d avgV, double height, double backToMeters) : base(deltaV, avgV)
+                Vector3d avgV, double height)
             {
+                AvgV = avgV;
                 CosLon = cosLon;
                 SinLon = sinLon;
                 CosLat = cosLat;
                 SinLat = sinLat;
-                Height = height * deltaV;
-                BackToMeters = backToMeters;
+                Height = height;
             }
         }
     }

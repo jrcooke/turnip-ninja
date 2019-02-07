@@ -201,10 +201,9 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public RenderState RenderInto(DirectBitmap bmp, float backToMeters, bool useHaze)
+        public RenderState RenderInto(DirectBitmap bmp, bool useHaze)
         {
-            bool isFirst = true;
-            RenderState state = new RenderState(bmp, backToMeters, useHaze);
+            RenderState state = new RenderState(bmp, useHaze);
             Vector3f buffv = new Vector3f();
             GeoPolar3d polarA = new GeoPolar3d();
             GeoPolar3d polarB = new GeoPolar3d();
@@ -224,20 +223,6 @@ namespace SoftEngine
                     TransformToPolar(ref mesh.Vertices[face.A].Coordinates, ref polarA);
                     TransformToPolar(ref mesh.Vertices[face.B].Coordinates, ref polarB);
                     TransformToPolar(ref mesh.Vertices[face.C].Coordinates, ref polarC);
-
-
-                    if (isFirst)
-                    {
-                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.A].Coordinates);
-                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.B].Coordinates);
-                        System.Diagnostics.Debug.WriteLine(mesh.Vertices[face.C].Coordinates);
-
-                        System.Diagnostics.Debug.WriteLine(polarA);
-                        System.Diagnostics.Debug.WriteLine(polarB);
-                        System.Diagnostics.Debug.WriteLine(polarC);
-
-                        isFirst = false;
-                    }
 
                     // TODO: Skip this triangle if it contains the point we are at?
 
@@ -339,15 +324,13 @@ namespace SoftEngine
             private readonly float[] DepthBuffer;
             private readonly Vector2f[] UVs;
             private readonly float?[] DistSq;
-            private readonly float backToMeters;
             private readonly bool useHaze;
             public readonly int Width;
             public readonly int Height;
 
-            public RenderState(DirectBitmap bmp, float backToMeters, bool useHaze)
+            public RenderState(DirectBitmap bmp, bool useHaze)
             {
                 Bmp = bmp;
-                this.backToMeters = backToMeters;
                 this.useHaze = useHaze;
                 Width = bmp.Width;
                 Height = bmp.Height;
@@ -380,7 +363,7 @@ namespace SoftEngine
 
                         if (useHaze)
                         {
-                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * backToMeters * backToMeters * 1.0e-9);
+                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * 1.0e-9);
                             color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
                             color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
                             color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));

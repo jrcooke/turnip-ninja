@@ -1,7 +1,7 @@
 ﻿using MountainView;
 using MountainView.Base;
+using MountainView.Render;
 using MountainViewCore.Landmarks;
-using System.Device.Location;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -17,51 +17,37 @@ namespace WpfApp1
     /// </summary>
     public partial class MainWindow : Window
     {
-        // The coordinate watcher.
-        private GeoCoordinateWatcher Watcher = null;
         private FeatureInfo[][] features;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            Watcher = new GeoCoordinateWatcher();
-            Watcher.StatusChanged += Watcher_StatusChanged;
-            Watcher.Start();
-
-            // Mt. Ranier
-            //NewMethod(46.853100, -121.759100, 4);
-
             DebugTraceListener log = new DebugTraceListener();
-            //            Home
-            //            NewMethod(log, 47.683923371494558, -122.29201376263447, 4);
-
-            //Config c = Config.Rainer();
-            //Config config = Config.JuanetaAll();
-
-            //Config config = Config.Juaneta();
-            //config.Width = 600;
-            //config.Height = 300;
-
-            //config.Lat = Angle.FromDecimalDegrees(47.683923371494558);
-            //config.Lon = Angle.FromDecimalDegrees(-122.29201376263447);
-
             Config config = new Config()
             {
                 Height = 300,
                 Width = 1200,
-                Lat = Angle.FromDecimalDegrees(47.637546),
-                Lon = Angle.FromDecimalDegrees(-122.132786),
-                MinAngleDec = 7,
-                MaxAngleDec = 15,
                 MaxZoom = 3,
                 MinZoom = 3,
                 R = 150000,
+                UseHaze = true,
+                //Lat = Angle.FromDecimalDegrees(47.637546),
+                //Lon = Angle.FromDecimalDegrees(-122.132786),
+                //MinAngleDec = -100,
+                //MaxAngleDec = -80,
+                Lat = Angle.FromDecimalDegrees(47.683923371494558),
+                Lon = Angle.FromDecimalDegrees(-122.29201376263447),
+                MinAngleDec = 80,
+                MaxAngleDec = 100,
+                HeightOffset = 100,
+                AmbientLight = 0, // 0.5f,
+                DirectLight = 1.0f,
+                Light = new Vector3f(2000000, 0, 2000000),
             };
 
             Task.Run(async () => await Program.Doit(config, log, DrawToScreen));
         }
-
 
         private void DrawToScreen(Stream ms, FeatureInfo[][] features)
         {
@@ -89,11 +75,6 @@ namespace WpfApp1
             }
         }
 
-        private void Watcher_StatusChanged(object sender, GeoPositionStatusChangedEventArgs e)
-        {
-            //            getCurrLocButt.IsEnabled = e.Status == GeoPositionStatus.Ready && !Watcher.Position.Location.IsUnknown;
-        }
-
         private void Image1_MouseMove(object sender, MouseEventArgs e)
         {
             var tmpFeat = features;
@@ -106,7 +87,6 @@ namespace WpfApp1
                 var feat = tmpFeat[x][y];
                 if (feat != null)
                 {
-                    Debug.WriteLine(mousePos.X + "  " + mousePos.Y + "  " + feat);
                     tttb.Text = feat.MapName + " (" + feat.Name + ") [" + feat.FeatureClass + "]";
                     tt.IsOpen = true;
                 }
@@ -115,7 +95,6 @@ namespace WpfApp1
                     tt.IsOpen = false;
                 }
 
-                //   tt.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
                 tt.HorizontalOffset = mousePos.X + 10;
                 tt.VerticalOffset = mousePos.Y + 10;
             }
