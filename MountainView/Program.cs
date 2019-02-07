@@ -135,6 +135,9 @@ namespace MountainView
                 latLons[i] = new Vector2d?[compositeBmp.Height];
             }
 
+            var light = config.Light;
+            light.Normalize();
+
             Device device = new Device()
             {
                 Camera = new Camera()
@@ -145,7 +148,7 @@ namespace MountainView
                 },
                 AmbientLight = config.AmbientLight, // 0.5f,
                 DirectLight = config.DirectLight, //1.0f,
-                Light = config.Light, // new Vector3f(0, 0, 20),
+                Light = light, // new Vector3f(0, 0, 20),
             };
 
             var chunks = View.GetRelevantChunkKeys(config, log);

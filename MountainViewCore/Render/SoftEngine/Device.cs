@@ -14,7 +14,7 @@ namespace SoftEngine
     public class Device
     {
         public Camera Camera { get; set; }
-        public Vector3f Light { get; set; }
+        public Vector3f Light;
         public float DirectLight { get; set; }
         public float AmbientLight { get; set; }
         public Collection<Mesh> Meshes { get; set; } = new Collection<Mesh>();
@@ -33,11 +33,9 @@ namespace SoftEngine
 
         // Compute the cosine of the angle between the light vector and the normal vector
         // Returns a value between 0 and 1
-        private float ComputeNDotL(ref Vector3f vertex, ref Vector3f normal, ref Vector3f buffv)
+        private float ComputeNDotL(ref Vector3f normal, ref Vector3f buffv)
         {
-            var lightPos = Light;
-            Vector3f.SubAndNorm(ref lightPos, ref vertex, ref buffv);
-            var dot = Math.Max(0, Vector3f.Dot(ref normal, ref buffv));
+            var dot = Math.Max(0, Vector3f.Dot(ref normal, ref Light));
             var ret = dot * DirectLight + AmbientLight;
             return ret > 1.0f ? 1.0f : ret < 0.0f ? 0.0f : ret;
         }
@@ -45,7 +43,14 @@ namespace SoftEngine
         // drawing line between 2 points from left to right
         // papb -> pcpd
         // pa, pb, pc, pd must then be sorted before
-        private void ProcessScanLine(RenderState state, int currentY, ref VertexProj va, ref VertexProj vb, ref VertexProj vc, ref VertexProj vd, Texture texture)
+        private void ProcessScanLine(
+            RenderState state,
+            int currentY,
+            ref VertexProj va,
+            ref VertexProj vb,
+            ref VertexProj vc,
+            ref VertexProj vd,
+            Texture texture)
         {
             Vector3fProj pa = va.Coordinates;
             Vector3fProj pb = vb.Coordinates;
@@ -123,7 +128,13 @@ namespace SoftEngine
             }
         }
 
-        private void DrawTriangle(RenderState state, ref VertexProj v1, ref VertexProj v2, ref VertexProj v3, Texture texture, ref Vector3f buffv)
+        private void DrawTriangle(
+            RenderState state,
+            ref VertexProj v1,
+            ref VertexProj v2,
+            ref VertexProj v3,
+            Texture texture,
+            ref Vector3f buffv)
         {
             // Sorting the points in order to always have this order on screen p1, p2 & p3
             // with p1 always up (thus having the Y the lowest possible to be near the top screen)
@@ -134,9 +145,9 @@ namespace SoftEngine
 
             // computing the cos of the angle between the light vector and the normal vector
             // it will return a value between 0 and 1 that will be used as the intensity of the color
-            v1.NdotL = ComputeNDotL(ref v1.WorldCoordinates, ref v1.Normal, ref buffv);
-            v2.NdotL = ComputeNDotL(ref v2.WorldCoordinates, ref v2.Normal, ref buffv);
-            v3.NdotL = ComputeNDotL(ref v3.WorldCoordinates, ref v3.Normal, ref buffv);
+            v1.NdotL = ComputeNDotL(ref v1.Normal, ref buffv);
+            v2.NdotL = ComputeNDotL(ref v2.Normal, ref buffv);
+            v3.NdotL = ComputeNDotL(ref v3.Normal, ref buffv);
 
             // computing lines' directions
             // http://en.wikipedia.org/wiki/Slope
@@ -219,6 +230,10 @@ namespace SoftEngine
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
                 {
                     var face = mesh.Faces[faceIndex];
+
+                    var dot = Math.Max(0, Vector3f.Dot(ref face.Normal, ref Light));
+                    var ret = dot * DirectLight + AmbientLight;
+                    float ndotl = ret > 1.0f ? 1.0f : ret < 0.0f ? 0.0f : ret;
 
                     TransformToPolar(ref mesh.Vertices[face.A].Coordinates, ref polarA);
                     TransformToPolar(ref mesh.Vertices[face.B].Coordinates, ref polarB);

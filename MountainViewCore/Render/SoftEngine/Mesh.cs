@@ -81,48 +81,6 @@ namespace SoftEngine
                 };
             }
 
-            while (faceIndex < Faces.Length)
-            {
-                Vector3f n = new Vector3f();
-
-                // Get a hint for the right directions
-                Vector3f.AvgAndNorm(
-                    ref normals[triangleIndices[triIndex + 0]],
-                    ref normals[triangleIndices[triIndex + 1]],
-                    ref normals[triangleIndices[triIndex + 2]],
-                    ref n);
-
-                // Then compute based on crossing the edges
-
-                Vector3f.SubAndNorm(
-                    ref vertices[triangleIndices[triIndex + 0]],
-                    ref vertices[triangleIndices[triIndex + 1]],
-                    ref buff1);
-                Vector3f.SubAndNorm(
-                    ref vertices[triangleIndices[triIndex + 0]],
-                    ref vertices[triangleIndices[triIndex + 2]],
-                    ref buff2);
-
-                Vector3f newN = new Vector3f();
-                Vector3f.Cross(ref buff1, ref buff2, ref newN);
-                newN.Normalize();
-
-                if (Vector3f.Dot(ref n, ref newN) < 0.0f)
-                {
-                    newN.X *= -1;
-                    newN.Y *= -1;
-                    newN.Z *= -1;
-                }
-
-                Faces[faceIndex++] = new Face()
-                {
-                    A = triangleIndices[triIndex++],
-                    B = triangleIndices[triIndex++],
-                    C = triangleIndices[triIndex++],
-                    Normal = newN,
-                };
-            }
-
             //var x = Faces
             //    .Select((p, i) => new[] { new { i, Ind = p.A }, new { i, Ind = p.B }, new { i, Ind = p.C } })
             //    .SelectMany(p => p)

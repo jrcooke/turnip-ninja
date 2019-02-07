@@ -25,6 +25,15 @@ namespace MountainView.Base
         public int MaxZoom { get; set; } = 6;
         public int MinZoom { get; set; } = 3;
         public bool UseHaze { get; set; } = true;
+
+        /// <summary>
+        /// Direction of where the sun shines from
+        /// (+1, 0,0) is from East.
+        /// (-1, 0,0) is from West.
+        /// ( 0,+1,0) is from north.
+        /// ( 0,-1,0) is from south
+        /// ( 0, 0,1) is zenith.
+        /// </summary>
         public Vector3f Light { get; set; }
         public float DirectLight { get; set; }
         public float AmbientLight { get; set; }
