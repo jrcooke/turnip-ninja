@@ -162,7 +162,7 @@ namespace MountainView
                 10,
                 log);
 
-            string fileNameRoot = DateTime.Now.ToString("HHMMss");
+            string fileNameRoot = DateTime.Now.ToString("HHmmss");
 
             int counter = 0;
             foreach (var chunkKey in chunks)
