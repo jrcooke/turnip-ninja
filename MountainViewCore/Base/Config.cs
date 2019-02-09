@@ -1,5 +1,6 @@
 ﻿using MountainView.Mesh;
 using MountainView.Render;
+using System;
 
 namespace MountainView.Base
 {
@@ -25,6 +26,18 @@ namespace MountainView.Base
         public int MaxZoom { get; set; } = 6;
         public int MinZoom { get; set; } = 3;
         public bool UseHaze { get; set; } = true;
+
+        private DateTimeOffset localTime;
+        public DateTimeOffset LocalTime
+        {
+            get { return localTime; }
+            set
+            {
+                localTime = value;
+                var sunPos = Utils.GetSunPosition(Lat, Lon, localTime);
+                Light = sunPos.GetUnitVector();
+            }
+        }
 
         /// <summary>
         /// Direction of where the sun shines from

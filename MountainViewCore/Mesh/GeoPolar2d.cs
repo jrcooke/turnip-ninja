@@ -1,4 +1,6 @@
-﻿using MountainView.Base;
+﻿using System;
+using MountainView.Base;
+using MountainView.Render;
 
 namespace MountainView.Mesh
 {
@@ -22,6 +24,17 @@ namespace MountainView.Mesh
         public override string ToString()
         {
             return "(" + Lat + "," + Lon + ")";
+        }
+
+        internal Vector3f GetUnitVector()
+        {
+            var ret = new Vector3f()
+            {
+                X = (float)(Math.Cos(Lon.Radians) * Math.Sin(Lat.Radians)),
+                Y = (float)(Math.Cos(Lon.Radians) * Math.Cos(Lat.Radians)),
+                Z = (float)(Math.Sin(Lon.Radians)),
+            };
+            return ret;
         }
     }
 }

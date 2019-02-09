@@ -68,6 +68,65 @@ namespace MountainView.Base
             return Angle.FromDecimalDegrees(dist * Math.Sin(heading.Radians) / LengthOfLatDegree / cosLat);
         }
 
+        public static GeoPolar2d GetSunPosition(Angle lat, Angle lon, DateTimeOffset curTime)
+        {
+            // From: http://www.powerfromthesun.net/Book/chapter03/chapter03.html
+
+            // ts is standard time in decimal hours
+            var J = curTime.ToUniversalTime().DayOfYear;
+            var ts = curTime.ToUniversalTime().TimeOfDay.TotalHours;
+
+            // solar time in radians
+            var omega = Math.PI / 12 * (ts - 12) + lon.Radians
+                + 0.170 / 12 * Math.PI * Math.Sin(4.0 * Math.PI * (J - 80) / 373.0)
+                - 0.129 / 12 * Math.PI * Math.Sin(2.0 * Math.PI * (J - 8) / 355.0);
+
+            // The solar declination in radians is approximated by
+            var delta = 0.4093 * Math.Sin(2.0 * Math.PI * (J - 81) / 368.0);
+
+            /*
+            Local coords
+            alpha is solar angle above horizon
+            A is solar azimuthal angle
+            S_z = sin alpha       (upward)
+            S_e = cos alpha sin A (east pointing)
+            S_n = cos alpha cos A (north pointing)
+
+            Earth-center coords
+            S'_m = cos delta cos omega (from center to equator, hits where observer meridian hits equator)
+            S'_e = cos delta sin omega (eastward on equator)
+            S'_p = sin delta           (north polar)
+
+            Rotate up from polar up to z up
+            S_z = S'_m cos lat + S'_p sin lat
+            S_e = S'_e
+            S_n = S'_p cos lat - S'_m sin lat
+
+            Substituting
+            sin alpha       = cos delta cos omega cos lat + sin delta           sin lon
+            cos alpha sin A = cos delta sin omega
+            cos alpha cos A = sin delta           cos lat - cos delta cos omega sin lon
+
+            So
+            alpha = asin (cos delta cos omega cos lat + sin delta sin lon)
+            A     = atan2(cos delta sin omega , (sin delta cos lat - cos delta cos omega sin lon))
+
+            */
+            var alpha = Math.Asin(
+                (Math.Cos(delta) * Math.Cos(omega) * Math.Cos(lat.Radians) + Math.Sin(delta) * Math.Sin(lat.Radians))
+                );
+
+            // Switch to A=0 be south
+            var A = 2 * Math.PI -  Math.Atan2(
+                Math.Cos(delta) * Math.Sin(omega),
+                Math.Sin(delta) * Math.Cos(lat.Radians) - Math.Cos(delta) * Math.Cos(omega) * Math.Sin(lat.Radians)
+                );
+
+            if (A > 2*Math.PI) A -= 2 * Math.PI;
+
+            return new GeoPolar2d(A * 180 / Math.PI, alpha * 180 / Math.PI);
+        }
+
         private static Dictionary<int, MyColor> heightCache = new Dictionary<int, MyColor>();
 
         public static MyColor GetColorForHeight(float a)
