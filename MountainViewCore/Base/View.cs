@@ -1,13 +1,11 @@
-﻿using MountainView.Base;
-using MountainView.ChunkManagement;
+﻿using MountainView.ChunkManagement;
 using MountainView.Mesh;
-using MountainViewCore.Landmarks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace MountainViewCore.Base
+namespace MountainView.Base
 {
     public static class View
     {

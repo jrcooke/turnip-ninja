@@ -34,10 +34,10 @@ namespace MountainView.Base
             set
             {
                 localTime = value;
-                var sunPos = Utils.GetSunPosition(Lat, Lon, localTime);
-                if (sunPos.Lon.DecimalDegree > 0)
+                SunPos = Utils.GetSunPosition(Lat, Lon, localTime);
+                if (SunPos.Lon.DecimalDegree > 0)
                 {
-                    Light = sunPos.GetUnitVector();
+                    Light = SunPos.GetUnitVector();
                     DirectLight = 3.5f;
                 }
                 else
@@ -46,7 +46,7 @@ namespace MountainView.Base
                 }
 
                 // https://en.wikipedia.org/wiki/Sky_brightness#/media/File:Illuminated-arimass.png
-                var amb = 0.35 + 0.35 / 6.0 * sunPos.Lon.DecimalDegree;
+                var amb = 0.35 + 0.35 / 6.0 * SunPos.Lon.DecimalDegree;
 
                 AmbientLight = (float)(0.1 + 0.4 * (amb > 1 ? 1.0 : amb < 0 ? 0.0 : amb));
             }
@@ -62,6 +62,8 @@ namespace MountainView.Base
         /// Set by LocalTime
         /// </summary>
         public Vector3f Light { get; private set; }
+
+        public GeoPolar2d SunPos { get; private set; }
 
         /// <summary>
         /// Set by LocalTime

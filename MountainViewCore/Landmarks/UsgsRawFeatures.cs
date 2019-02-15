@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MountainViewCore.Landmarks
+namespace MountainView.Landmarks
 {
     // Data from https://geonames.usgs.gov/domestic/download_data.htm
     public class FeatureInfo

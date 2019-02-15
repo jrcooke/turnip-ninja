@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace MountainViewCore.Base
+namespace MountainView.Base
 {
-
     public class Polygon<T> where T : class
     {
         public T Value;

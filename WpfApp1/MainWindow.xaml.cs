@@ -1,7 +1,5 @@
-﻿using MountainView;
-using MountainView.Base;
-using MountainView.Render;
-using MountainViewCore.Landmarks;
+﻿using MountainView.Base;
+using MountainView.Landmarks;
 using System;
 using System.Diagnostics;
 using System.IO;

@@ -4,7 +4,6 @@
 using MountainView.Base;
 using MountainView.Mesh;
 using MountainView.Render;
-using MountainViewCore.Base;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -294,6 +293,22 @@ namespace SoftEngine
             return state;
         }
 
+        public void ManualDrawInto(DirectBitmap bmp, Func<GeoPolar2d, MyColor> colorForPoint)
+        {
+            RenderState state = new RenderState(bmp, false);
+            double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
+            for (int x = 0; x < state.Width; x++)
+            {
+                for (int y = 0; y < state.Height; y++)
+                {
+                    var polar = new GeoPolar2d(
+                     (state.Width * 0.5 - x) * fovRad / state.Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
+                     (state.Height * 0.5 - y) * fovRad / state.Width);
+                    state.PutPixel(x, y, colorForPoint(polar));
+                }
+            }
+        }
+
         private const double CheckBetweenEps = 0.00001;
         private static bool CheckBetween(double a, double ab, double b)
         {
@@ -389,6 +404,11 @@ namespace SoftEngine
                         DistSq[index] = distSq;
                     }
                 }
+            }
+
+            public void PutPixel(int x, int y, MyColor color)
+            {
+                Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
             }
 
             public Vector2f GetUV(int x, int y)

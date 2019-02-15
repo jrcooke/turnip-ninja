@@ -2,16 +2,14 @@
 using MountainView.ChunkManagement;
 using MountainView.Elevation;
 using MountainView.Imaging;
+using MountainView.Landmarks;
 using MountainView.Mesh;
-using MountainViewCore.Base;
+using SoftEngine;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using SoftEngine;
-using MountainView.Render;
-using MountainViewCore.Landmarks;
 
 namespace MountainView
 {
@@ -123,21 +121,6 @@ namespace MountainView
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            int subpixel = 3;
-
-            var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
-            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
-            compositeBmp.SetAllPixels(View.skyColor);
-
-            Vector2d?[][] latLons = new Vector2d?[compositeBmp.Width][];
-            for (int i = 0; i < compositeBmp.Width; i++)
-            {
-                latLons[i] = new Vector2d?[compositeBmp.Height];
-            }
-
-            var light = config.Light;
-            light.Normalize();
-
             Device device = new Device()
             {
                 Camera = new Camera()
@@ -148,9 +131,13 @@ namespace MountainView
                 },
                 AmbientLight = config.AmbientLight, // 0.5f,
                 DirectLight = config.DirectLight, //1.0f,
-                Light = light, // new Vector3f(0, 0, 20),
+                Light = config.Light, // new Vector3f(0, 0, 20),
             };
 
+            int subpixel = 3;
+            var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            compositeBmp.SetAllPixels(View.skyColor);
             var chunks = View.GetRelevantChunkKeys(config, log);
             StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
             var mainMesh = await Meshes.Current.GetData(mainChunk, log);

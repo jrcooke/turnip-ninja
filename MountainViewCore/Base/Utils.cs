@@ -34,6 +34,15 @@ namespace MountainView.Base
             return AlphaMeters * c;
         }
 
+        // https://en.wikipedia.org/wiki/Great-circle_distance#Formulas
+        public static double AngleBetween(double theta1, double phi1, double theta2, double phi2)
+        {
+            return Math.Acos(
+                Math.Sin(phi1) * Math.Sin(phi2) +
+                Math.Cos(phi1) * Math.Cos(phi2) * Math.Cos(theta1 - theta2));
+        }
+
+        // https://www.movable-type.co.uk/scripts/latlong.html
         public static GeoPolar2d GetDestFromBearing(GeoPolar2d p1, Angle bearing, double d)
         {
             var phi1 = p1.Lat.Radians;
@@ -47,7 +56,7 @@ namespace MountainView.Base
                 Math.Sin(brng) * Math.Sin(d / R) * Math.Cos(phi1),
                 Math.Cos(d / R) - Math.Sin(phi1) * Math.Sin(phi2));
 
-            return new GeoPolar2d(phi2 * 180/ Math.PI, lam2 * 180 / Math.PI);
+            return new GeoPolar2d(phi2 * 180 / Math.PI, lam2 * 180 / Math.PI);
         }
 
         public static Tuple<long, long> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
@@ -117,14 +126,15 @@ namespace MountainView.Base
                 );
 
             // Switch to A=0 be south
-            var A = 2 * Math.PI -  Math.Atan2(
+            var A = 2 * Math.PI - Math.Atan2(
                 Math.Cos(delta) * Math.Sin(omega),
                 Math.Sin(delta) * Math.Cos(lat.Radians) - Math.Cos(delta) * Math.Cos(omega) * Math.Sin(lat.Radians)
                 );
 
-            if (A > 2*Math.PI) A -= 2 * Math.PI;
+            if (A > 2 * Math.PI) A -= 2 * Math.PI;
 
-            return new GeoPolar2d(A * 180 / Math.PI, alpha * 180 / Math.PI);
+            var sunPos = new GeoPolar2d(A * 180 / Math.PI, alpha * 180 / Math.PI);
+            return sunPos;
         }
 
         private static Dictionary<int, MyColor> heightCache = new Dictionary<int, MyColor>();
