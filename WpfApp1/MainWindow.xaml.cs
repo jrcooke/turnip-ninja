@@ -42,8 +42,6 @@ namespace WpfApp1
                 //MinAngleDec = 135,
                 //MaxAngleDec = 170,
                 HeightOffset = 100,
-                AmbientLight = 0.5f,
-                DirectLight = 3.5f,
                 LocalTime = DateTimeOffset.Now,
             };
 

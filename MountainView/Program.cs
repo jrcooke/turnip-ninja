@@ -228,7 +228,7 @@ namespace MountainView
             FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
             drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG), features);
 
-            using (var fs = File.OpenWrite("final"+ fileNameRoot + ".jpg"))
+            using (var fs = File.OpenWrite("final" + fileNameRoot + ".jpg"))
             {
                 compositeBmp.WriteFile(OutputType.JPEG, fs);
             }

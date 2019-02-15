@@ -278,7 +278,7 @@ namespace MountainView.Mesh
                     continue;
                 }
 
-                Vector3dExt.DoCrossAndDots(ref triangles.Data[r.tid].n, ref p, ref vertices.Data[id1].p, ref vertices.Data[id2].p, out double dot1, out double dot2);
+                Vector3d.DoCrossAndDots(ref triangles.Data[r.tid].n, ref p, ref vertices.Data[id1].p, ref vertices.Data[id2].p, out double dot1, out double dot2);
 
                 if (Math.Abs(dot1) > 0.999)
                 {
@@ -452,12 +452,12 @@ namespace MountainView.Mesh
                     int v1 = triangles.Data[i].v1;
                     int v2 = triangles.Data[i].v2;
 
-                    Vector3dExt.Sub(ref vertices.Data[v1].p, ref vertices.Data[v0].p, ref p10);
-                    Vector3dExt.Sub(ref vertices.Data[v2].p, ref vertices.Data[v0].p, ref p20);
-                    Vector3dExt.Cross(ref p10, ref p20, ref triangles.Data[i].n);
+                    Vector3d.Sub(ref vertices.Data[v1].p, ref vertices.Data[v0].p, ref p10);
+                    Vector3d.Sub(ref vertices.Data[v2].p, ref vertices.Data[v0].p, ref p20);
+                    Vector3d.Cross(ref p10, ref p20, ref triangles.Data[i].n);
                     triangles.Data[i].n.Normalize();
 
-                    smbuff.Repopulate(ref triangles.Data[i].n, -Vector3dExt.Dot(ref triangles.Data[i].n, ref vertices.Data[v0].p));
+                    smbuff.Repopulate(ref triangles.Data[i].n, -Vector3d.Dot(ref triangles.Data[i].n, ref vertices.Data[v0].p));
                     SymmetricMatrix.AddInto(ref vertices.Data[v0].q, ref smbuff);
                     SymmetricMatrix.AddInto(ref vertices.Data[v1].q, ref smbuff);
                     SymmetricMatrix.AddInto(ref vertices.Data[v2].q, ref smbuff);
@@ -585,9 +585,9 @@ namespace MountainView.Mesh
             for (int i = 0; i < triangles.Length; i++)
             {
                 var t = triangles.Data[i];
-                Vector3dExt.WeightedAverage(ref vertexNormals[t.v0], ref t.n, numTrisPerVertex[t.v0]++, 1);
-                Vector3dExt.WeightedAverage(ref vertexNormals[t.v1], ref t.n, numTrisPerVertex[t.v1]++, 1);
-                Vector3dExt.WeightedAverage(ref vertexNormals[t.v2], ref t.n, numTrisPerVertex[t.v2]++, 1);
+                Vector3d.WeightedAverage(ref vertexNormals[t.v0], ref t.n, numTrisPerVertex[t.v0]++, 1);
+                Vector3d.WeightedAverage(ref vertexNormals[t.v1], ref t.n, numTrisPerVertex[t.v1]++, 1);
+                Vector3d.WeightedAverage(ref vertexNormals[t.v2], ref t.n, numTrisPerVertex[t.v2]++, 1);
             }
         }
 
@@ -635,7 +635,7 @@ namespace MountainView.Mesh
                 // det = 0 -> try to find best result
                 Vector3d p1 = vertices.Data[id_v1].p;
                 Vector3d p2 = vertices.Data[id_v2].p;
-                Vector3dExt.Average(ref p1, ref p2, ref vbuff);
+                Vector3d.Average(ref p1, ref p2, ref vbuff);
                 double error1 = VertexError(ref smbuff, ref p1);
                 double error2 = VertexError(ref smbuff, ref p2);
                 double error3 = VertexError(ref smbuff, ref vbuff);
@@ -656,72 +656,6 @@ namespace MountainView.Mesh
             }
 
             return error;
-        }
-
-        private class Vector3dExt
-        {
-            public static void Average(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-            {
-                result.X = (a.X + b.X) * 0.5;
-                result.Y = (a.Y + b.Y) * 0.5;
-                result.Z = (a.Z + b.Z) * 0.5;
-            }
-
-            public static void Sub(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-            {
-                result.X = a.X - b.X;
-                result.Y = a.Y - b.Y;
-                result.Z = a.Z - b.Z;
-            }
-
-            /// <summary>
-            /// Dot Product of two vectors.
-            /// </summary>
-            public static double Dot(ref Vector3d a, ref Vector3d b)
-            {
-                return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
-            }
-
-            /// <summary>
-            /// Cross Product of two vectors.
-            /// </summary>
-            public static void Cross(ref Vector3d a, ref Vector3d b, ref Vector3d result)
-            {
-                result.X = a.Y * b.Z - a.Z * b.Y;
-                result.Y = a.Z * b.X - a.X * b.Z;
-                result.Z = a.X * b.Y - a.Y * b.X;
-            }
-
-            public static void DoCrossAndDots(ref Vector3d tirNorm, ref Vector3d p, ref Vector3d v1, ref Vector3d v2, out double dot1, out double dot2)
-            {
-                double d1X = v1.X - p.X;
-                double d1Y = v1.Y - p.Y;
-                double d1Z = v1.Z - p.Z;
-
-                double d2X = v2.X - p.X;
-                double d2Y = v2.Y - p.Y;
-                double d2Z = v2.Z - p.Z;
-
-                // Do the cross product
-                double nX = d1Y * d2Z - d1Z * d2Y;
-                double nY = d1Z * d2X - d1X * d2Z;
-                double nZ = d1X * d2Y - d1Y * d2X;
-
-                // Bulk normalize
-                double norm1 = Math.Sqrt(d1X * d1X + d1Y * d1Y + d1Z * d1Z);
-                double norm2 = Math.Sqrt(d2X * d2X + d2Y * d2Y + d2Z * d2Z);
-                double normN = Math.Sqrt(nX * nX + nY * nY + nZ * nZ);
-
-                dot1 = (d1X * d2X + d1Y * d2Y + d1Z * d2Z) / (norm1 * norm2);
-                dot2 = (nX * tirNorm.X + nY * tirNorm.Y + nZ * tirNorm.Z) / (normN);
-            }
-
-            internal static void WeightedAverage(ref Vector3d a, ref Vector3d b, int aWeight, int bWeight)
-            {
-                a.X = (a.X * aWeight + b.X * bWeight) / (aWeight + bWeight);
-                a.Y = (a.Y * aWeight + b.Y * bWeight) / (aWeight + bWeight);
-                a.Z = (a.Z * aWeight + b.Z * bWeight) / (aWeight + bWeight);
-            }
         }
 
         /// <summary>

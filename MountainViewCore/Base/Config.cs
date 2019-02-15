@@ -35,7 +35,20 @@ namespace MountainView.Base
             {
                 localTime = value;
                 var sunPos = Utils.GetSunPosition(Lat, Lon, localTime);
-                Light = sunPos.GetUnitVector();
+                if (sunPos.Lon.DecimalDegree > 0)
+                {
+                    Light = sunPos.GetUnitVector();
+                    DirectLight = 3.5f;
+                }
+                else
+                {
+                    DirectLight = 0.0f;
+                }
+
+                // https://en.wikipedia.org/wiki/Sky_brightness#/media/File:Illuminated-arimass.png
+                var amb = 0.35 + 0.35 / 6.0 * sunPos.Lon.DecimalDegree;
+
+                AmbientLight = (float)(0.1 + 0.4 * (amb > 1 ? 1.0 : amb < 0 ? 0.0 : amb));
             }
         }
 
@@ -46,10 +59,19 @@ namespace MountainView.Base
         /// ( 0,+1,0) is from north.
         /// ( 0,-1,0) is from south
         /// ( 0, 0,1) is zenith.
+        /// Set by LocalTime
         /// </summary>
-        public Vector3f Light { get; set; }
-        public float DirectLight { get; set; }
-        public float AmbientLight { get; set; }
+        public Vector3f Light { get; private set; }
+
+        /// <summary>
+        /// Set by LocalTime
+        /// </summary>
+        public float DirectLight { get; private set; }
+
+        /// <summary>
+        /// Set by LocalTime
+        /// </summary>
+        public float AmbientLight { get; private set; }
         public GeoPolar2d HomePoint { get { return new GeoPolar2d(Lat, Lon); } }
 
         public static Config Home()
