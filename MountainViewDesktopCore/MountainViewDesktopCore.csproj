@@ -228,6 +228,12 @@
     <Compile Include="..\MountainViewCore\Render\Vector3fProj.cs">
       <Link>Render\Vector3fProj.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\SkyColor\Nishita.cs">
+      <Link>SkyColor\Nishita.cs</Link>
+    </Compile>
+    <Compile Include="..\MountainViewCore\SkyColor\Preetham.cs">
+      <Link>SkyColor\Preetham.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config.tempate" />
