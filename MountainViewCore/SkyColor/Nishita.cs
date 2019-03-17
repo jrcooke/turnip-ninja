@@ -1,6 +1,7 @@
 ﻿using MountainView.Base;
 using MountainView.Mesh;
 using System;
+using System.Diagnostics;
 
 namespace MountainView.SkyColor
 {
@@ -265,22 +266,54 @@ namespace MountainView.SkyColor
             return i;
         }
 
-        public static double TOverBetaSimple(double h0, double sinPhi, double charHeight)
+        public static void RunTests()
         {
-            double? lmaxN = Intersect(h0, sinPhi, H_atmosphere);
-            if ((lmaxN ?? 0.0) == 0.0)
-            {
-                return 0;
-            }
+            double lmax0 = Intersect(0, 0, H_atmosphere).Value;
+            double lmax1 = Intersect(0, 1, H_atmosphere).Value;
 
-            var lmax = lmaxN.Value;
+            double naieve = TOverBetaSimple(0, 1, lmax1, H_R, 10000);
+            double optimi = TOverBeta(0, 1, lmax1, H_R);
+            AssertEqualWithin(naieve, optimi, 2.5e-6, "Comparing T_R/B_R to simple one, striaght up");
+
+            naieve = TOverBetaSimple(0, 0, lmax0, H_R);
+            optimi = TOverBeta(0, 0, lmax0, H_R);
+            AssertEqualWithin(naieve, optimi, 1.5e-7, "Comparing T_R/B_R to simple one, toward horizon");
+
+            naieve = TOverBetaSimple(0, 1, lmax1, H_M, 100000);
+            optimi = TOverBeta(0, 1, lmax1, H_M);
+            AssertEqualWithin(naieve, optimi, 1.5e-6, "Comparing T_M/B_M to simple one, striaght up");
+
+            naieve = TOverBetaSimple(0, 0, lmax0, H_M);
+            optimi = TOverBeta(0, 0, lmax0, H_M);
+            AssertEqualWithin(naieve, optimi, 3.0e-14, "Comparing T_M/B_M to simple one, toward horizon");
+
+            naieve = H_R;
+            optimi = TOverBeta(0, 1, 100 * H_R, H_R);
+            AssertEqualWithin(naieve, optimi, 0.07, "Comparing T_R/B_R should be approx H_R, striaght up");
+
+            naieve = H_M;
+            optimi = TOverBeta(0, 1, 100 * H_M, H_M);
+            AssertEqualWithin(naieve, optimi, 0.01, "Comparing T_M/B_M should be approx H_M, striaght up");
+
+        }
+
+        private static double TOverBetaSimple(double h0, double sinPhi, double lmax, double charHeight, int num = 1000)
+        {
             if (lmax < 0.0)
             {
                 throw new InvalidOperationException();
             }
 
-            var i = Integrate(0, lmax, l => Math.Exp(-H(h0, sinPhi, l) / charHeight), 1000);
+            var i = Integrate(0, lmax, l => Math.Exp(-H(h0, sinPhi, l) / charHeight), num);
             return i;
+        }
+
+        private static void AssertEqualWithin(double x0, double x1, double pctDiff, string message)
+        {
+            double diff = Math.Abs(x0 - x1) / (Math.Abs(x0 + x1) + 0.000001);
+            bool isOk = (diff * 100 < pctDiff);
+            Debug.WriteLine(message + ": " + x0 + ", " + x1 + ", pctDelta is " + diff * 100 + ": " + (isOk ? "OK" : "ERROR"));
+            if (!isOk) throw new InvalidOperationException();
         }
 
         public static double Integrate(double x0, double x1, Func<double, double> f, int num = 15)
