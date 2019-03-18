@@ -1,5 +1,7 @@
-﻿using MountainView.Base;
+﻿using MountainView;
+using MountainView.Base;
 using MountainView.Landmarks;
+using MountainView.SkyColor;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -30,7 +32,7 @@ namespace WpfApp1
                 MaxZoom = 3,
                 MinZoom = 3,
                 R = 150000,
-                UseHaze = true,
+                UseHaze = false,
                 Lat = Angle.FromDecimalDegrees(47.637546),
                 Lon = Angle.FromDecimalDegrees(-122.132786),
                 MinAngleDec = 15,
@@ -43,7 +45,25 @@ namespace WpfApp1
                 LocalTime = DateTimeOffset.Now,
             };
 
-            Task.Run(async () => await Program.Doit(config, log, DrawToScreen));
+            //Nishita.RunTests();
+
+            Task.Run(async () =>
+                {
+//                    config.LocalTime =
+//                        new DateTimeOffset(2019, 3, 5, 7, 0, 0, TimeSpan.FromHours(-8));
+////                    new DateTimeOffset(2019, 3, 5, 0, 0, 0, TimeSpan.FromHours(-8));
+//                    // config.LocalTime.AddHours(-12);
+//                    while (config.LocalTime <
+//                        new DateTimeOffset(2019, 3, 6, 0, 0, 0, TimeSpan.FromHours(-8)))
+//                        //DateTimeOffset.Now.AddHours(12))
+//                    {
+                        await Program.Doit(config, log, DrawToScreen);
+                    //    var skyColor = new Nishita(config.SunPos, 0.01);
+                    //    skyColor.RenderToJpeg(config.LocalTime.ToString("HHmmss") + "_" + DateTime.Now.ToString("HHmmss") + ".jpg");
+                    //    config.LocalTime = config.LocalTime.AddHours(1);
+                    //}
+
+                });
         }
 
         private void DrawToScreen(Stream ms, FeatureInfo[][] features)

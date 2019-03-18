@@ -4,45 +4,25 @@
 using MountainView.Base;
 using MountainView.Mesh;
 using MountainView.Render;
+using MountainView.SkyColor;
 using System;
-using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace SoftEngine
 {
-    public class Device
+    public static class Device
     {
-        public Camera Camera { get; set; }
-        public Vector3f Light;
-        public float DirectLight { get; set; }
-        public float AmbientLight { get; set; }
-        public Collection<Mesh> Meshes { get; set; } = new Collection<Mesh>();
-
-        public Device()
-        {
-        }
-
         // Interpolating the value between 2 vertices
         // min is the starting point, max the ending point
         // and gradient the % between the 2 points
-        private float Interpolate(float min, float max, float gradient)
+        private static float Interpolate(float min, float max, float gradient)
         {
             return min + (max - min) * gradient;
-        }
-
-        // Compute the cosine of the angle between the light vector and the normal vector
-        // Returns a value between 0 and 1
-        private float ComputeNDotL(ref Vector3f normal, ref Vector3f buffv)
-        {
-            var dot = Math.Max(0, Vector3f.Dot(ref normal, ref Light));
-            var ret = dot * DirectLight + AmbientLight;
-            return ret > 1.0f ? 1.0f : ret < 0.0f ? 0.0f : ret;
         }
 
         // drawing line between 2 points from left to right
         // papb -> pcpd
         // pa, pb, pc, pd must then be sorted before
-        private void ProcessScanLine(
+        private static void ProcessScanLine(
             RenderState state,
             int currentY,
             ref VertexProj va,
@@ -70,17 +50,21 @@ namespace SoftEngine
             float z1 = Interpolate(pa.Z, pb.Z, gradient1);
             float z2 = Interpolate(pc.Z, pd.Z, gradient2);
 
-            var sqDistA = Camera.Position.SqDistBetween(ref va.WorldCoordinates);
-            var sqDistB = Camera.Position.SqDistBetween(ref vb.WorldCoordinates);
-            var sqDistC = Camera.Position.SqDistBetween(ref vc.WorldCoordinates);
-            var sqDistD = Camera.Position.SqDistBetween(ref vd.WorldCoordinates);
+            var sqDistA = state.Camera.Position.SqDistBetween(ref va.WorldCoordinates);
+            var sqDistB = state.Camera.Position.SqDistBetween(ref vb.WorldCoordinates);
+            var sqDistC = state.Camera.Position.SqDistBetween(ref vc.WorldCoordinates);
+            var sqDistD = state.Camera.Position.SqDistBetween(ref vd.WorldCoordinates);
 
             var sSqD = Interpolate(sqDistA, sqDistB, gradient1);
             var eSqD = Interpolate(sqDistC, sqDistD, gradient2);
 
             // Interpolating normals on Y
-            var snl = Interpolate(va.NdotL, vb.NdotL, gradient1);
-            var enl = Interpolate(vc.NdotL, vd.NdotL, gradient2);
+            var snx = Interpolate(va.Normal.X, vb.Normal.X, gradient1);
+            var enx = Interpolate(vc.Normal.X, vd.Normal.X, gradient2);
+            var sny = Interpolate(va.Normal.Y, vb.Normal.Y, gradient1);
+            var eny = Interpolate(vc.Normal.Y, vd.Normal.Y, gradient2);
+            var snz = Interpolate(va.Normal.Z, vb.Normal.Z, gradient1);
+            var enz = Interpolate(vc.Normal.Z, vd.Normal.Z, gradient2);
 
             float su = 0;
             float eu = 0;
@@ -103,7 +87,9 @@ namespace SoftEngine
 
                 // Interpolating Z, normal and texture coordinates on X
                 var z = Interpolate(z1, z2, gradient);
-                var ndotl = Interpolate(snl, enl, gradient);
+                var nx = Interpolate(snx, enx, gradient);
+                var ny = Interpolate(sny, eny, gradient);
+                var nz = Interpolate(snz, enz, gradient);
                 var u = (Interpolate(su, eu, gradient));
                 var v = (Interpolate(sv, ev, gradient));
 
@@ -116,18 +102,17 @@ namespace SoftEngine
                 if (texture != null)
                 {
                     texture.GetPixel(u, v, ref textureColor);
-                    textureColor.ScaleSelf(ndotl);
                 }
                 else
                 {
-                    textureColor.WhiteScale(ndotl);
+                    textureColor = MyColor.White;
                 }
 
-                state.PutPixel(x, currentY, z, textureColor, u, v, sqD);
+                state.PutPixel(x, currentY, z, textureColor, nx, ny, nz, u, v, sqD);
             }
         }
 
-        private void DrawTriangle(
+        private static void DrawTriangle(
             RenderState state,
             ref VertexProj v1,
             ref VertexProj v2,
@@ -141,12 +126,6 @@ namespace SoftEngine
             if (v1.Coordinates.Y > v2.Coordinates.Y) Swap(ref v1, ref v2);
             if (v2.Coordinates.Y > v3.Coordinates.Y) Swap(ref v2, ref v3);
             if (v1.Coordinates.Y > v2.Coordinates.Y) Swap(ref v1, ref v2);
-
-            // computing the cos of the angle between the light vector and the normal vector
-            // it will return a value between 0 and 1 that will be used as the intensity of the color
-            v1.NdotL = ComputeNDotL(ref v1.Normal, ref buffv);
-            v2.NdotL = ComputeNDotL(ref v2.Normal, ref buffv);
-            v3.NdotL = ComputeNDotL(ref v3.Normal, ref buffv);
 
             // computing lines' directions
             // http://en.wikipedia.org/wiki/Slope
@@ -211,9 +190,8 @@ namespace SoftEngine
 
         // The main method of the engine that re-compute each vertex projection
         // during each frame
-        public RenderState RenderInto(DirectBitmap bmp, bool useHaze)
+        public static void RenderInto(RenderState state, params Mesh[] meshes)
         {
-            RenderState state = new RenderState(bmp, useHaze);
             Vector3f buffv = new Vector3f();
             GeoPolar3d polarA = new GeoPolar3d();
             GeoPolar3d polarB = new GeoPolar3d();
@@ -224,19 +202,15 @@ namespace SoftEngine
             GeoPolar3d polarMidAB = new GeoPolar3d();
             GeoPolar3d polarMidAC = new GeoPolar3d();
             GeoPolar3d polarMidBC = new GeoPolar3d();
-            foreach (Mesh mesh in Meshes.ToArray())
+            foreach (Mesh mesh in meshes)
             {
                 for (int faceIndex = 0; faceIndex < mesh.Faces.Length; faceIndex++)
                 {
                     var face = mesh.Faces[faceIndex];
 
-                    var dot = Math.Max(0, Vector3f.Dot(ref face.Normal, ref Light));
-                    var ret = dot * DirectLight + AmbientLight;
-                    float ndotl = ret > 1.0f ? 1.0f : ret < 0.0f ? 0.0f : ret;
-
-                    TransformToPolar(ref mesh.Vertices[face.A].Coordinates, ref polarA);
-                    TransformToPolar(ref mesh.Vertices[face.B].Coordinates, ref polarB);
-                    TransformToPolar(ref mesh.Vertices[face.C].Coordinates, ref polarC);
+                    state.TransformToPolar(ref mesh.Vertices[face.A].Coordinates, ref polarA);
+                    state.TransformToPolar(ref mesh.Vertices[face.B].Coordinates, ref polarB);
+                    state.TransformToPolar(ref mesh.Vertices[face.C].Coordinates, ref polarC);
 
                     // TODO: Skip this triangle if it contains the point we are at?
 
@@ -246,9 +220,9 @@ namespace SoftEngine
                     Vector3f.Avg(ref mesh.Vertices[face.A].Coordinates, ref mesh.Vertices[face.B].Coordinates, ref midAB);
                     Vector3f.Avg(ref mesh.Vertices[face.A].Coordinates, ref mesh.Vertices[face.C].Coordinates, ref midAC);
                     Vector3f.Avg(ref mesh.Vertices[face.B].Coordinates, ref mesh.Vertices[face.C].Coordinates, ref midBC);
-                    TransformToPolar(ref midAB, ref polarMidAB);
-                    TransformToPolar(ref midAC, ref polarMidAC);
-                    TransformToPolar(ref midBC, ref polarMidBC);
+                    state.TransformToPolar(ref midAB, ref polarMidAB);
+                    state.TransformToPolar(ref midAC, ref polarMidAC);
+                    state.TransformToPolar(ref midBC, ref polarMidBC);
 
                     bool abOK = CheckBetween(polarA.Lat, polarMidAB.Lat, polarB.Lat);
                     bool acOK = CheckBetween(polarA.Lat, polarMidAC.Lat, polarC.Lat);
@@ -263,9 +237,9 @@ namespace SoftEngine
                     // Now check if any triangles need to be shifted by multiple of 2Pi to move into view
                     // First, shift neg
                     while (
-                        polarA.Lat - 2 * Math.PI >= Camera.MinAngleRad ||
-                        polarB.Lat - 2 * Math.PI >= Camera.MinAngleRad ||
-                        polarC.Lat - 2 * Math.PI >= Camera.MinAngleRad)
+                        polarA.Lat - 2 * Math.PI >= state.Camera.MinAngleRad ||
+                        polarB.Lat - 2 * Math.PI >= state.Camera.MinAngleRad ||
+                        polarC.Lat - 2 * Math.PI >= state.Camera.MinAngleRad)
                     {
                         polarC.Lat -= 2 * Math.PI;
                         polarB.Lat -= 2 * Math.PI;
@@ -273,13 +247,13 @@ namespace SoftEngine
                     }
 
                     while (
-                        polarA.Lat <= Camera.MaxAngleRad ||
-                        polarB.Lat <= Camera.MaxAngleRad ||
-                        polarC.Lat <= Camera.MaxAngleRad)
+                        polarA.Lat <= state.Camera.MaxAngleRad ||
+                        polarB.Lat <= state.Camera.MaxAngleRad ||
+                        polarC.Lat <= state.Camera.MaxAngleRad)
                     {
-                        var pixelA = Project(state, ref mesh.Vertices[face.A], ref polarA);
-                        var pixelB = Project(state, ref mesh.Vertices[face.B], ref polarB);
-                        var pixelC = Project(state, ref mesh.Vertices[face.C], ref polarC);
+                        var pixelA = state.Project(ref mesh.Vertices[face.A], ref polarA);
+                        var pixelB = state.Project(ref mesh.Vertices[face.B], ref polarB);
+                        var pixelC = state.Project(ref mesh.Vertices[face.C], ref polarC);
 
                         DrawTriangle(state, ref pixelA, ref pixelB, ref pixelC, mesh.Texture, ref buffv);
 
@@ -287,24 +261,6 @@ namespace SoftEngine
                         polarB.Lat += 2 * Math.PI;
                         polarA.Lat += 2 * Math.PI;
                     }
-                }
-            }
-
-            return state;
-        }
-
-        public void ManualDrawInto(DirectBitmap bmp, Func<GeoPolar2d, MyColor> colorForPoint)
-        {
-            RenderState state = new RenderState(bmp, false);
-            double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
-            for (int x = 0; x < state.Width; x++)
-            {
-                for (int y = 0; y < state.Height; y++)
-                {
-                    var polar = new GeoPolar2d(
-                     (state.Width * 0.5 - x) * fovRad / state.Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
-                     (state.Height * 0.5 - y) * fovRad / state.Width);
-                    state.PutPixel(x, y, colorForPoint(polar));
                 }
             }
         }
@@ -318,68 +274,74 @@ namespace SoftEngine
             return (a < ab) == (ab < b);
         }
 
-        // Project takes some 3D coordinates and transform them
-        // in 2D coordinates using the transformation matrix
-        // It also transform the same coordinates and the normal to the vertex
-        // in the 3D world
-        private VertexProj Project(RenderState state, ref Vertex vertex, ref GeoPolar3d polar)
-        {
-            double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
-            return new VertexProj
-            {
-                Coordinates = new Vector3fProj(
-                    (int)(state.Width * 0.5 - state.Width / fovRad * (polar.Lat - (Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5)),
-                    (int)(state.Height * 0.5 - state.Width / fovRad * polar.Lon),
-                    (float)polar.Height),
-                Normal = vertex.Normal,
-                WorldCoordinates = vertex.Coordinates,
-                TextureCoordinates = vertex.TextureCoordinates
-            };
-        }
-
-        private void TransformToPolar(ref Vector3f p, ref GeoPolar3d delta)
-        {
-            // Figure out angle in x-y plane.
-            delta.Lat = Math.Atan2(p.X, p.Y);
-            // Then the "height" angle.
-            var xy = p.Y * p.Y + p.X * p.X;
-            var dZ = p.Z - Camera.HeightOffset;
-            delta.Lon = Math.Atan2(dZ, Math.Sqrt(xy));
-            delta.Height = Math.Sqrt(xy + dZ * dZ);
-        }
-
         public class RenderState
         {
             private readonly DirectBitmap Bmp;
             private readonly float[] DepthBuffer;
+            private readonly Vector3f[] ns;
             private readonly Vector2f[] UVs;
+            private readonly Vector2d?[][] latLons;
             private readonly float?[] DistSq;
-            private readonly bool useHaze;
             public readonly int Width;
             public readonly int Height;
+            public Camera Camera { get; set; }
 
-            public RenderState(DirectBitmap bmp, bool useHaze)
+            public RenderState(DirectBitmap bmp)
             {
                 Bmp = bmp;
-                this.useHaze = useHaze;
                 Width = bmp.Width;
                 Height = bmp.Height;
                 DepthBuffer = new float[Width * Height];
                 UVs = new Vector2f[Width * Height];
+                ns = new Vector3f[Width * Height];
                 DistSq = new float?[Width * Height];
-
-                // Clearing Back Buffer
-                bmp.SetAllPixels(new MyColor(0, 0, 0, 0));
 
                 // Clearing Depth Buffer
                 for (var index = 0; index < DepthBuffer.Length; index++)
                 {
                     DepthBuffer[index] = float.MaxValue;
                 }
+
+                latLons = new Vector2d?[Width][];
+                for (int i = 0; i < Width; i++)
+                {
+                    latLons[i] = new Vector2d?[Height];
+                }
+            }
+
+            // Project takes some 3D coordinates and transform them
+            // in 2D coordinates using the transformation matrix
+            // It also transform the same coordinates and the normal to the vertex
+            // in the 3D world
+            public VertexProj Project(ref Vertex vertex, ref GeoPolar3d polar)
+            {
+                double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
+                return new VertexProj
+                {
+                    Coordinates = new Vector3fProj(
+                        (int)(Width * 0.5 - Width / fovRad * (polar.Lat - (Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5)),
+                        (int)(Height * 0.5 - Width / fovRad * polar.Lon),
+                        (float)polar.Height),
+                    Normal = vertex.Normal,
+                    WorldCoordinates = vertex.Coordinates,
+                    TextureCoordinates = vertex.TextureCoordinates
+                };
+            }
+
+            public void TransformToPolar(ref Vector3f p, ref GeoPolar3d delta)
+            {
+                // Figure out angle in x-y plane.
+                delta.Lat = Math.Atan2(p.X, p.Y);
+                // Then the "height" angle.
+                var xy = p.Y * p.Y + p.X * p.X;
+                var dZ = p.Z - Camera.HeightOffset;
+                delta.Lon = Math.Atan2(dZ, Math.Sqrt(xy));
+                delta.Height = Math.Sqrt(xy + dZ * dZ);
             }
 
             // Called to put a pixel on screen at a specific X,Y coordinates
             public void PutPixel(int x, int y, float z, MyColor color,
+                float nx, float ny, float nz,
                 float u, float v,
                 float distSq)
             {
@@ -390,37 +352,114 @@ namespace SoftEngine
                     if (DepthBuffer[index] > z)
                     {
                         DepthBuffer[index] = z;
-
-                        if (useHaze)
-                        {
-                            double clearWeight = 0.2 + 0.8 / (1.0 + distSq * 1.0e-9);
-                            color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
-                            color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
-                            color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
-                        }
-
                         Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
                         UVs[index] = new Vector2f(u, v);
+                        ns[index].X = nx;
+                        ns[index].Y = ny;
+                        ns[index].Z = nz;
                         DistSq[index] = distSq;
                     }
                 }
             }
 
-            public void PutPixel(int x, int y, MyColor color)
+            //private void PutPixel(int x, int y, MyColor color)
+            //{
+            //    Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
+            //}
+
+            //public float? GetDistSq(int x, int y)
+            //{
+            //    var index = ((Width - 1 - x) + y * Width);
+            //    return DistSq[index];
+            //}
+
+            public DirectBitmap RenderLight(Vector3f light, float directLight, float ambientLight, Nishita skyColor)
             {
-                Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
+                var ret = new DirectBitmap(Width, Height);
+                MyColor color = new MyColor();
+                double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
+                for (int x = 0; x < Width; x++)
+                {
+                    for (int y = 0; y < Height; y++)
+                    {
+                        var index = (Width - 1 - x) + y * Width;
+                        var z = DepthBuffer[index];
+                        MyColor col = new MyColor();
+                        Bmp.GetPixel(Width - 1 - x, Height - 1 - y, ref col);
+                        MyColor col2 = new MyColor();
+                        Bmp.GetPixel(Width - 1 - x, y, ref col2);
+                        MyColor col3 = new MyColor();
+                        Bmp.GetPixel(x, Height - 1 - y, ref col3);
+                        var uv = UVs[index];
+                        var n = ns[index];
+                        var distSq2 = DistSq[index];
+
+                        Bmp.GetPixel(Width - 1 - x, y, ref color);
+
+                        if (!distSq2.HasValue)
+                        {
+                            var skyPt = new GeoPolar2d(
+                                (Width * 0.5 - x) * fovRad / Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
+                                (Height * 0.5 - y) * fovRad / Width);
+                            color = skyColor.SkyColorAtPoint(skyPt);
+                        }
+                        else
+                        {
+                            // computing the cos of the angle between the light vector and the normal vector
+                            // it will return a value between 0 and 1 that will be used as the intensity of the color
+
+                            if (color.A == 0)
+                            {
+                                color = new MyColor(200, 200, 200, 255);
+                            }
+
+                            ns[index].Normalize();
+                            var dot = Math.Max(0, Vector3f.Dot(ref ns[index], ref light));
+                            var l = dot * directLight + ambientLight;
+                            var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
+
+                            color.ScaleSelf(ndotl);
+
+                            var distSq = DistSq[index].Value;
+
+                            //if (useHaze)
+                            //{
+                            //    double clearWeight = 0.2 + 0.8 / (1.0 + distSq * 1.0e-9);
+                            //    color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
+                            //    color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
+                            //    color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
+                            //}
+                        }
+
+                        ret.SetPixel(Width - 1 - x, Height - 1 - y, color);
+                    }
+                }
+
+                return ret;
             }
 
-            public Vector2f GetUV(int x, int y)
+            public void UpdateLatLons(Angle latLo, Angle latDelta, Angle lonLo, Angle lonDelta)
             {
-                var index = ((Width - 1 - x) + y * Width);
-                return UVs[index];
+                for (int i = 0; i < latLons.Length; i++)
+                {
+                    for (int j = 0; j < latLons[i].Length; j++)
+                    {
+                        int index = i + (Height - 1 - j) * Width;
+                        var r = UVs[index];
+                        if (r != null)
+                        {
+                            latLons[i][j] = new Vector2d(
+                                latLo.DecimalDegree + latDelta.DecimalDegree * (1.0 - r.Y),
+                                lonLo.DecimalDegree + lonDelta.DecimalDegree * r.X);
+                            UVs[index] = null;
+                        }
+                    }
+                }
             }
 
-            public float? GetDistSq(int x, int y)
+            public Vector2d?[][] GetLatLons()
             {
-                var index = ((Width - 1 - x) + y * Width);
-                return DistSq[index];
+                return latLons;
             }
         }
     }

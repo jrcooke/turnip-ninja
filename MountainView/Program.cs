@@ -4,6 +4,7 @@ using MountainView.Elevation;
 using MountainView.Imaging;
 using MountainView.Landmarks;
 using MountainView.Mesh;
+using MountainView.SkyColor;
 using SoftEngine;
 using System;
 using System.Diagnostics;
@@ -121,7 +122,9 @@ namespace MountainView
             DateTime start = DateTime.Now;
             BlobHelper.SetConnectionString(ConfigurationManager.AppSettings["ConnectionString"]);
 
-            Device device = new Device()
+            int subpixel = 3;
+            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
+            Device.RenderState renderState = new Device.RenderState(compositeBmp)
             {
                 Camera = new Camera()
                 {
@@ -129,15 +132,8 @@ namespace MountainView
                     MinAngleRad = config.MinAngleDec * Math.PI / 180,
                     HeightOffset = config.HeightOffset,
                 },
-                AmbientLight = config.AmbientLight, // 0.5f,
-                DirectLight = config.DirectLight, //1.0f,
-                Light = config.Light, // new Vector3f(0, 0, 20),
             };
 
-            int subpixel = 3;
-            var chunkBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
-            var compositeBmp = new DirectBitmap(subpixel * config.Width, subpixel * config.Height);
-            compositeBmp.SetAllPixels(View.skyColor);
             var chunks = View.GetRelevantChunkKeys(config, log);
             StandardChunkMetadata mainChunk = StandardChunkMetadata.GetRangeFromKey(chunks.Last());
             var mainMesh = await Meshes.Current.GetData(mainChunk, log);
@@ -149,7 +145,6 @@ namespace MountainView
                 10,
                 log);
 
-            string fileNameRoot = DateTime.Now.ToString("HHmmss");
 
             int counter = 0;
             foreach (var chunkKey in chunks)
@@ -161,7 +156,6 @@ namespace MountainView
                 if (mesh == null) continue;
 
                 mesh.Match(norm);
-
                 try
                 {
                     mesh.ImageData = await JpegImages.Current.GetData(chunk, log);
@@ -183,41 +177,33 @@ namespace MountainView
                     }
                 }
 
-                var renderMesh = SoftEngine.Mesh.GetMesh(mesh);
-                foreach (var oldMesh in device.Meshes)
+                using (var renderMesh = SoftEngine.Mesh.GetMesh(mesh))
                 {
-                    oldMesh.Dispose();
-                }
-
-                device.Meshes.Clear();
-                device.Meshes.Add(renderMesh);
-                var renderState = device.RenderInto(chunkBmp, config.UseHaze);
-                compositeBmp.DrawOn(chunkBmp);
-
-                for (int i = 0; i < latLons.Length; i++)
-                {
-                    for (int j = 0; j < latLons[i].Length; j++)
-                    {
-                        var r = renderState.GetUV(latLons.Length - 1 - i, latLons[i].Length - 1 - j);
-                        if (r != null)
-                        {
-                            latLons[i][j] = new Vector2d(
-                                chunk.LatLo.DecimalDegree + chunk.LatDelta.DecimalDegree * (1.0 - r.Y),
-                                chunk.LonLo.DecimalDegree + chunk.LonDelta.DecimalDegree * r.X);
-                        }
-                    }
+                    Device.RenderInto(renderState, renderMesh);
+                    renderState.UpdateLatLons(chunk.LatLo, chunk.LatDelta, chunk.LonLo, chunk.LonDelta);
                 }
 
                 counter++;
                 log?.WriteLine(counter);
             }
 
-            FeatureInfo[][] features = latLons.Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
-            drawToScreen?.Invoke(compositeBmp.GetStream(OutputType.PNG), features);
+            FeatureInfo[][] features = renderState.GetLatLons().Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
 
-            using (var fs = File.OpenWrite("final" + fileNameRoot + ".jpg"))
+            string fileNameRoot = DateTime.Now.ToString("HHmmss");
+            config.LocalTime = new DateTimeOffset(2019, 3, 5, 0, 0, 0, TimeSpan.FromHours(-8));
+            while (config.LocalTime < new DateTimeOffset(2019, 3, 6, 0, 0, 0, TimeSpan.FromHours(-8)))
             {
-                compositeBmp.WriteFile(OutputType.JPEG, fs);
+                var skyColor = new Nishita(config.SunPos, 0.01);
+                using (DirectBitmap lighted = renderState.RenderLight(config.Light, config.DirectLight, config.AmbientLight, skyColor))
+                {
+                    drawToScreen?.Invoke(lighted.GetStream(OutputType.PNG), features);
+                    using (var fs = File.OpenWrite("final_" + config.LocalTime.ToString("HHmmss") + "_" + fileNameRoot + ".jpg"))
+                    {
+                        lighted.WriteFile(OutputType.JPEG, fs);
+                    }
+                }
+
+                config.LocalTime = config.LocalTime.AddHours(1);
             }
 
             DateTime end = DateTime.Now;

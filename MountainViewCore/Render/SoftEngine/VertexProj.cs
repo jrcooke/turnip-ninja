@@ -11,6 +11,5 @@ namespace SoftEngine
         public Vector3fProj Coordinates;
         public Vector3f WorldCoordinates;
         public Vector2f TextureCoordinates;
-        public float NdotL;
     }
 }
