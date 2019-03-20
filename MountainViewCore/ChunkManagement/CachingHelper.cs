@@ -117,7 +117,7 @@ namespace MountainView
 
             if (template.ZoomLevel <= this.SourceDataZoom)
             {
-                throw new InvalidOperationException("Source data is missing for chunk " + template.ToString());
+                throw new MountainViewException("Source data is missing for chunk " + template.ToString());
                 //log?.WriteLine("Starting generation...");
                 //ret = await GenerateData(template, log);
                 //await WriteChunk(ret, fileName, log);

@@ -63,7 +63,7 @@ namespace MountainView.Imaging
 
             if (ms == null)
             {
-                throw new InvalidOperationException("Source image not found for chunk " + template.ToString());
+                throw new MountainViewException("Source image not found for chunk " + template.ToString());
             }
 
             imageData = new byte[ms.Length];

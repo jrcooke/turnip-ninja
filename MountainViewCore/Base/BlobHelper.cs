@@ -27,7 +27,7 @@ namespace MountainView.Base
                 if (string.IsNullOrEmpty(connectionString))
                 {
                     log?.WriteLine("Must set the 'connectionString' property prior to use");
-                    throw new InvalidOperationException("Must set the 'connectionString' property prior to use");
+                    throw new MountainViewException("Must set the 'connectionString' property prior to use");
                 }
 
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);

@@ -33,7 +33,7 @@ namespace MountainView.Imaging
         private static Dictionary<string, ChunkHolder<MyColor>> cache = new Dictionary<string, ChunkHolder<MyColor>>();
         private static Dictionary<string, DateTime> cacheLastTouched = new Dictionary<string, DateTime>();
 
-        private static object generalLock = new object();
+        private static readonly object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
         public static async Task<ChunkHolder<MyColor>> GetRawColors(Angle lat, Angle lon, TraceListener log)
@@ -44,7 +44,7 @@ namespace MountainView.Imaging
 
             if (fileInfo == null)
             {
-                throw new InvalidOperationException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
+                throw new MountainViewException("Need more data for " + lat.ToLatString() + ", " + lon.ToLonString() + "!");
             }
 
             if (!File.Exists(Path.Combine(Path.GetTempPath(), fileInfo.LocalName)))
@@ -154,7 +154,7 @@ namespace MountainView.Imaging
                 {
                     var metadataLines = await BlobHelper.ReadAllLines(cachedFileContainer, metadata, log);
                     string[] header = metadataLines.First().Split(',');
-                    var nameToIndex = header.Select((p, i) => new { p = p, i = i }).ToDictionary(p => p.p, p => p.i);
+                    var nameToIndex = header.Select((p, i) => new { p, i }).ToDictionary(p => p.p, p => p.i);
                     var fileInfo = metadataLines
                         .Skip(1)
                         .Select(p => p.Split(','))

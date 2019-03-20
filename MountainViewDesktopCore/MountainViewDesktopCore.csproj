@@ -117,6 +117,9 @@
     <Compile Include="..\MountainViewCore\Base\KDNode.cs">
       <Link>Base\KDNode.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\Base\MountainViewException.cs">
+      <Link>Base\MountainViewException.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\Base\MyColor.cs">
       <Link>Base\MyColor.cs</Link>
     </Compile>

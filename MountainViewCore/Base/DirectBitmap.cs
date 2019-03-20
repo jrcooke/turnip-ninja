@@ -149,7 +149,7 @@ namespace MountainView.Base
         {
             if (Width != chunkBmp.Width || Height != chunkBmp.Height)
             {
-                throw new InvalidOperationException("Bitmaps must be same size");
+                throw new MountainViewException("Bitmaps must be same size");
             }
 
             unsafe

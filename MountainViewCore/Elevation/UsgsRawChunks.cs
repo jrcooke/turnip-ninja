@@ -24,7 +24,7 @@ namespace MountainView.Elevation
 
         private static Dictionary<string, ChunkHolder<float>> cache = new Dictionary<string, ChunkHolder<float>>();
 
-        private static object generalLock = new object();
+        private static readonly object generalLock = new object();
         private static Dictionary<string, object> specificLocks = new Dictionary<string, object>();
 
         public static async Task< ChunkHolder<float>> GetRawHeightsInMeters(int lat, int lon, TraceListener log)
@@ -40,7 +40,7 @@ namespace MountainView.Elevation
                 {
                     if (ms == null)
                     {
-                        throw new InvalidOperationException("File should exist: '" + zipFile + "'");
+                        throw new MountainViewException("File should exist: '" + zipFile + "'");
                     }
 
                     using (var fileStream = File.Create(Path.Combine(Path.GetTempPath(), zipFile)))
