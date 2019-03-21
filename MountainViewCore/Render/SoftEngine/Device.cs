@@ -382,53 +382,25 @@ namespace SoftEngine
                 {
                     for (int y = 0; y < Height; y++)
                     {
+                        var skyPt = new GeoPolar2d(
+                            (Width * 0.5 - x) * fovRad / Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
+                            (Height * 0.5 - y) * fovRad / Width);
+
                         var index = (Width - 1 - x) + y * Width;
-                        var z = DepthBuffer[index];
-                        MyColor col = new MyColor();
-                        Bmp.GetPixel(Width - 1 - x, Height - 1 - y, ref col);
-                        MyColor col2 = new MyColor();
-                        Bmp.GetPixel(Width - 1 - x, y, ref col2);
-                        MyColor col3 = new MyColor();
-                        Bmp.GetPixel(x, Height - 1 - y, ref col3);
-                        var uv = UVs[index];
-                        var n = ns[index];
-                        var distSq2 = DistSq[index];
-
-                        Bmp.GetPixel(Width - 1 - x, y, ref color);
-
-                        if (!distSq2.HasValue)
+                        var distSq = DistSq[index];
+                        if (!distSq.HasValue)
                         {
-                            var skyPt = new GeoPolar2d(
-                                (Width * 0.5 - x) * fovRad / Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
-                                (Height * 0.5 - y) * fovRad / Width);
-                            color = skyColor.SkyColorAtPoint(skyPt);
+                            color = skyColor.SkyColorAtPoint(Camera.HeightOffset, skyPt);
                         }
                         else
                         {
-                            // computing the cos of the angle between the light vector and the normal vector
-                            // it will return a value between 0 and 1 that will be used as the intensity of the color
-
-                            if (color.A == 0)
-                            {
-                                color = new MyColor(200, 200, 200, 255);
-                            }
-
+                            Bmp.GetPixel(Width - 1 - x, y, ref color);
                             ns[index].Normalize();
                             var dot = Math.Max(0, Vector3f.Dot(ref ns[index], ref light));
-                            var l = dot * directLight + ambientLight;
+                            var l = dot * directLight;// + ambientLight;
                             var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
 
-                            color.ScaleSelf(ndotl);
-
-                            var distSq = DistSq[index].Value;
-
-                            //if (useHaze)
-                            //{
-                            //    double clearWeight = 0.2 + 0.8 / (1.0 + distSq * 1.0e-9);
-                            //    color.R = (byte)(int)(color.R * clearWeight + View.skyColor.R * (1 - clearWeight));
-                            //    color.G = (byte)(int)(color.G * clearWeight + View.skyColor.G * (1 - clearWeight));
-                            //    color.B = (byte)(int)(color.B * clearWeight + View.skyColor.B * (1 - clearWeight));
-                            //}
+                            color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot *directLight, ambientLight);
                         }
 
                         ret.SetPixel(Width - 1 - x, Height - 1 - y, color);

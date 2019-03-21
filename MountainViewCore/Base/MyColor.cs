@@ -61,5 +61,45 @@ namespace MountainView.Base
         {
             return "(" + R + "," + G + "," + B + ")";
         }
+
+        internal MyDColor Mult(double a)
+        {
+            return new MyDColor()
+            {
+                R = R * a,
+                G = G * a,
+                B = B * a,
+            };
+        }
+
+        internal MyDColor Mult(MyDColor a)
+        {
+            return new MyDColor()
+            {
+                R = R * a.R,
+                G = G * a.G,
+                B = B * a.B,
+            };
+        }
+
+        internal MyDColor Add(MyDColor a)
+        {
+            return new MyDColor()
+            {
+                R = R + a.R,
+                G = G + a.G,
+                B = B + a.B,
+            };
+        }
+
+        internal MyDColor Add(double a)
+        {
+            return new MyDColor()
+            {
+                R = R + a,
+                G = G + a,
+                B = B + a,
+            };
+        }
     }
 }

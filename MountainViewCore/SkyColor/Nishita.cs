@@ -41,7 +41,6 @@ namespace MountainView.SkyColor
         // Units are 1/meters
         private const double BetaM0 = 210e-5;
 
-
         /// <param name="turbidity">2.2 is clear sky</param>
         public Nishita(GeoPolar2d sunPos, double turbidity) // = 2.2)
         {
@@ -58,7 +57,7 @@ namespace MountainView.SkyColor
             cosPhiSun = Math.Cos(phiSun);
         }
 
-        public void RenderToJpeg(string filename)
+        public void RenderToJpeg(string filename, double h0)
         {
             int width = 1000;
             int height = 250;
@@ -71,18 +70,73 @@ namespace MountainView.SkyColor
                 {
                     double phiDeg = phiI * 90.0 / height;
                     var p = new GeoPolar2d(thetaDeg, phiDeg);
-                    image[thetaI][phiI] = SkyColorAtPoint(p);
+                    image[thetaI][phiI] = SkyColorAtPoint(h0, p);
                 }
             }
 
             Utils.WriteImageFile(image, filename, (a) => a, OutputType.JPEG);
         }
 
-        public MyColor SkyColorAtPoint(GeoPolar2d p)
+        public MyColor SkyColorAtPointDist(double h0, GeoPolar2d p, double dist, MyColor ground, double directLight, double ambiantLight)
         {
-            double h0 = 0.1;
-            //double thetaPixel = p.Lon.Radians;
-            //double phiPixel = p.Lat.Radians;
+            double thetaPixel = p.Lat.Radians;
+            double phiPixel = p.Lon.Radians;
+            double theta = Utils.AngleBetween(thetaPixel, phiPixel, thetaSun, phiSun);
+
+            double sinPhi = Math.Sin(phiPixel);
+
+            var rayR = new MyDColor()
+            {
+                R = BetaR0[(int)Channel.R] * P_R(theta),
+                G = BetaR0[(int)Channel.G] * P_R(theta),
+                B = BetaR0[(int)Channel.B] * P_R(theta),
+            };
+            var rayM = turbidity * BetaM0 * P_M(theta);
+
+            var dground = InverseScaleColor(ground);
+
+            // And the attenuation part, which is present even if no direct sunlight
+            var attenuation = ElementLightAP(h0, dist, sinPhi);
+            var ambient = dground.Mult(ambiantLight).Mult(attenuation);
+
+            MyDColor airColor = new MyDColor();
+            MyDColor direct = new MyDColor();
+            var hitEarth = Intersect(h0, sinPhiSun, 0);
+            if (!hitEarth.HasValue || hitEarth.Value < 0)
+            {
+                // Air has no color if there is no sunlight
+                double? lmaxP = Intersect(h0, sinPhiSun, H_atmosphere);
+
+                MyDColor sunAttenuationR = new MyDColor()
+                {
+                    R = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.R)),
+                    G = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.G)),
+                    B = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.B)),
+                };
+                double sunAttenuationM = Math.Exp(-TM(h0, sinPhiSun, lmaxP.Value));
+
+                double densityPartOfScatteringR = Math.Exp(-h0 / H_R);
+                double densityPartOfScatteringM = Math.Exp(-h0 / H_M);
+
+                airColor = Integrate(0, dist, l => ElementLightAP(h0, l, sinPhi));
+                airColor = sunAttenuationR
+                    .Mult(sunAttenuationM)
+                    .Mult(rayR.Mult(densityPartOfScatteringR).Add(rayM * densityPartOfScatteringM))
+                    .Mult(airColor);
+
+                var sunLight = sunAttenuationR.Mult(sunAttenuationM);
+
+                direct = dground.Mult(directLight).Mult(sunLight).Mult(attenuation);
+            }
+
+            var total = airColor.Add(ambient).Add(direct);
+            MyColor color = ScaleColor(total);
+
+            return color;
+        }
+
+        public MyColor SkyColorAtPoint(double h0, GeoPolar2d p)
+        {
             double thetaPixel = p.Lat.Radians;
             double phiPixel = p.Lon.Radians;
 
@@ -102,38 +156,33 @@ namespace MountainView.SkyColor
             var intersect = Intersect(h0, sinPhi, H_atmosphere);
             if (!intersect.HasValue) return new MyColor();
 
-            var tot = LTot(h0, intersect.Value, sinPhi, cosPhi, sinTheta, cosTheta, theta);
-
-            double scale = 15;
-            double r = scale * tot.R;
-            double g = scale * tot.G;
-            double b = scale * tot.B;
-
-            if (true)
-            {
-                scale = -45.0;
-                r = 1 - Math.Exp(scale * tot.R);
-                g = 1 - Math.Exp(scale * tot.G);
-                b = 1 - Math.Exp(scale * tot.B);
-            }
-
-            var color = new MyColor(
-                (byte)(255 * Math.Max(0.0, Math.Min(1.0, r))),
-                (byte)(255 * Math.Max(0.0, Math.Min(1.0, g))),
-                (byte)(255 * Math.Max(0.0, Math.Min(1.0, b))));
-
-            return color;
-        }
-
-        public MyDColor LTot(double h0, double l_max, double sinPhiP, double cosPhiP, double sinThetaP, double cosThetaP, double theta)
-        {
+            double l_max = intersect.Value;
             var rayRR = BetaR0[(int)Channel.R] * P_R(theta);
             var rayRG = BetaR0[(int)Channel.G] * P_R(theta);
             var rayRB = BetaR0[(int)Channel.B] * P_R(theta);
             var rayM = turbidity * BetaM0 * P_M(theta);
-            var integral =
-                Integrate(0, l_max - 10, l => ElementLight(rayRR, rayRG, rayRB, rayM, h0, l, sinPhiP, cosPhiP, sinThetaP, cosThetaP));
-            return integral;
+            var tot =
+                Integrate(0, l_max - 10, l => ElementLight(rayRR, rayRG, rayRB, rayM, h0, l, sinPhi, cosPhi, sinTheta, cosTheta));
+            MyColor color = ScaleColor(tot);
+            return color;
+        }
+
+        // The core ofthe element light
+        // P is the coords of the pixel we are looking at
+        // l is the distance we've traveled
+        // h0 is the height at the starting point
+        private MyDColor ElementLightAP(double h0, double l, double sinPhiP)
+        {
+            double scatteredAttenuationRR = Math.Exp(-TR(h0, sinPhiP, l, Channel.R));
+            double scatteredAttenuationRG = Math.Exp(-TR(h0, sinPhiP, l, Channel.G));
+            double scatteredAttenuationRB = Math.Exp(-TR(h0, sinPhiP, l, Channel.B));
+            double scatteredAttenuationM = Math.Exp(-TM(h0, sinPhiP, l));
+            return new MyDColor()
+            {
+                R = scatteredAttenuationRR * scatteredAttenuationM,
+                G = scatteredAttenuationRG * scatteredAttenuationM,
+                B = scatteredAttenuationRB * scatteredAttenuationM,
+            };
         }
 
         // The core ofthe element light
@@ -264,6 +313,28 @@ namespace MountainView.SkyColor
             }
 
             return i;
+        }
+
+        private static MyColor ScaleColor(MyDColor tot)
+        {
+            double scale = -45.0;
+            var color = new MyColor(
+                (byte)(255 * Math.Max(0.0, Math.Min(1.0, 1 - Math.Exp(scale * tot.R)))),
+                (byte)(255 * Math.Max(0.0, Math.Min(1.0, 1 - Math.Exp(scale * tot.G)))),
+                (byte)(255 * Math.Max(0.0, Math.Min(1.0, 1 - Math.Exp(scale * tot.B)))));
+            return color;
+        }
+
+        private static MyDColor InverseScaleColor(MyColor color)
+        {
+            double scale = -45.0;
+            MyDColor tot = new MyDColor()
+            {
+                R = Math.Log(1.0 - color.R / 255.0) / scale,
+                G = Math.Log(1.0 - color.G / 255.0) / scale,
+                B = Math.Log(1.0 - color.B / 255.0) / scale,
+            };
+            return tot;
         }
 
         public static void RunTests()
