@@ -190,21 +190,21 @@ namespace MountainView
             FeatureInfo[][] features = renderState.GetLatLons().Select(q => q.Select(p => !p.HasValue ? null : UsgsRawFeatures.GetData(p.Value)).ToArray()).ToArray();
 
             string fileNameRoot = DateTime.Now.ToString("HHmmss");
-            config.LocalTime = new DateTimeOffset(2019, 3, 5, 0, 0, 0, TimeSpan.FromHours(-8));
-            while (config.LocalTime < new DateTimeOffset(2019, 3, 6, 0, 0, 0, TimeSpan.FromHours(-8)))
+            //config.LocalTime = new DateTimeOffset(2019, 3, 5, 0, 0, 0, TimeSpan.FromHours(-8));
+            //while (config.LocalTime < new DateTimeOffset(2019, 3, 6, 0, 0, 0, TimeSpan.FromHours(-8)))
+            //{
+            var skyColor = new Nishita(config.SunPos);
+            using (DirectBitmap lighted = renderState.RenderLight(config.Light, config.DirectLight, config.AmbientLight, skyColor))
             {
-                var skyColor = new Nishita(config.SunPos, 0.01);
-                using (DirectBitmap lighted = renderState.RenderLight(config.Light, config.DirectLight, config.AmbientLight, skyColor))
+                drawToScreen?.Invoke(lighted.GetStream(OutputType.PNG), features);
+                using (var fs = File.OpenWrite("final_" + config.LocalTime.ToString("HHmmss") + "_" + fileNameRoot + ".jpg"))
                 {
-                    drawToScreen?.Invoke(lighted.GetStream(OutputType.PNG), features);
-                    using (var fs = File.OpenWrite("final_" + config.LocalTime.ToString("HHmmss") + "_" + fileNameRoot + ".jpg"))
-                    {
-                        lighted.WriteFile(OutputType.JPEG, fs);
-                    }
+                    lighted.WriteFile(OutputType.JPEG, fs);
                 }
-
-                config.LocalTime = config.LocalTime.AddHours(1);
             }
+
+            //    config.LocalTime = config.LocalTime.AddHours(1);
+            //}
 
             DateTime end = DateTime.Now;
             log?.WriteLine(start);

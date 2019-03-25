@@ -13,7 +13,7 @@ namespace MountainView.SkyColor
         private readonly double cosThetaSun;
         private readonly double sinPhiSun;
         private readonly double cosPhiSun;
-        private readonly double turbidity;
+        private readonly double mieScale;
 
         public const double H_atmosphere = 60000;
 
@@ -42,14 +42,13 @@ namespace MountainView.SkyColor
         private const double BetaM0 = 210e-5;
 
         /// <param name="turbidity">2.2 is clear sky</param>
-        public Nishita(GeoPolar2d sunPos, double turbidity) // = 2.2)
+        public Nishita(GeoPolar2d sunPos, double turbidity = 2.2)
         {
             //thetaSun = sunPos.Lon.Radians;
             //phiSun = sunPos.Lat.Radians;
             thetaSun = sunPos.Lat.Radians;
             phiSun = sunPos.Lon.Radians;
-            this.turbidity = turbidity;
-
+            this.mieScale = turbidity / 220;
 
             sinThetaSun = Math.Sin(thetaSun);
             sinPhiSun = Math.Sin(phiSun);
@@ -91,7 +90,7 @@ namespace MountainView.SkyColor
                 G = BetaR0[(int)Channel.G] * P_R(theta),
                 B = BetaR0[(int)Channel.B] * P_R(theta),
             };
-            var rayM = turbidity * BetaM0 * P_M(theta);
+            var rayM = mieScale * BetaM0 * P_M(theta);
 
             var dground = InverseScaleColor(ground);
 
@@ -160,7 +159,7 @@ namespace MountainView.SkyColor
             var rayRR = BetaR0[(int)Channel.R] * P_R(theta);
             var rayRG = BetaR0[(int)Channel.G] * P_R(theta);
             var rayRB = BetaR0[(int)Channel.B] * P_R(theta);
-            var rayM = turbidity * BetaM0 * P_M(theta);
+            var rayM = mieScale * BetaM0 * P_M(theta);
             var tot =
                 Integrate(0, l_max - 10, l => ElementLight(rayRR, rayRG, rayRB, rayM, h0, l, sinPhi, cosPhi, sinTheta, cosTheta));
             MyColor color = ScaleColor(tot);
@@ -291,7 +290,7 @@ namespace MountainView.SkyColor
 
         public double TM(double h0, double sinPhi, double lmax)
         {
-            return turbidity * BetaM0 * TOverBeta(h0, sinPhi, lmax, H_M);
+            return mieScale * BetaM0 * TOverBeta(h0, sinPhi, lmax, H_M);
         }
 
         public static double TOverBeta(double h0, double sinPhi, double lmax, double H)
@@ -339,6 +338,11 @@ namespace MountainView.SkyColor
 
         public static void RunTests()
         {
+            var integralOfPR = 2 * Math.PI * Integrate(0, Math.PI, theta => P_R(theta) * Math.Sin(theta), 100000);
+            var integralOfPM = 2 * Math.PI * Integrate(0, Math.PI, theta => P_M(theta) * Math.Sin(theta), 100000);
+            AssertEqualWithin(1.0, integralOfPR, 2.5e-6, "Integral of R phase function over solid angle");
+            AssertEqualWithin(1.0, integralOfPM, 2.5e-6, "Integral of M phase function over solid angle");
+
             double lmax0 = Intersect(0, 0, H_atmosphere).Value;
             double lmax1 = Intersect(0, 1, H_atmosphere).Value;
 

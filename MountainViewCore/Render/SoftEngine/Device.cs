@@ -390,17 +390,25 @@ namespace SoftEngine
                         var distSq = DistSq[index];
                         if (!distSq.HasValue)
                         {
-                            color = skyColor.SkyColorAtPoint(Camera.HeightOffset, skyPt);
+                            color = skyColor?.SkyColorAtPoint(Camera.HeightOffset, skyPt) ?? new MyColor();
                         }
                         else
                         {
                             Bmp.GetPixel(Width - 1 - x, y, ref color);
                             ns[index].Normalize();
                             var dot = Math.Max(0, Vector3f.Dot(ref ns[index], ref light));
-                            var l = dot * directLight;// + ambientLight;
-                            var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
-
-                            color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot *directLight, ambientLight);
+                            if (skyColor != null)
+                            {
+                                var l = dot * directLight;
+                                var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
+                                color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot * directLight, ambientLight);
+                            }
+                            else
+                            {
+                                var l = dot * directLight + ambientLight;
+                                var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
+                                color.ScaleSelf(ndotl);
+                            }
                         }
 
                         ret.SetPixel(Width - 1 - x, Height - 1 - y, color);
