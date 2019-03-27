@@ -234,6 +234,9 @@
     <Compile Include="..\MountainViewCore\SkyColor\Nishita.cs">
       <Link>SkyColor\Nishita.cs</Link>
     </Compile>
+    <Compile Include="..\MountainViewCore\SkyColor\NishitaInterp.cs">
+      <Link>SkyColor\NishitaInterp.cs</Link>
+    </Compile>
     <Compile Include="..\MountainViewCore\SkyColor\Preetham.cs">
       <Link>SkyColor\Preetham.cs</Link>
     </Compile>

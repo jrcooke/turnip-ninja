@@ -378,6 +378,10 @@ namespace SoftEngine
                 var ret = new DirectBitmap(Width, Height);
                 MyColor color = new MyColor();
                 double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
+                NishitaInterp sc = skyColor == null ? null : new NishitaInterp(skyColor, Camera.HeightOffset,
+                    directLight, ambientLight,
+                    -Camera.MaxAngleRad, -Camera.MinAngleRad, 10,
+                    -fovRad * Height / (2 * Width), +fovRad * Height / (2 * Width), 10);
                 for (int x = 0; x < Width; x++)
                 {
                     for (int y = 0; y < Height; y++)
@@ -390,7 +394,7 @@ namespace SoftEngine
                         var distSq = DistSq[index];
                         if (!distSq.HasValue)
                         {
-                            color = skyColor?.SkyColorAtPoint(Camera.HeightOffset, skyPt) ?? new MyColor();
+                            color = sc?.SkyColorAtPoint(skyPt) ?? new MyColor();
                         }
                         else
                         {
