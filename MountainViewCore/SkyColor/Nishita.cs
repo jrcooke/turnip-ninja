@@ -76,14 +76,17 @@ namespace MountainView.SkyColor
             Utils.WriteImageFile(image, filename, (a) => a, OutputType.JPEG);
         }
 
-        public MyColor SkyColorAtPointDist(double h0, GeoPolar2d p, double dist, MyColor ground, double directLight, double ambiantLight)
+        public MyColor SkyColorAtPointDist(double h0, GeoPolar2d p, double dist, MyColor ground, double nDotL, double ambiantLight)
         {
             double thetaPixel = p.Lat.Radians;
             double phiPixel = p.Lon.Radians;
             double theta = Utils.AngleBetween(thetaPixel, phiPixel, thetaSun, phiSun);
 
-            double sinPhi = Math.Sin(phiPixel);
+            return NewMethod(h0, dist, ground, nDotL, ambiantLight, theta);
+        }
 
+        private MyColor NewMethod(double h0, double dist, MyColor ground, double nDotL, double ambiantLight, double theta)
+        {
             var rayR = new MyDColor()
             {
                 R = BetaR0[(int)Channel.R] * P_R(theta),
@@ -95,7 +98,7 @@ namespace MountainView.SkyColor
             var dground = InverseScaleColor(ground);
 
             // And the attenuation part, which is present even if no direct sunlight
-            var attenuation = ElementLightAP(h0, dist, sinPhi);
+            var attenuation = ElementLightAP(h0, dist, 0);
             var ambient = dground.Mult(ambiantLight).Mult(attenuation);
 
             MyDColor airColor = new MyDColor();
@@ -117,7 +120,7 @@ namespace MountainView.SkyColor
                 double densityPartOfScatteringR = Math.Exp(-h0 / H_R);
                 double densityPartOfScatteringM = Math.Exp(-h0 / H_M);
 
-                airColor = Integrate(0, dist, l => ElementLightAP(h0, l, sinPhi));
+                airColor = Integrate(0, dist, l => ElementLightAP(h0, l, 0));
                 airColor = sunAttenuationR
                     .Mult(sunAttenuationM)
                     .Mult(rayR.Mult(densityPartOfScatteringR).Add(rayM * densityPartOfScatteringM))
@@ -125,7 +128,7 @@ namespace MountainView.SkyColor
 
                 var sunLight = sunAttenuationR.Mult(sunAttenuationM);
 
-                direct = dground.Mult(directLight).Mult(sunLight).Mult(attenuation);
+                direct = dground.Mult(nDotL).Mult(sunLight).Mult(attenuation);
             }
 
             var total = airColor.Add(ambient).Add(direct);

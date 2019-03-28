@@ -404,8 +404,7 @@ namespace SoftEngine
                             if (skyColor != null)
                             {
                                 var l = dot * directLight;
-                                var ndotl = l > 1.0f ? 1.0f : l < 0.0f ? 0.0f : l;
-                                color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot * directLight, ambientLight);
+                                color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot, ambientLight);
                             }
                             else
                             {
