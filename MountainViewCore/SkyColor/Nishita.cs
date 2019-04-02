@@ -109,13 +109,14 @@ namespace MountainView.SkyColor
                 // Air has no color if there is no sunlight
                 double? lmaxP = Intersect(h0, sinPhiSun, H_atmosphere);
 
+                double sunAttenuationRbase = TOverBeta(h0, sinPhiSun, lmaxP.Value, H_R);
                 MyDColor sunAttenuationR = new MyDColor()
                 {
-                    R = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.R)),
-                    G = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.G)),
-                    B = Math.Exp(-TR(h0, sinPhiSun, lmaxP.Value, Channel.B)),
+                    R = Math.Exp(-BetaR0[(int)Channel.R] * sunAttenuationRbase),
+                    G = Math.Exp(-BetaR0[(int)Channel.G] * sunAttenuationRbase),
+                    B = Math.Exp(-BetaR0[(int)Channel.B] * sunAttenuationRbase),
                 };
-                double sunAttenuationM = Math.Exp(-TM(h0, sinPhiSun, lmaxP.Value));
+                double sunAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h0, sinPhiSun, lmaxP.Value, H_M));
 
                 double densityPartOfScatteringR = Math.Exp(-h0 / H_R);
                 double densityPartOfScatteringM = Math.Exp(-h0 / H_M);
@@ -128,7 +129,7 @@ namespace MountainView.SkyColor
 
                 var sunLight = sunAttenuationR.Mult(sunAttenuationM);
 
-                direct = dground.Mult(nDotL).Mult(sunLight).Mult(attenuation);
+                direct = dground.Mult(nDotL * 2).Mult(sunLight).Mult(attenuation);
             }
 
             var total = airColor.Add(ambient).Add(direct);
@@ -175,10 +176,11 @@ namespace MountainView.SkyColor
         // h0 is the height at the starting point
         private MyDColor ElementLightAP(double h0, double l, double sinPhiP)
         {
-            double scatteredAttenuationRR = Math.Exp(-TR(h0, sinPhiP, l, Channel.R));
-            double scatteredAttenuationRG = Math.Exp(-TR(h0, sinPhiP, l, Channel.G));
-            double scatteredAttenuationRB = Math.Exp(-TR(h0, sinPhiP, l, Channel.B));
-            double scatteredAttenuationM = Math.Exp(-TM(h0, sinPhiP, l));
+            double scatteredAttenuationRbase = TOverBeta(h0, sinPhiP, l, H_R);
+            double scatteredAttenuationRR = Math.Exp(-BetaR0[(int)Channel.R] * scatteredAttenuationRbase);
+            double scatteredAttenuationRG = Math.Exp(-BetaR0[(int)Channel.G] * scatteredAttenuationRbase);
+            double scatteredAttenuationRB = Math.Exp(-BetaR0[(int)Channel.B] * scatteredAttenuationRbase);
+            double scatteredAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h0, sinPhiP, l, H_M));
             return new MyDColor()
             {
                 R = scatteredAttenuationRR * scatteredAttenuationM,
@@ -228,19 +230,22 @@ namespace MountainView.SkyColor
                     throw new InvalidOperationException();
                 }
 
-                sunAttenuationRR = Math.Exp(-TR(h, sinPhiSunPrime, lmaxP.Value, Channel.R));
-                sunAttenuationRG = Math.Exp(-TR(h, sinPhiSunPrime, lmaxP.Value, Channel.G));
-                sunAttenuationRB = Math.Exp(-TR(h, sinPhiSunPrime, lmaxP.Value, Channel.B));
-                sunAttenuationM = Math.Exp(-TM(h, sinPhiSunPrime, lmaxP.Value));
+                double sunAttenuationRbase = TOverBeta(h, sinPhiSunPrime, lmaxP.Value, H_R);
+                sunAttenuationRR = Math.Exp(-BetaR0[(int)Channel.R] * sunAttenuationRbase);
+                sunAttenuationRG = Math.Exp(-BetaR0[(int)Channel.G] * sunAttenuationRbase);
+                sunAttenuationRB = Math.Exp(-BetaR0[(int)Channel.B] * sunAttenuationRbase);
+                sunAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h, sinPhiSunPrime, lmaxP.Value, H_M));
+
             }
 
             double densityPartOfScatteringR = Math.Exp(-h / H_R);
             double densityPartOfScatteringM = Math.Exp(-h / H_M);
 
-            double scatteredAttenuationRR = Math.Exp(-TR(h0, sinPhiP, l, Channel.R));
-            double scatteredAttenuationRG = Math.Exp(-TR(h0, sinPhiP, l, Channel.G));
-            double scatteredAttenuationRB = Math.Exp(-TR(h0, sinPhiP, l, Channel.B));
-            double scatteredAttenuationM = Math.Exp(-TM(h0, sinPhiP, l));
+            double scatteredAttenuationRbase = TOverBeta(h0, sinPhiP, l, H_R);
+            double scatteredAttenuationRR = Math.Exp(-BetaR0[(int)Channel.R] * scatteredAttenuationRbase);
+            double scatteredAttenuationRG = Math.Exp(-BetaR0[(int)Channel.G] * scatteredAttenuationRbase);
+            double scatteredAttenuationRB = Math.Exp(-BetaR0[(int)Channel.B] * scatteredAttenuationRbase);
+            double scatteredAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h0, sinPhiP, l, H_M));
 
             double totalR = sunAttenuationRR * sunAttenuationM * (rayRR * densityPartOfScatteringR + rayM * densityPartOfScatteringM) * scatteredAttenuationRR * scatteredAttenuationM;
             double totalG = sunAttenuationRG * sunAttenuationM * (rayRG * densityPartOfScatteringR + rayM * densityPartOfScatteringM) * scatteredAttenuationRG * scatteredAttenuationM;
@@ -284,16 +289,6 @@ namespace MountainView.SkyColor
             double g = 0.76;
             double g2 = g * g;
             return 3.0 * (1 - g2) * (1 + cosTheta * cosTheta) / (8 * Math.PI * (2 + g2) * Math.Pow(1 + g2 - 2 * g * cosTheta, 1.5));
-        }
-
-        public static double TR(double h0, double sinPhi, double lmax, Channel lambda)
-        {
-            return BetaR0[(int)lambda] * TOverBeta(h0, sinPhi, lmax, H_R);
-        }
-
-        public double TM(double h0, double sinPhi, double lmax)
-        {
-            return mieScale * BetaM0 * TOverBeta(h0, sinPhi, lmax, H_M);
         }
 
         public static double TOverBeta(double h0, double sinPhi, double lmax, double H)
