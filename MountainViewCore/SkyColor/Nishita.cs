@@ -78,64 +78,77 @@ namespace MountainView.SkyColor
 
         public MyColor SkyColorAtPointDist(double h0, GeoPolar2d p, double dist, MyColor ground, double nDotL, double ambiantLight)
         {
-            double thetaPixel = p.Lat.Radians;
-            double phiPixel = p.Lon.Radians;
-            double theta = Utils.AngleBetween(thetaPixel, phiPixel, thetaSun, phiSun);
+            double theta = GetTheta(p);
 
-            return NewMethod(h0, dist, ground, nDotL, ambiantLight, theta);
+            SkyColorAtPointComputer(h0, dist, out MyDColor attenuation, out MyDColor airColorR, out MyDColor airColorM, out MyDColor directPart);
+
+            MyColor color = CombineForAerialPrespective(ground, theta, nDotL, ambiantLight, attenuation, airColorR, airColorM, directPart);
+
+            return color;
         }
 
-        private MyColor NewMethod(double h0, double dist, MyColor ground, double nDotL, double ambiantLight, double theta)
+        internal static MyColor CombineForAerialPrespective(MyColor ground, double theta, double nDotL, double ambiantLight,
+            MyDColor attenuation,
+            MyDColor airColorR,
+            MyDColor airColorM,
+            MyDColor directPart)
         {
-            var rayR = new MyDColor()
-            {
-                R = BetaR0[(int)Channel.R] * P_R(theta),
-                G = BetaR0[(int)Channel.G] * P_R(theta),
-                B = BetaR0[(int)Channel.B] * P_R(theta),
-            };
-            var rayM = mieScale * BetaM0 * P_M(theta);
+            var pr = P_R(theta);
+            var pm = P_M(theta);
 
             var dground = InverseScaleColor(ground);
-
-            // And the attenuation part, which is present even if no direct sunlight
-            var attenuation = ElementLightAP(h0, dist, 0);
             var ambient = dground.Mult(ambiantLight).Mult(attenuation);
+            var direct = dground.Mult(nDotL * 2).Mult(directPart);
+            var total = airColorR.Mult(pr).Add(airColorM.Mult(pm)).Add(ambient).Add(direct);
+            return ScaleColor(total);
+        }
 
-            MyDColor airColor = new MyDColor();
-            MyDColor direct = new MyDColor();
+        internal double GetTheta(GeoPolar2d p)
+        {
+            return Utils.AngleBetween(p.Lat.Radians, p.Lon.Radians, thetaSun, phiSun);
+        }
+
+        internal void SkyColorAtPointComputer(double h0, double dist,
+            out MyDColor attenuation,
+            out MyDColor airColorR,
+            out MyDColor airColorM,
+            out MyDColor directPart)
+        {
+            attenuation = ElementLightAP(h0, dist, 0);
+            airColorR = new MyDColor();
+            airColorM = new MyDColor();
+            directPart = new MyDColor();
+
             var hitEarth = Intersect(h0, sinPhiSun, 0);
             if (!hitEarth.HasValue || hitEarth.Value < 0)
             {
                 // Air has no color if there is no sunlight
-                double? lmaxP = Intersect(h0, sinPhiSun, H_atmosphere);
-
-                double sunAttenuationRbase = TOverBeta(h0, sinPhiSun, lmaxP.Value, H_R);
+                double lmaxP = Intersect(h0, sinPhiSun, H_atmosphere).Value;
+                double sunAttenuationRbase = TOverBeta(h0, sinPhiSun, lmaxP, H_R);
                 MyDColor sunAttenuationR = new MyDColor()
                 {
                     R = Math.Exp(-BetaR0[(int)Channel.R] * sunAttenuationRbase),
                     G = Math.Exp(-BetaR0[(int)Channel.G] * sunAttenuationRbase),
                     B = Math.Exp(-BetaR0[(int)Channel.B] * sunAttenuationRbase),
                 };
-                double sunAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h0, sinPhiSun, lmaxP.Value, H_M));
+                double sunAttenuationM = Math.Exp(-mieScale * BetaM0 * TOverBeta(h0, sinPhiSun, lmaxP, H_M));
 
-                double densityPartOfScatteringR = Math.Exp(-h0 / H_R);
-                double densityPartOfScatteringM = Math.Exp(-h0 / H_M);
+                //   *P_R(theta)
+                var rayR = new MyDColor()
+                {
+                    R = BetaR0[(int)Channel.R],
+                    G = BetaR0[(int)Channel.G],
+                    B = BetaR0[(int)Channel.B],
+                }.Mult(Math.Exp(-h0 / H_R));
+                // P_M(theta)
+                var rayM = mieScale * BetaM0 * Math.Exp(-h0 / H_M);
 
-                airColor = Integrate(0, dist, l => ElementLightAP(h0, l, 0));
-                airColor = sunAttenuationR
-                    .Mult(sunAttenuationM)
-                    .Mult(rayR.Mult(densityPartOfScatteringR).Add(rayM * densityPartOfScatteringM))
-                    .Mult(airColor);
+                var airColor = Integrate(0, dist, l => ElementLightAP(h0, l, 0));
+                airColorR = airColor.Mult(sunAttenuationR).Mult(sunAttenuationM).Mult(rayR);
+                airColorM = airColor.Mult(sunAttenuationR).Mult(sunAttenuationM).Mult(rayM);
 
-                var sunLight = sunAttenuationR.Mult(sunAttenuationM);
-
-                direct = dground.Mult(nDotL * 2).Mult(sunLight).Mult(attenuation);
+                directPart = sunAttenuationR.Mult(sunAttenuationM).Mult(attenuation);
             }
-
-            var total = airColor.Add(ambient).Add(direct);
-            MyColor color = ScaleColor(total);
-
-            return color;
         }
 
         public MyColor SkyColorAtPoint(double h0, GeoPolar2d p)

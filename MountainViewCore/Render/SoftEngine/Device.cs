@@ -6,6 +6,7 @@ using MountainView.Mesh;
 using MountainView.Render;
 using MountainView.SkyColor;
 using System;
+using System.Linq;
 
 namespace SoftEngine
 {
@@ -362,24 +363,14 @@ namespace SoftEngine
                 }
             }
 
-            //private void PutPixel(int x, int y, MyColor color)
-            //{
-            //    Bmp.SetPixel(Width - 1 - x, Height - 1 - y, color);
-            //}
-
-            //public float? GetDistSq(int x, int y)
-            //{
-            //    var index = ((Width - 1 - x) + y * Width);
-            //    return DistSq[index];
-            //}
-
             public DirectBitmap RenderLight(Vector3f light, float directLight, float ambientLight, Nishita skyColor)
             {
                 var ret = new DirectBitmap(Width, Height);
                 MyColor color = new MyColor();
+                var maxDistSq = DistSq.Select(p => p ?? -1).Max();
                 double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
                 NishitaInterp sc = skyColor == null ? null : new NishitaInterp(skyColor, Camera.HeightOffset,
-                    directLight, ambientLight,
+                    directLight, ambientLight, Math.Sqrt(maxDistSq),
                     -Camera.MaxAngleRad, -Camera.MinAngleRad, 10,
                     -fovRad * Height / (2 * Width), +fovRad * Height / (2 * Width), 10);
                 for (int x = 0; x < Width; x++)
@@ -401,10 +392,10 @@ namespace SoftEngine
                             Bmp.GetPixel(Width - 1 - x, y, ref color);
                             ns[index].Normalize();
                             var dot = Math.Max(0, Vector3f.Dot(ref ns[index], ref light));
-                            if (skyColor != null)
+                            if (sc != null)
                             {
-                                var l = dot * directLight;
-                                color = skyColor.SkyColorAtPointDist(Camera.HeightOffset, skyPt, Math.Sqrt(distSq.Value), color, dot, ambientLight);
+                                var l = dot;// * directLight;
+                                color = sc.SkyColorAtPointDist(skyPt, Math.Sqrt(distSq.Value), color, dot);
                             }
                             else
                             {
