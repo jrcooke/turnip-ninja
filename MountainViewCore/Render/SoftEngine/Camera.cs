@@ -23,5 +23,21 @@ namespace SoftEngine
                 Position = new Vector3f(0, 0, (float)heightOffset);
             }
         }
+
+        public double FovRad
+        {
+            get
+            {
+                return MaxAngleRad - MinAngleRad;
+            }
+        }
+
+        public double AvgAngleRad
+        {
+            get
+            {
+                return (MaxAngleRad + MinAngleRad) * 0.5;
+            }
+        }
     }
 }

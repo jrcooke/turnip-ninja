@@ -19,6 +19,7 @@ namespace MountainView.SkyColor
         private readonly double lonRadMin;
         private readonly double lonRadMax;
         private readonly int numLon;
+        private readonly InterpolatonType intType;
 
         private Lazy<TwoDInterpolator[]> inters;
         private Lazy<AerialPers> aerialPers;
@@ -37,9 +38,13 @@ namespace MountainView.SkyColor
             this.latRadMin = latRadMin;
             this.latRadMax = latRadMax;
             this.numLat = numLat;
-            this.lonRadMin = lonRadMin < 0.0 ? 0.0 : lonRadMin;
-            this.lonRadMax = lonRadMax;
+            this.lonRadMin = lonRadMin < lonRadMax ? lonRadMin : lonRadMax;
+            this.lonRadMax = lonRadMax > lonRadMin ? lonRadMax : lonRadMin;
             this.numLon = numLon;
+            this.intType = InterpolatonType.Linear;
+
+            // Fixup
+            if (this.lonRadMin < 0.0) this.lonRadMin = 0.0;
 
             inters = new Lazy<TwoDInterpolator[]>(() => GetInters());
             aerialPers = new Lazy<AerialPers>(() => GetAerialPers());
@@ -47,7 +52,7 @@ namespace MountainView.SkyColor
 
         private AerialPers GetAerialPers()
         {
-            int numDists = 100;
+            int numDists = 10;
             double[] dists = new double[numDists];
             for (int x = 0; x < numDists; x++)
             {
@@ -94,10 +99,10 @@ namespace MountainView.SkyColor
 
             for (int k = 0; k < aerialPers.intersAirColorR.Length; k++)
             {
-                aerialPers.intersAirColorR[k] = new OneDInterpolator(dists, valuesAR[k], InterpolatonType.Cubic);
-                aerialPers.intersAirColorM[k] = new OneDInterpolator(dists, valuesAM[k], InterpolatonType.Cubic);
-                aerialPers.intersAttenuation[k] = new OneDInterpolator(dists, valuesAT[k], InterpolatonType.Cubic);
-                aerialPers.intersDirectPart[k] = new OneDInterpolator(dists, valuesDP[k], InterpolatonType.Cubic);
+                aerialPers.intersAirColorR[k] = new OneDInterpolator(dists, valuesAR[k], intType);
+                aerialPers.intersAirColorM[k] = new OneDInterpolator(dists, valuesAM[k], intType);
+                aerialPers.intersAttenuation[k] = new OneDInterpolator(dists, valuesAT[k], intType);
+                aerialPers.intersDirectPart[k] = new OneDInterpolator(dists, valuesDP[k], intType);
             }
 
             return aerialPers;
@@ -131,7 +136,7 @@ namespace MountainView.SkyColor
             {
                 for (int y = 0; y < lons.Length; y++)
                 {
-                    var skyPt = new GeoPolar2d(lats[x], lons[y]);
+                    var skyPt = new GeoPolar2d(Angle.FromRadians(lats[x]), Angle.FromRadians(lons[y]));
                     var color2 = skyColor.SkyColorAtPoint(h0, skyPt);
                     for (int k = 0; k < values.Length; k++)
                     {
@@ -143,7 +148,7 @@ namespace MountainView.SkyColor
             var inters = new TwoDInterpolator[values.Length];
             for (int k = 0; k < inters.Length; k++)
             {
-                inters[k] = new TwoDInterpolator(lats, lons, values[k], InterpolatonType.Cubic);
+                inters[k] = new TwoDInterpolator(lats, lons, values[k], intType);
             }
 
             return inters;

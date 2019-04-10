@@ -56,7 +56,7 @@ namespace MountainView.Base
                 Math.Sin(brng) * Math.Sin(d / R) * Math.Cos(phi1),
                 Math.Cos(d / R) - Math.Sin(phi1) * Math.Sin(phi2));
 
-            return new GeoPolar2d(phi2 * 180 / Math.PI, lam2 * 180 / Math.PI);
+            return new GeoPolar2d(Angle.FromRadians(phi2), Angle.FromRadians(lam2));
         }
 
         public static Tuple<long, long> APlusDeltaMeters(Angle lat, Angle lon, double deltaX, double deltaY, double? cosLat = null)
@@ -133,7 +133,7 @@ namespace MountainView.Base
 
             if (A > 2 * Math.PI) A -= 2 * Math.PI;
 
-            var sunPos = new GeoPolar2d(A * 180 / Math.PI, alpha * 180 / Math.PI);
+            var sunPos = new GeoPolar2d(Angle.FromRadians(A), Angle.FromRadians(alpha));
             return sunPos;
         }
 

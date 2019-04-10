@@ -18,6 +18,11 @@ namespace MountainView.Base
             }
         }
 
+        public static Angle FromRadians(double rad)
+        {
+            return FromDecimalDegrees(rad * 180 / Math.PI);
+        }
+
         public static Angle FromDecimalDegrees(double v)
         {
             double fourths = v * 60 * 60 * 60 * 60;

@@ -68,7 +68,7 @@ namespace MountainView.SkyColor
                 for (int phiI = 0; phiI < height; phiI++)
                 {
                     double phiDeg = phiI * 90.0 / height;
-                    var p = new GeoPolar2d(thetaDeg, phiDeg);
+                    var p = new GeoPolar2d(Angle.FromDecimalDegrees(thetaDeg), Angle.FromDecimalDegrees(phiDeg));
                     image[thetaI][phiI] = SkyColorAtPoint(h0, p);
                 }
             }

@@ -97,9 +97,22 @@ namespace MountainViewDesktop.Interpolation
         {
             if (x < xa[0] || x > xa[n - 1])
             {
-                klo = 0;
-                khi = 0;
-                return false;
+                // Accept values barely outside.
+                double delta = Math.Abs(xa[0] - xa[n - 1]) / n;
+                if (Math.Abs(x - xa[0]) * 100 < delta)
+                {
+                    x = xa[0];
+                }
+                else if (Math.Abs(x - xa[n - 1]) * 100 < delta)
+                {
+                    x = xa[n - 1];
+                }
+                else
+                {
+                    klo = 0;
+                    khi = 0;
+                    return false;
+                }
             }
 
             klo = 0;

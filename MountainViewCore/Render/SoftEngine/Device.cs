@@ -316,17 +316,36 @@ namespace SoftEngine
             // in the 3D world
             public VertexProj Project(ref Vertex vertex, ref GeoPolar3d polar)
             {
-                double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
                 return new VertexProj
                 {
                     Coordinates = new Vector3fProj(
-                        (int)(Width * 0.5 - Width / fovRad * (polar.Lat - (Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5)),
-                        (int)(Height * 0.5 - Width / fovRad * polar.Lon),
+                        GetXIndexFromLatRad(polar.Lat),
+                        GetYIndexFromLonRad(polar.Lon),
                         (float)polar.Height),
                     Normal = vertex.Normal,
                     WorldCoordinates = vertex.Coordinates,
                     TextureCoordinates = vertex.TextureCoordinates
                 };
+            }
+
+            private int GetXIndexFromLatRad(double lat)
+            {
+                return (int)((Width - 1) * 0.5 - (Width - 1) / Camera.FovRad * (lat - Camera.AvgAngleRad));
+            }
+
+            private double GetLatRadFromXIndex(int x)
+            {
+                return (0.5 - x / (Width - 1)) * Camera.FovRad + Camera.AvgAngleRad;
+            }
+
+            private int GetYIndexFromLonRad(double lonRad)
+            {
+                return (int)((Height - 1) * 0.5 - (Width - 1) / Camera.FovRad * lonRad);
+            }
+
+            private double GetLonRadFromYIndex(int y)
+            {
+                return ((Height - 1) * 0.5 - y) * Camera.FovRad / (Width - 1);
             }
 
             public void TransformToPolar(ref Vector3f p, ref GeoPolar3d delta)
@@ -371,21 +390,21 @@ namespace SoftEngine
                 double fovRad = Camera.MaxAngleRad - Camera.MinAngleRad;
                 NishitaInterp sc = skyColor == null ? null : new NishitaInterp(skyColor, Camera.HeightOffset,
                     directLight, ambientLight, Math.Sqrt(maxDistSq),
-                    -Camera.MaxAngleRad, -Camera.MinAngleRad, 10,
-                    -fovRad * Height / (2 * Width), +fovRad * Height / (2 * Width), 10);
+                    GetLatRadFromXIndex(0), GetLatRadFromXIndex(Width - 1), 10,
+                    GetLonRadFromYIndex(0), GetLonRadFromYIndex(Height - 1), 10);
+
                 for (int x = 0; x < Width; x++)
                 {
                     for (int y = 0; y < Height; y++)
                     {
                         var skyPt = new GeoPolar2d(
-                            (Width * 0.5 - x) * fovRad / Width + -(Camera.MaxAngleRad + Camera.MinAngleRad) * 0.5,
-                            (Height * 0.5 - y) * fovRad / Width);
-
+                            Angle.FromRadians(GetLatRadFromXIndex(x)),
+                            Angle.FromRadians(GetLonRadFromYIndex(y)));
                         var index = (Width - 1 - x) + y * Width;
                         var distSq = DistSq[index];
                         if (!distSq.HasValue)
                         {
-                            color = sc?.SkyColorAtPoint(skyPt) ?? new MyColor();
+                            color = sc?.SkyColorAtPoint(skyPt) ??  View.skyColor;
                         }
                         else
                         {
@@ -394,7 +413,6 @@ namespace SoftEngine
                             var dot = Math.Max(0, Vector3f.Dot(ref ns[index], ref light));
                             if (sc != null)
                             {
-                                var l = dot;// * directLight;
                                 color = sc.SkyColorAtPointDist(skyPt, Math.Sqrt(distSq.Value), color, dot);
                             }
                             else
