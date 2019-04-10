@@ -10,6 +10,7 @@ namespace MountainViewDesktop.Interpolation
     {
         readonly InterpolatonType type;
         private readonly int n;
+        private readonly double delta;
         private double[] xa;
         private readonly double[] ya;
         private readonly double[] y2a;
@@ -36,6 +37,8 @@ namespace MountainViewDesktop.Interpolation
             }
 
             n = xa.Length;
+
+            delta = Math.Abs(xa[0] - xa[n - 1]) / n;
 
             switch (type)
             {
@@ -98,7 +101,6 @@ namespace MountainViewDesktop.Interpolation
             if (x < xa[0] || x > xa[n - 1])
             {
                 // Accept values barely outside.
-                double delta = Math.Abs(xa[0] - xa[n - 1]) / n;
                 if (Math.Abs(x - xa[0]) * 100 < delta)
                 {
                     x = xa[0];
@@ -221,6 +223,51 @@ namespace MountainViewDesktop.Interpolation
             success = t1.TryGetValue((n - 1) * 1.0 + 0.01, out y);
             if (success) throw new InvalidOperationException();
             if (Math.Abs(y) > 1.0e-10) throw new InvalidOperationException();
+        }
+    }
+
+    public class OneDVectorInterpolator
+    {
+        private readonly OneDInterpolator[] componentInterp;
+
+        public OneDVectorInterpolator(double[] x, double[][] y, InterpolatonType type)
+        {
+            componentInterp = new OneDInterpolator[y[0].Length];
+            var tempY = new double[y.Length];
+            for (int i = 0; i< componentInterp.Length; i++)
+            {
+                for (int j = 0; j < y.Length; j++)
+                {
+                    tempY[j] = y[j][i];
+                }
+
+                componentInterp[i] = new OneDInterpolator(x, tempY, type);
+            }
+        }
+
+        /// <summary>
+        /// Given the arrays xa[1..n] and ya[1..n], which tabulate a function(with the xai’s in order),
+        /// and given the array y2a[1..n], which is the output from spline above, and given a value of
+        /// x, this routine returns a cubic-spline interpolated value y.
+        /// </summary>
+        public bool TryGetValue(double x, double[] y)
+        {
+            if (componentInterp[0].GetKLoHi(x, out int klo, out int khi))
+            {
+                for (int i = 0; i < y.Length; i++)
+                {
+                    y[i] = componentInterp[i].GetValue(x, klo, khi);
+                }
+
+                return true;
+            }
+
+            for(int i = 0; i < y.Length; i++)
+            {
+                y[i] = 0;
+            }
+
+            return false;
         }
     }
 }

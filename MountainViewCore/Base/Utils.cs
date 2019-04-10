@@ -203,7 +203,6 @@ namespace MountainView.Base
         }
 
         public static Func<MyColor, double>[] ColorToDoubleArray = new Func<MyColor, double>[] { p => p.R, p => p.G, p => p.B };
-        public static Func<MyDColor, double>[] DColorToDoubleArray = new Func<MyDColor, double>[] { p => p.R, p => p.G, p => p.B };
 
         public static MyColor ColorFromDoubleArray(double[] p)
         {

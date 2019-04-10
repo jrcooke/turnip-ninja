@@ -53,59 +53,7 @@ namespace MountainView.SkyColor
         private AerialPers GetAerialPers()
         {
             int numDists = 10;
-            double[] dists = new double[numDists];
-            for (int x = 0; x < numDists; x++)
-            {
-                dists[x] = maxDist * x / (numDists + -1);
-            }
-
-            double[][] valuesAR = new double[Utils.DColorToDoubleArray.Length][];
-            double[][] valuesAM = new double[Utils.DColorToDoubleArray.Length][];
-            double[][] valuesAT = new double[Utils.DColorToDoubleArray.Length][];
-            double[][] valuesDP = new double[Utils.DColorToDoubleArray.Length][];
-            for (int k = 0; k < valuesAR.Length; k++)
-            {
-                valuesAR[k] = new double[numDists];
-                valuesAM[k] = new double[numDists];
-                valuesAT[k] = new double[numDists];
-                valuesDP[k] = new double[numDists];
-            }
-
-            for (int x = 0; x < dists.Length; x++)
-            {
-                skyColor.SkyColorAtPointComputer(
-                    h0, dists[x],
-                    out MyDColor attenuation,
-                    out MyDColor airColorR,
-                    out MyDColor airColorM,
-                    out MyDColor directPart);
-
-                for (int k = 0; k < valuesAR.Length; k++)
-                {
-                    valuesAR[k][x] = Utils.DColorToDoubleArray[k](airColorR);
-                    valuesAM[k][x] = Utils.DColorToDoubleArray[k](airColorM);
-                    valuesAT[k][x] = Utils.DColorToDoubleArray[k](attenuation);
-                    valuesDP[k][x] = Utils.DColorToDoubleArray[k](directPart);
-                }
-            }
-
-            AerialPers aerialPers = new AerialPers
-            {
-                intersAirColorR = new OneDInterpolator[valuesAR.Length],
-                intersAirColorM = new OneDInterpolator[valuesAM.Length],
-                intersAttenuation = new OneDInterpolator[valuesAT.Length],
-                intersDirectPart = new OneDInterpolator[valuesDP.Length],
-            };
-
-            for (int k = 0; k < aerialPers.intersAirColorR.Length; k++)
-            {
-                aerialPers.intersAirColorR[k] = new OneDInterpolator(dists, valuesAR[k], intType);
-                aerialPers.intersAirColorM[k] = new OneDInterpolator(dists, valuesAM[k], intType);
-                aerialPers.intersAttenuation[k] = new OneDInterpolator(dists, valuesAT[k], intType);
-                aerialPers.intersDirectPart[k] = new OneDInterpolator(dists, valuesDP[k], intType);
-            }
-
-            return aerialPers;
+            return new AerialPers(numDists, maxDist, h0, skyColor, intType);
         }
 
         private TwoDInterpolator[] GetInters()
@@ -169,10 +117,12 @@ namespace MountainView.SkyColor
         public MyColor SkyColorAtPointDist(GeoPolar2d p, double dist, MyColor ground, double nDotL)
         {
             double theta = skyColor.GetTheta(p);
-            MyDColor attenuation = aerialPers.Value.GetAttenuation(dist);
-            MyDColor airColorR = aerialPers.Value.GetAirColorR(dist);
-            MyDColor airColorM = aerialPers.Value.GetAirColorM(dist);
-            MyDColor directPart = aerialPers.Value.GetDirectPart(dist);
+            MyDColor attenuation = new MyDColor();
+            MyDColor airColorR = new MyDColor();
+            MyDColor airColorM = new MyDColor();
+            MyDColor directPart = new MyDColor();
+
+            aerialPers.Value.TryGetValues(dist, ref attenuation, ref airColorR, ref airColorM, ref directPart);
 
             MyColor color = Nishita.CombineForAerialPrespective(ground, theta, nDotL, ambientLight, attenuation, airColorR, airColorM, directPart);
             return color;
@@ -180,43 +130,77 @@ namespace MountainView.SkyColor
 
         private class AerialPers
         {
-            public OneDInterpolator[] intersAttenuation;
-            public OneDInterpolator[] intersAirColorR;
-            public OneDInterpolator[] intersAirColorM;
-            public OneDInterpolator[] intersDirectPart;
+            private readonly OneDVectorInterpolator inters;
 
-            public MyDColor GetAttenuation(double dist)
+            public AerialPers(int numDists, double maxDist, double h0, Nishita skyColor, InterpolatonType intType)
             {
-                return DoDLookup(intersAttenuation, dist);
-            }
-            public MyDColor GetAirColorR(double dist)
-            {
-                return DoDLookup(intersAirColorR, dist);
-            }
-            public MyDColor GetAirColorM(double dist)
-            {
-                return DoDLookup(intersAirColorM, dist);
-            }
-            public MyDColor GetDirectPart(double dist)
-            {
-                return DoDLookup(intersDirectPart, dist);
-            }
-
-            private static MyDColor DoDLookup(OneDInterpolator[] inters, double x)
-            {
-                double[] values = new double[3];
-                for (int k = 0; k < 3; k++)
+                double[] dists = new double[numDists];
+                for (int x = 0; x < numDists; x++)
                 {
-                    inters[k].TryGetValue(x, out double o);
-                    values[k] = o;
+                    dists[x] = maxDist * x / (numDists + -1);
                 }
 
-                return new MyDColor()
+                double[][] values = new double[numDists][];
+                for (int k = 0; k < values.Length; k++)
                 {
-                    R = values[0],
-                    G = values[1],
-                    B = values[2],
-                };
+                    values[k] = new double[12];
+                }
+
+                for (int x = 0; x < dists.Length; x++)
+                {
+                    skyColor.SkyColorAtPointComputer(
+                        h0, dists[x],
+                        out MyDColor attenuation,
+                        out MyDColor airColorR,
+                        out MyDColor airColorM,
+                        out MyDColor directPart);
+
+                    for (int k = 0; k < 3; k++)
+                    {
+                        values[x][0] = attenuation.R;
+                        values[x][1] = attenuation.G;
+                        values[x][2] = attenuation.B;
+                        values[x][3] = airColorR.R;
+                        values[x][4] = airColorR.G;
+                        values[x][5] = airColorR.B;
+                        values[x][6] = airColorM.R;
+                        values[x][7] = airColorM.G;
+                        values[x][8] = airColorM.B;
+                        values[x][9] = directPart.R;
+                        values[x][10] = directPart.G;
+                        values[x][11] = directPart.B;
+                    }
+                }
+
+                inters = new OneDVectorInterpolator(dists, values, intType);
+            }
+
+            public bool TryGetValues(double dist,
+                ref MyDColor attenuation,
+                ref MyDColor airColorR,
+                ref MyDColor airColorM,
+                ref MyDColor directPart)
+            {
+                double[] values = new double[12];
+                if (!inters.TryGetValue(dist, values))
+                {
+                    return false;
+                }
+
+                attenuation.R = values[0];
+                attenuation.G = values[1];
+                attenuation.B = values[2];
+                airColorR.R = values[3];
+                airColorR.G = values[4];
+                airColorR.B = values[5];
+                airColorM.R = values[6];
+                airColorM.G = values[7];
+                airColorM.B = values[8];
+                directPart.R = values[9];
+                directPart.G = values[10];
+                directPart.B = values[11];
+
+                return true;
             }
         }
     }
