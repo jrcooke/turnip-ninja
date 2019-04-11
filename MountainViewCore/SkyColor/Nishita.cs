@@ -1,6 +1,7 @@
 ﻿using MountainView.Base;
 using MountainView.Mesh;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace MountainView.SkyColor
@@ -82,25 +83,31 @@ namespace MountainView.SkyColor
 
             SkyColorAtPointComputer(h0, dist, out MyDColor attenuation, out MyDColor airColorR, out MyDColor airColorM, out MyDColor directPart);
 
-            MyColor color = CombineForAerialPrespective(ground, theta, nDotL, ambiantLight, attenuation, airColorR, airColorM, directPart);
+            MyColor color = CombineForAerialPrespective(ground, theta, nDotL, ambiantLight, ref attenuation, ref airColorR, ref airColorM, ref directPart);
 
             return color;
         }
 
         internal static MyColor CombineForAerialPrespective(MyColor ground, double theta, double nDotL, double ambiantLight,
-            MyDColor attenuation,
-            MyDColor airColorR,
-            MyDColor airColorM,
-            MyDColor directPart)
+            ref MyDColor attenuation,
+            ref MyDColor airColorR,
+            ref MyDColor airColorM,
+            ref MyDColor directPart)
         {
             var pr = P_R(theta);
             var pm = P_M(theta);
 
-            var dground = InverseScaleColor(ground);
-            var ambient = dground.Mult(ambiantLight).Mult(attenuation);
-            var direct = dground.Mult(nDotL * 2).Mult(directPart);
-            var total = airColorR.Mult(pr).Add(airColorM.Mult(pm)).Add(ambient).Add(direct);
-            return ScaleColor(total);
+            var dground = InverseScaleColor(ref ground);
+
+            // var ambient = dground.Mult(ambiantLight).Mult(attenuation);
+            //var direct = dground.Mult(nDotL * 2).Mult(directPart);
+            //var total = airColorR.Mult(pr).Add(airColorM.Mult(pm)).Add(ambient).Add(direct);
+            var total = new MyDColor();
+            total.R = airColorR.R * pr + airColorM.R * pm + (dground.R * ambiantLight * attenuation.R) + (dground.R * nDotL * 2 * directPart.R);
+            total.G = airColorR.G * pr + airColorM.G * pm + (dground.G * ambiantLight * attenuation.G) + (dground.G * nDotL * 2 * directPart.G);
+            total.B = airColorR.B * pr + airColorM.B * pm + (dground.B * ambiantLight * attenuation.B) + (dground.B * nDotL * 2 * directPart.B);
+
+            return ScaleColor(ref total);
         }
 
         internal double GetTheta(GeoPolar2d p)
@@ -179,7 +186,7 @@ namespace MountainView.SkyColor
             var rayM = mieScale * BetaM0 * P_M(theta);
             var tot =
                 Integrate(0, l_max - 10, l => ElementLight(rayRR, rayRG, rayRB, rayM, h0, l, sinPhi, cosPhi, sinTheta, cosTheta));
-            MyColor color = ScaleColor(tot);
+            MyColor color = ScaleColor(ref tot);
             return color;
         }
 
@@ -290,18 +297,34 @@ namespace MountainView.SkyColor
             return rprime * (sqrt - sinPhi);
         }
 
+        private static Dictionary<double, double> prCache = new Dictionary<double, double>();
+
         private static double P_R(double theta)
         {
-            double cosTheta = Math.Cos(theta);
-            return 3.0 / (16.0 * Math.PI) * (1 + cosTheta * cosTheta);
+            if (!prCache.TryGetValue(theta, out double pr))
+            {
+                double cosTheta = Math.Cos(theta);
+                pr = 3.0 / (16.0 * Math.PI) * (1 + cosTheta * cosTheta);
+                prCache.Add(theta, pr);
+            }
+
+            return pr;
         }
+
+        private static Dictionary<double, double> pmCache = new Dictionary<double, double>();
 
         private static double P_M(double theta)
         {
-            double cosTheta = Math.Cos(theta);
-            double g = 0.76;
-            double g2 = g * g;
-            return 3.0 * (1 - g2) * (1 + cosTheta * cosTheta) / (8 * Math.PI * (2 + g2) * Math.Pow(1 + g2 - 2 * g * cosTheta, 1.5));
+            if (!pmCache.TryGetValue(theta, out double pm))
+            {
+                double cosTheta = Math.Cos(theta);
+                double g = 0.76;
+                double g2 = g * g;
+                pm = 3.0 * (1 - g2) * (1 + cosTheta * cosTheta) / (8 * Math.PI * (2 + g2) * Math.Pow(1 + g2 - 2 * g * cosTheta, 1.5));
+                pmCache.Add(theta, pm);
+            }
+
+            return pm;
         }
 
         public static double TOverBeta(double h0, double sinPhi, double lmax, double H)
@@ -325,7 +348,7 @@ namespace MountainView.SkyColor
             return i;
         }
 
-        private static MyColor ScaleColor(MyDColor tot)
+        private static MyColor ScaleColor(ref MyDColor tot)
         {
             double scale = -45.0;
             var color = new MyColor(
@@ -335,7 +358,7 @@ namespace MountainView.SkyColor
             return color;
         }
 
-        private static MyDColor InverseScaleColor(MyColor color)
+        private static MyDColor InverseScaleColor(ref MyColor color)
         {
             double scale = -45.0;
             MyDColor tot = new MyDColor()

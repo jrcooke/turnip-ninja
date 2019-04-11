@@ -124,7 +124,11 @@ namespace MountainView.SkyColor
 
             aerialPers.Value.TryGetValues(dist, ref attenuation, ref airColorR, ref airColorM, ref directPart);
 
-            MyColor color = Nishita.CombineForAerialPrespective(ground, theta, nDotL, ambientLight, attenuation, airColorR, airColorM, directPart);
+            MyColor color = Nishita.CombineForAerialPrespective(ground, theta, nDotL, ambientLight,
+                ref attenuation,
+                ref airColorR,
+                ref airColorM,
+                ref directPart);
             return color;
         }
 
