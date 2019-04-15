@@ -25,7 +25,6 @@ namespace MountainView.Base
 
         public int MaxZoom { get; set; } = 6;
         public int MinZoom { get; set; } = 3;
-        public bool UseHaze { get; set; } = true;
 
         private DateTimeOffset localTime;
         public DateTimeOffset LocalTime

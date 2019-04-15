@@ -2,7 +2,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using MountainView.Base;
-using MountainViewCore.Base;
 using MountainViewDesktopCore.Base;
 using MountainViewFn.Core;
 using Newtonsoft.Json;

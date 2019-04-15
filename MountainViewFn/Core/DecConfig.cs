@@ -1,4 +1,5 @@
 ﻿using MountainView.Base;
+using System;
 
 namespace MountainViewFn.Core
 {
@@ -6,11 +7,10 @@ namespace MountainViewFn.Core
     {
         public double Lat { get; set; }
         public double Lon { get; set; }
-        public double MinAngle { get; set; }
-        public double MaxAngle { get; set; }
-        public double ElevationViewMin { get; set; }
-        public double ElevationViewMax { get; set; }
-        public double AngularResolution { get; set; }
+        public double MinAngleDec { get; set; }
+        public double MaxAngleDec { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
 
         public Config GetConfig()
         {
@@ -18,11 +18,15 @@ namespace MountainViewFn.Core
             {
                 Lat = Angle.FromDecimalDegrees(Lat),
                 Lon = Angle.FromDecimalDegrees(Lon),
-                MinAngle = Angle.FromDecimalDegrees(MinAngle),
-                MaxAngle = Angle.FromDecimalDegrees(MaxAngle),
-                ElevationViewMin = Angle.FromDecimalDegrees(ElevationViewMin),
-                ElevationViewMax = Angle.FromDecimalDegrees(ElevationViewMax),
-                AngularResolution = Angle.FromDecimalDegrees(AngularResolution),
+                MinAngleDec = MinAngleDec,
+                MaxAngleDec = MaxAngleDec,
+                Width = Width,
+                Height = Height,
+                MaxZoom = 3,
+                MinZoom = 3,
+                R = 150000,
+                HeightOffset = 100,
+                LocalTime = DateTimeOffset.Now,
             };
         }
     }

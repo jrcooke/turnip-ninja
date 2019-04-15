@@ -32,7 +32,6 @@ namespace WpfApp1
                 MaxZoom = 3,
                 MinZoom = 3,
                 R = 150000,
-                UseHaze = false,
                 Lat = Angle.FromDecimalDegrees(47.637546),
                 Lon = Angle.FromDecimalDegrees(-122.132786),
                 MinAngleDec = 15,
