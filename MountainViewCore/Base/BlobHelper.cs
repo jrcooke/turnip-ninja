@@ -83,18 +83,19 @@ namespace MountainView.Base
             return ret;
         }
 
-        public static async Task<IEnumerable<string>> GetFileNames(string containerName, string prefix, TraceListener log)
-        {
-            var container = await GetContainerAsync(containerName, log);
-            return container.ListBlobs(prefix)
-                .Select(p => p.Uri.ToString())
-                .Select(p =>
-                {
-                    var i = p.IndexOf("blob.core.windows.net/");
-                    return p.Substring(i + 22 + containerName.Length + 1);
-                })
-                .ToArray();
-        }
+        // TODO: Figure out why this was failing to compiile
+        //public static async Task<IEnumerable<string>> GetFileNames(string containerName, string prefix, TraceListener log)
+        //{
+        //    var container = await GetContainerAsync(containerName, log);
+        //    return container.ListBlobs(prefix)
+        //        .Select(p => p.Uri.ToString())
+        //        .Select(p =>
+        //        {
+        //            var i = p.IndexOf("blob.core.windows.net/");
+        //            return p.Substring(i + 22 + containerName.Length + 1);
+        //        })
+        //        .ToArray();
+        //}
 
         public static async Task Rename(string containerName, string oldName, string newName, TraceListener log)
         {
