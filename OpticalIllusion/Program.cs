@@ -110,7 +110,7 @@ namespace ConsoleApp1
                 bool onlyEdge = false;
                 using (DirectBitmap bm = new DirectBitmap(width, height))
                 {
-                    foreach (var containingTri in flatTree)
+                    foreach (var containingTri in flatTree.OrderByDescending(p => p.TabId)) // Put tabs first go get overwritten if needed
                     {
                         // Get simple bounding box for this triangle
                         var bb = containingTri.GetBoundingBox();
@@ -136,10 +136,27 @@ namespace ConsoleApp1
                                     {
                                         var s = containingTri.PaperToSpace(sx, sy);
 
-                                        var ray = s.Subtract(eye).Unit();
-                                        var vx = Math.Asin(ray.X);
-                                        var vy = Math.Asin(ray.Y);
-                                        MyColor c = GetColor(vx, vy);
+                                        MyColor c;
+                                        if (containingTri.TabId.HasValue)
+                                        {
+                                            // This is a tab triangle
+                                            // Determine distance to common edge
+
+                                            var distToCommon = s.DistanceFromPointToSegment(containingTri.CommonSpace);
+                                            var alpha = (byte)(Math.Max(0, 1 - distToCommon) * 255);
+
+                                        //    Console.WriteLine(distToCommon);
+                                            //c = new MyColor(255, 0, 0);
+                                            c = GetColor(containingTri.TabId.Value, 0);
+                                            c = new MyColor(c.R, c.G, c.B, alpha);
+                                        }
+                                        else
+                                        {
+                                            var ray = s.Subtract(eye).Unit();
+                                            var vx = Math.Asin(ray.X);
+                                            var vy = Math.Asin(ray.Y);
+                                            c = GetColor(vx, vy);
+                                        }
                                         if (distToEdge < 0.01)
                                         {
                                             c = new MyColor(0, 0, 0);
@@ -175,8 +192,6 @@ namespace ConsoleApp1
                 }
             }
 
-            // Find the paths
-
             // Find all paths between intersecting triangles
             var edgepaths = new List<IEnumerable<DualEdge>>();
             foreach (var intersection in faceIntersections)
@@ -184,7 +199,6 @@ namespace ConsoleApp1
                 edgepaths.Add(spanningTree.Path(intersection.Item1, intersection.Item2));
             }
 
-            // List of all edges in all paths
             // Count the number of times each edge occurs
             var allEdgesInPaths = edgepaths
                 .SelectMany(p => p)
@@ -246,7 +260,14 @@ namespace ConsoleApp1
 
             BothTri[][] splitFaces = connectedComponents
                 .Select(p => p.Faces
-                    .Select(q => faces.Single(r => r.Index == q.Index)).ToArray())
+                    .Select(q =>
+                    {
+                        if (q is SterileTri3 st)
+                            return new BothTri(faces.Single(r => r.Index == -q.Index), st.TabId, st.Common);
+                        else
+                            return faces.Single(r => r.Index == q.Index);
+                    })
+                    .ToArray())
                 .Select(p => p)
                 .ToArray();
 
@@ -698,25 +719,12 @@ namespace ConsoleApp1
             // Remove cut edges
             var newEdges = Edges.Where(p => !cutEdgeIds.Contains(p.Index)).ToList();
 
-            //// Add new dummy edges and cloned faces, to make tabs
-            //int cutId = 0;
-            //foreach (var c in cutEdgeIds)
-            //{
-            //    var edge = Edges.Single(p => p.Index == c);
-            //    var v0 = edge.Vertices[0];
-            //    var v1 = edge.Vertices[1];
-            //    newEdges.Add(new DualEdge(v0, new Tri3Ext(v1, cutId)));
-            //    newEdges.Add(new DualEdge(v1, new Tri3Ext(v0, cutId)));
-            //    cutId++;
-            //}
-
             while (unvisited.Count > 0)
             {
                 var cur = Faces.Single(p => p.Index == unvisited.First());
                 var tree = GetTreeFromFace(newEdges, unvisited, cur);
                 if (tree.Count() == 0)
                 {
-                    //    throw new InvalidOperationException();
                     ret.Add(new SpanningTree(cur));
                 }
                 else
@@ -725,7 +733,25 @@ namespace ConsoleApp1
                 }
             }
 
+            int tabId = 0;
+            var removedEdges = Edges.Where(p => cutEdgeIds.Contains(p.Index)).ToList();
+            foreach (var removedEdge in removedEdges)
+            {
+                NewMethod(ret, tabId, removedEdge.Vertices[0], removedEdge.Vertices[1]);
+                NewMethod(ret, tabId, removedEdge.Vertices[1], removedEdge.Vertices[0]);
+                tabId++;
+            }
             return ret;
+        }
+
+        private void NewMethod(List<SpanningTree> ret, int tabId, Tri3 v1, Tri3 v2)
+        {
+            var t1 = ret.Single(p => p.Faces.Any(q => q.Index == v1.Index));
+
+            var common = v1.Vertices.Where(p => v2.Vertices.Any(q => q.Index == p.Index)).ToArray();
+            var t1p = new SpanningTree(t1.Edges.Union(new[] { new DualEdge(v1, new SterileTri3(v2, tabId, common)) }));
+            ret.Remove(t1);
+            ret.Add(t1p);
         }
 
         private static IEnumerable<DualEdge> GetTreeFromFace(
@@ -797,6 +823,19 @@ namespace ConsoleApp1
         }
     }
 
+    public class SterileTri3 : Tri3
+    {
+        public readonly int TabId;
+        public readonly Vec3[] Common;
+
+        public SterileTri3(Tri3 source, int tabId, Vec3[] common) : base(source.A, source.B, source.C, -source.Index)
+        {
+            TabId = tabId;
+            Common = common;
+        }
+    }
+
+
     public class BothTri
     {
         public readonly Tri3 Space;
@@ -804,6 +843,9 @@ namespace ConsoleApp1
         public readonly Transform SpaceToPaper;
         private readonly Transform paperToSpace;
         public readonly int Index;
+        public readonly int? TabId;
+        public readonly Vec3[] CommonSpace;
+        public readonly Vec3[] CommonPaper;
 
         public BothTri(Tri3 space, Transform spaceToPaper)
         {
@@ -812,6 +854,17 @@ namespace ConsoleApp1
             Paper = spaceToPaper.Apply(space).AsTri2();
             SpaceToPaper = spaceToPaper;
             paperToSpace = spaceToPaper.Inv();
+        }
+
+        public BothTri(BothTri bothTri, int tabId) : this(bothTri.Space, bothTri.SpaceToPaper)
+        {
+            TabId = tabId;
+        }
+
+        public BothTri(BothTri bothTri, int tabId, Vec3[] common) : this(bothTri, tabId)
+        {
+            CommonSpace = common;
+            CommonPaper = common.Select(p => SpaceToPaper.Apply(p)).ToArray();
         }
 
         public Tri3 PaperToSpace(Tri2 t)
@@ -960,28 +1013,12 @@ namespace ConsoleApp1
 
             var dists = new[]
             {
-                DistanceFromPointToSegment(p, A.AsVec3(), B.AsVec3()),
-                DistanceFromPointToSegment(p, B.AsVec3(), C.AsVec3()),
-                DistanceFromPointToSegment(p, C.AsVec3(), A.AsVec3()),
+                p.DistanceFromPointToSegment(A.AsVec3(), B.AsVec3()),
+                p.DistanceFromPointToSegment(B.AsVec3(), C.AsVec3()),
+                p.DistanceFromPointToSegment(C.AsVec3(), A.AsVec3()),
             };
 
             return dists.Min();
-        }
-
-        // https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
-        private double DistanceFromPointToSegment(Vec3 p, Vec3 s1, Vec3 s2)
-        {
-            // Return minimum distance between line segment vw and point p
-            double l2 = s1.Subtract(s2).LenSq;
-            if (l2 == 0.0) return Math.Sqrt(p.Subtract(s1).LenSq);
-
-            // Consider the line extending the segment, parameterized as v + t (w - v).
-            // We find projection of point p onto the line. 
-            // It falls where t = [(p-v) . (w-v)] / |w-v|^2
-            // We clamp t from [0,1] to handle points outside the segment vw.
-            double t = Math.Max(0, Math.Min(1, p.Subtract(s1).Dot(s2.Subtract(s1)) / l2));
-            Vec3 projection = s1.Add(s2.Subtract(s1).Mult(t));  // Projection falls on the segment
-            return Math.Sqrt(p.Subtract(projection).LenSq);
         }
     }
 
@@ -1021,6 +1058,14 @@ namespace ConsoleApp1
             A = points[0];
             B = points[1];
             C = points[2];
+        }
+
+        public Tri3(Tri3 t, int index)
+        {
+            A = t.A;
+            B = t.B;
+            C = t.C;
+            Index = index;
         }
 
         public Tri3 Translate(Vec3 offset)
@@ -1303,6 +1348,29 @@ namespace ConsoleApp1
             var len = Math.Sqrt(X * X + Y * Y + Z * Z);
             if (len == 0) return this;
             return new Vec3(X / len, Y / len, Z / len);
+        }
+
+        // https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+        public double DistanceFromPointToSegment(Vec3 s1, Vec3 s2)
+        {
+            // Return minimum distance between line segment vw and this point
+            double l2 = s1.Subtract(s2).LenSq;
+            if (l2 == 0.0) return Math.Sqrt(Subtract(s1).LenSq);
+
+            // Consider the line extending the segment, parameterized as v + t (w - v).
+            // We find projection of point p onto the line. 
+            // It falls where t = [(p-v) . (w-v)] / |w-v|^2
+            // We clamp t from [0,1] to handle points outside the segment vw.
+            double t = Math.Max(0, Math.Min(1, Subtract(s1).Dot(s2.Subtract(s1)) / l2));
+            Vec3 projection = s1.Add(s2.Subtract(s1).Mult(t));  // Projection falls on the segment
+            return Math.Sqrt(Subtract(projection).LenSq);
+        }
+
+        public double DistanceFromPointToSegment(Vec3[] ss)
+        {
+            if (ss == null || ss.Length != 2) throw new ArgumentOutOfRangeException();
+
+            return DistanceFromPointToSegment(ss[0], ss[1]);
         }
     }
 }
