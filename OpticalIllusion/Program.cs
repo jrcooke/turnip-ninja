@@ -40,13 +40,13 @@ namespace ConsoleApp1
             else
             {
                 Random r = new Random(4);
-                int n = 10;
+                int n = 5;
                 double[,] heights = new double[n, n];
                 for (int i = 0; i < n; i++)
                 {
                     for (int j = 0; j < n; j++)
                     {
-                        heights[i, j] = 2 * r.NextDouble();
+                        heights[i, j] = 4 * r.NextDouble();
                     }
                 }
 
@@ -103,7 +103,7 @@ namespace ConsoleApp1
                 var height = 1000;
 
                 double scale = Math.Min(height / rawheight, width / rawwidth);
-                Vec3 eye = new Vec3(0, 0, 6);
+                Vec3 eye = new Vec3(0, 0, 10);
 
                 var fileName = @"c:\temp\goo" + (counter++) + ".png";
 
